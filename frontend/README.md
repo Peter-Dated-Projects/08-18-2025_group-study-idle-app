@@ -31,13 +31,32 @@ The frontend is built with **Next.js (React)** and communicates with the [StudyG
 
 ```bash
 # Install dependencies
-npm install   # or pnpm install
+pnpm install
 
 # Run dev server
-npm run dev
+pnpm dev
 
 # Open at http://localhost:3000
 ```
+
+## 📦 Installing pnpm
+
+This project uses [pnpm](https://pnpm.io/) as the package manager.  
+If you don't have pnpm installed, you can install it in one of the following ways:
+
+- **Via npm**:
+  ```bash
+  npm install -g pnpm
+  ```
+- **Via Homebrew (macOS/Linux)**:
+  ```bash
+  brew install pnpm
+  ```
+- **Via Corepack (Node.js ≥16.13)**:
+  ```bash
+  corepack enable
+  corepack prepare pnpm@latest --activate
+  ```
 
 🔗 Backend Integration
 
