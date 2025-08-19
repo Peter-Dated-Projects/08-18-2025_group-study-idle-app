@@ -1,47 +1,221 @@
 "use client";
 
-import { Application, extend } from "@pixi/react";
-import { Container, Graphics, Sprite, Text } from "pixi.js";
-
-extend({
-  Container,
-  Graphics,
-  Sprite,
-  Text,
-});
+import { useEffect, useRef } from "react";
+import * as PIXI from "pixi.js";
+import { loadLevel } from "@/engine/Tilemap";
 
 export default function GardenCanvas() {
-  return (
-    <div className="w-full h-[480px] rounded-xl border bg-white/70 backdrop-blur p-0 overflow-hidden">
-      <Application
-        width={500}
-        height={500}
-        options={{ backgroundAlpha: 0, antialias: false }}
-        onInit={(app) => {
-          app.renderer.background.color = 0x1099bb;
-          console.log("PIXI Application initialized:", app);
-        }}
-      >
-        <pixiContainer>
-          {/* First red circle */}
-          <pixiGraphics
-            draw={(g) => {
-              g.clear();
-              g.beginFill(0xff0000);
-              g.drawCircle(150, 150, 50);
-              g.endFill();
-            }}
-          />
+  const parentRef = useRef<HTMLDivElement | null>(null);
+  const appRef = useRef<PIXI.Application | null>(null);
+  const worldContainerRef = useRef<PIXI.Container | null>(null);
+  const renderTextureRef = useRef<PIXI.RenderTexture | null>(null);
 
-          {/* Text label */}
-          <pixiText
-            text="Hello PIXI! Nah lowkey this is stupid"
-            x={50}
-            y={50}
-            style={{ fill: 0xffffff, fontSize: 24, fontFamily: "Arial" }}
-          />
-        </pixiContainer>
-      </Application>
+  // World/camera settings
+  const WORLD_WIDTH = 32 * 16; // Your tilemap size
+  const WORLD_HEIGHT = 32 * 16;
+  const WORLD_OFFSET = { x: 256 + 16 * 2, y: 256 - 16 * 2 };
+  const SCALE = 2.3; // How much to scale up the render texture
+
+  useEffect(() => {
+    const el = parentRef.current;
+    if (!el || appRef.current) return;
+
+    let disposed = false;
+    let worldOffsetX = 0;
+    let worldOffsetY = 0;
+
+    async function init() {
+      const app = new PIXI.Application();
+      appRef.current = app;
+
+      await app.init({
+        resizeTo: el,
+        backgroundAlpha: 0,
+        antialias: false, // Disable for pixel-perfect scaling
+        preference: "webgl",
+      });
+
+      if (disposed) return;
+      el.appendChild(app.canvas);
+
+      // Create render texture (our "framebuffer")
+      const renderTexture = PIXI.RenderTexture.create({
+        width: WORLD_WIDTH,
+        height: WORLD_HEIGHT,
+      });
+      renderTextureRef.current = renderTexture;
+
+      // Create sprite to display the render texture, scaled up
+      const renderSprite = new PIXI.Sprite(renderTexture);
+      renderSprite.scale.set(SCALE);
+
+      // Center the scaled sprite on screen
+      renderSprite.anchor.set(0.5);
+      renderSprite.x = app.screen.width / 2;
+      renderSprite.y = app.screen.height / 2;
+      app.stage.addChild(renderSprite);
+
+      // Create world container (this renders to the render texture)
+      const world = new PIXI.Container();
+      world.sortableChildren = true; // Enable zIndex sorting
+      worldContainerRef.current = world;
+
+      // Load tilemap
+      const tilemap = await loadLevel("/island.json");
+
+      console.log(`Loaded ${tilemap.layers.length} layers:`);
+      tilemap.layers.forEach((layer, index) => {
+        console.log(
+          `Layer ${index}: ${layer.name}, tiles: ${layer.tiles.length}, zIndex: ${layer.container.zIndex}`
+        );
+
+        // Manually set zIndex if it's not set properly
+        layer.container.zIndex = tilemap.layers.length - index - 1; // First layer gets highest zIndex
+
+        world.addChild(layer.container);
+        console.log(`Added layer ${layer.name} with zIndex ${layer.container.zIndex}`);
+
+        // Debug: Check if container has children
+        console.log(`Layer ${layer.name} container children: ${layer.container.children.length}`);
+      });
+
+      // Force a sort after adding all layers
+      world.sortChildren();
+
+      // Add test circle at world origin (with high zIndex to ensure it's visible)
+      const circle = new PIXI.Graphics();
+      circle.fill(0xff0000);
+      circle.circle(0, 0, 50);
+      circle.zIndex = 1000; // Ensure it's on top
+      world.addChild(circle);
+
+      // Center world initially with hardcoded offset
+      world.x = -WORLD_OFFSET.x;
+      world.y = -WORLD_OFFSET.y;
+
+      // Render function
+      const renderWorld = () => {
+        app.renderer.render({
+          container: world,
+          target: renderTexture,
+          clear: true,
+        });
+      };
+
+      // Resize handler
+      const onResize = () => {
+        renderSprite.x = app.screen.width / 2;
+        renderSprite.y = app.screen.height / 2;
+        app.stage.hitArea = new PIXI.Rectangle(0, 0, app.screen.width, app.screen.height);
+      };
+      app.renderer.on("resize", onResize);
+
+      // Input handling
+      app.stage.eventMode = "static";
+      app.stage.hitArea = new PIXI.Rectangle(0, 0, app.screen.width, app.screen.height);
+
+      let dragging = false;
+      const last = { x: 0, y: 0 };
+
+      // create a parallax effect when mouse is inside of the game rect. else, slowly move back to 0 parallax
+      let currentParallax = { x: 0, y: 0 };
+      let goalParallax = { x: 0, y: 0 };
+      let isMouseInside = false;
+
+      app.stage.on("pointermove", (e) => {
+        if (app.stage.hitArea?.contains(e.global.x, e.global.y)) {
+          isMouseInside = true;
+
+          // Calculate mouse position relative to screen center
+          const screenCenterX = app.screen.width / 2;
+          const screenCenterY = app.screen.height / 2;
+          const mouseX = e.global.x - screenCenterX;
+          const mouseY = e.global.y - screenCenterY;
+
+          // Calculate distance from center as a normalized value (0 at center, 1 at edges)
+          const maxDistance = Math.sqrt(
+            screenCenterX * screenCenterX + screenCenterY * screenCenterY
+          );
+          const distance = Math.sqrt(mouseX * mouseX + mouseY * mouseY);
+          const normalizedDistance = Math.min(distance / maxDistance, 1.0);
+
+          // Apply decay based on distance from center (stronger effect at center, weaker at edges)
+          const decayFactor = 1.0 - normalizedDistance * 0.7; // 0.7 reduces effect at edges
+
+          // Calculate parallax offset based on mouse position relative to center
+          const parallaxStrength = 20; // Max pixels of parallax offset
+          goalParallax.x = (mouseX / screenCenterX) * parallaxStrength * decayFactor;
+          goalParallax.y = (mouseY / screenCenterY) * parallaxStrength * decayFactor;
+        } else {
+          isMouseInside = false;
+        }
+      });
+
+      // Handle mouse leaving the game area
+      app.stage.on("pointerleave", () => {
+        isMouseInside = false;
+      });
+
+      // Render loop
+      const gameLoop = () => {
+        renderWorld();
+        if (!disposed) {
+          // If mouse is not inside, slowly return to center
+          if (!isMouseInside) {
+            goalParallax.x *= 0.95; // Decay toward 0
+            goalParallax.y *= 0.95;
+          }
+
+          // Smoothly interpolate current position toward goal (velocity-based)
+          const lerpFactor = 0.08; // Adjust for smoother/snappier movement
+          worldOffsetX += (goalParallax.x - worldOffsetX) * lerpFactor;
+          worldOffsetY += (goalParallax.y - worldOffsetY) * lerpFactor;
+
+          // Apply the offset to world container with hardcoded base offset
+          if (worldContainerRef.current) {
+            worldContainerRef.current.x = Math.round(-WORLD_OFFSET.x - worldOffsetX);
+            worldContainerRef.current.y = Math.round(-WORLD_OFFSET.y - worldOffsetY);
+          }
+
+          requestAnimationFrame(gameLoop);
+        }
+      };
+      gameLoop();
+    }
+
+    init();
+
+    return () => {
+      disposed = true;
+      const app = appRef.current;
+      if (app) {
+        app.stage.removeAllListeners();
+        app.renderer.removeAllListeners();
+
+        if (renderTextureRef.current) {
+          renderTextureRef.current.destroy(true);
+        }
+
+        if (worldContainerRef.current) {
+          worldContainerRef.current.destroy({ children: true });
+        }
+
+        app.destroy(true);
+        appRef.current = null;
+        worldContainerRef.current = null;
+        renderTextureRef.current = null;
+      }
+
+      const elNow = parentRef.current;
+      if (elNow?.firstChild) {
+        elNow.removeChild(elNow.firstChild);
+      }
+    };
+  }, []);
+
+  return (
+    <div className="w-full h-full relative overflow-hidden">
+      <div ref={parentRef} className="w-full h-full overflow-hidden" />
     </div>
   );
 }

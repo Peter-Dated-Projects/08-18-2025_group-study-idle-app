@@ -10,25 +10,25 @@ importers:
     dependencies:
       '@pixi/react':
         specifier: '8'
-        version: 8.0.3(@types/react@19.1.10)(pixi.js@8.12.0)(react@18.3.1)
+        version: 8.0.3(@types/react@19.1.10)(pixi.js@8.12.0)(react@19.1.1)
       '@tanstack/react-query':
         specifier: ^5.85.3
-        version: 5.85.3(react@18.3.1)
+        version: 5.85.3(react@19.1.1)
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
       framer-motion:
         specifier: ^12.23.12
-        version: 12.23.12(react-dom@19.1.0(react@18.3.1))(react@18.3.1)
+        version: 12.23.12(react-dom@19.1.0(react@19.1.1))(react@19.1.1)
       next:
         specifier: 15.4.7
-        version: 15.4.7(react-dom@19.1.0(react@18.3.1))(react@18.3.1)
+        version: 15.4.7(react-dom@19.1.0(react@19.1.1))(react@19.1.1)
       pixi.js:
         specifier: ^8.12.0
         version: 8.12.0
       react:
-        specifier: ^18.3.1
-        version: 18.3.1
+        specifier: ^19.1.1
+        version: 19.1.1
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3
@@ -1622,8 +1622,8 @@ packages:
     peerDependencies:
       react: ^19.0.0
 
-  react@18.3.1:
-    resolution: {integrity: sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==}
+  react@19.1.1:
+    resolution: {integrity: sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ==}
     engines: {node: '>=0.10.0'}
 
   reflect.getprototypeof@1.0.10:
@@ -2131,12 +2131,12 @@ snapshots:
 
   '@pixi/colord@2.9.6': {}
 
-  '@pixi/react@8.0.3(@types/react@19.1.10)(pixi.js@8.12.0)(react@18.3.1)':
+  '@pixi/react@8.0.3(@types/react@19.1.10)(pixi.js@8.12.0)(react@19.1.1)':
     dependencies:
-      its-fine: 2.0.0(@types/react@19.1.10)(react@18.3.1)
+      its-fine: 2.0.0(@types/react@19.1.10)(react@19.1.1)
       pixi.js: 8.12.0
-      react: 18.3.1
-      react-reconciler: 0.31.0(react@18.3.1)
+      react: 19.1.1
+      react-reconciler: 0.31.0(react@19.1.1)
     transitivePeerDependencies:
       - '@types/react'
 
@@ -2222,10 +2222,10 @@ snapshots:
 
   '@tanstack/query-core@5.85.3': {}
 
-  '@tanstack/react-query@5.85.3(react@18.3.1)':
+  '@tanstack/react-query@5.85.3(react@19.1.1)':
     dependencies:
       '@tanstack/query-core': 5.85.3
-      react: 18.3.1
+      react: 19.1.1
 
   '@tybys/wasm-util@0.10.0':
     dependencies:
@@ -3004,14 +3004,14 @@ snapshots:
     dependencies:
       is-callable: 1.2.7
 
-  framer-motion@12.23.12(react-dom@19.1.0(react@18.3.1))(react@18.3.1):
+  framer-motion@12.23.12(react-dom@19.1.0(react@19.1.1))(react@19.1.1):
     dependencies:
       motion-dom: 12.23.12
       motion-utils: 12.23.6
       tslib: 2.8.1
     optionalDependencies:
-      react: 18.3.1
-      react-dom: 19.1.0(react@18.3.1)
+      react: 19.1.1
+      react-dom: 19.1.0(react@19.1.1)
 
   function-bind@1.1.2: {}
 
@@ -3247,10 +3247,10 @@ snapshots:
       has-symbols: 1.1.0
       set-function-name: 2.0.2
 
-  its-fine@2.0.0(@types/react@19.1.10)(react@18.3.1):
+  its-fine@2.0.0(@types/react@19.1.10)(react@19.1.1):
     dependencies:
       '@types/react-reconciler': 0.28.9(@types/react@19.1.10)
-      react: 18.3.1
+      react: 19.1.1
     transitivePeerDependencies:
       - '@types/react'
 
@@ -3396,15 +3396,15 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  next@15.4.7(react-dom@19.1.0(react@18.3.1))(react@18.3.1):
+  next@15.4.7(react-dom@19.1.0(react@19.1.1))(react@19.1.1):
     dependencies:
       '@next/env': 15.4.7
       '@swc/helpers': 0.5.15
       caniuse-lite: 1.0.30001735
       postcss: 8.4.31
-      react: 18.3.1
-      react-dom: 19.1.0(react@18.3.1)
-      styled-jsx: 5.1.6(react@18.3.1)
+      react: 19.1.1
+      react-dom: 19.1.0(react@19.1.1)
+      styled-jsx: 5.1.6(react@19.1.1)
     optionalDependencies:
       '@next/swc-darwin-arm64': 15.4.7
       '@next/swc-darwin-x64': 15.4.7
@@ -3541,21 +3541,19 @@ snapshots:
 
   queue-microtask@1.2.3: {}
 
-  react-dom@19.1.0(react@18.3.1):
+  react-dom@19.1.0(react@19.1.1):
     dependencies:
-      react: 18.3.1
+      react: 19.1.1
       scheduler: 0.26.0
 
   react-is@16.13.1: {}
 
-  react-reconciler@0.31.0(react@18.3.1):
+  react-reconciler@0.31.0(react@19.1.1):
     dependencies:
-      react: 18.3.1
+      react: 19.1.1
       scheduler: 0.25.0
 
-  react@18.3.1:
-    dependencies:
-      loose-envify: 1.4.0
+  react@19.1.1: {}
 
   reflect.getprototypeof@1.0.10:
     dependencies:
@@ -3780,10 +3778,10 @@ snapshots:
 
   strip-json-comments@3.1.1: {}
 
-  styled-jsx@5.1.6(react@18.3.1):
+  styled-jsx@5.1.6(react@19.1.1):
     dependencies:
       client-only: 0.0.1
-      react: 18.3.1
+      react: 19.1.1
 
   supports-color@7.2.0:
     dependencies:
