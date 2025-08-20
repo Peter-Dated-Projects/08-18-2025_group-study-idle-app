@@ -3,6 +3,8 @@
 import GardenCanvas from "@/components/GardenCanvas";
 import GardenTasks from "@/components/GardenTasks";
 import MusicSync from "@/components/MusicSync";
+import GardenMenu from "@/components/GardenMenu";
+
 import { url } from "inspector/promises";
 import { useState } from "react";
 
@@ -10,9 +12,11 @@ const BORDERWIDTH = "8px";
 const BORDERFILL = "#c49a6c";
 const BORDERLINE = "#9b6542ff";
 const PANELFILL = "#e8cfa6";
+const FONTCOLOR = "#813706ff";
 
 export default function GardenPage() {
   const [isClicking, setIsClicking] = useState(false);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
   return (
     <main
@@ -23,6 +27,8 @@ export default function GardenPage() {
         cursor: isClicking
           ? `url("/mouse_click.png") 8 8, auto`
           : `url("/mouse_idle.png") 8 8, auto`,
+        color: FONTCOLOR,
+        textShadow: `1px 1px 1px ${BORDERFILL}`,
       }}
       onMouseDown={() => setIsClicking(true)}
       onMouseUp={() => setIsClicking(false)}
@@ -33,8 +39,15 @@ export default function GardenPage() {
           className={`flex w-full h-full flex-1 gap-[10px]`}
           style={{ border: `2px solid ${BORDERFILL}` }}
         >
-          <div className="w-7/10 flex-1" style={{ border: `5px solid ${BORDERLINE}` }}>
+          <div
+            className="w-7/10 flex-1"
+            style={{
+              border: `5px solid ${BORDERLINE}`,
+              position: "relative", // Add relative positioning here
+            }}
+          >
             <GardenCanvas />
+            <GardenMenu />
           </div>
 
           <div
