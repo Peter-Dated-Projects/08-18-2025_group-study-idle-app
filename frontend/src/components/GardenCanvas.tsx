@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import * as PIXI from "pixi.js";
-import { loadLevel } from "@/engine/Tilemap";
+import { AnimatedTile, loadLevel, updateAnimatedTiles } from "@/engine/Tilemap";
 
 export default function GardenCanvas() {
   const parentRef = useRef<HTMLDivElement | null>(null);
@@ -13,8 +13,10 @@ export default function GardenCanvas() {
   // World/camera settings
   const WORLD_WIDTH = 32 * 16; // Your tilemap size
   const WORLD_HEIGHT = 32 * 16;
-  const WORLD_OFFSET = { x: 256 + 16 * 2, y: 256 - 16 * 2 };
+  const WORLD_OFFSET = { x: 128 - 16 * 2, y: 128 };
   const SCALE = 2.3; // How much to scale up the render texture
+
+  const WATER_TILE_ID = "13";
 
   useEffect(() => {
     const el = parentRef.current;
@@ -77,6 +79,34 @@ export default function GardenCanvas() {
 
         // Debug: Check if container has children
         console.log(`Layer ${layer.name} container children: ${layer.container.children.length}`);
+
+        // do a manual sweep to find all water tiles and turn them into animated water tiles
+        layer.tiles.forEach((tile, tileIndex) => {
+          if (tile.id.startsWith(WATER_TILE_ID)) {
+            // Find the corresponding sprite in the layer container
+            const sprite = layer.container.children[tileIndex] as PIXI.Sprite;
+
+            if (sprite && sprite instanceof PIXI.Sprite) {
+              const animatedTile: AnimatedTile = {
+                ...tile,
+                animationFrames: ["13", "21", "22", "23"],
+                frameDuration: 500, // Increased duration to make animation more visible
+                currentFrame: 0,
+                lastFrameTime: performance.now(),
+                sprite: sprite, // Link to the actual sprite!
+              };
+              tilemap.animatedTiles.push(animatedTile);
+              console.log(
+                `Created animated water tile at (${tile.x}, ${tile.y}) with sprite:`,
+                sprite
+              );
+            } else {
+              console.warn(`Could not find sprite for animated tile at index ${tileIndex}`);
+            }
+          }
+        });
+
+        console.log(`Layer ${layer.name} has ${tilemap.animatedTiles.length} animated tiles total`);
       });
 
       // Force a sort after adding all layers
@@ -158,6 +188,9 @@ export default function GardenCanvas() {
 
       // Render loop
       const gameLoop = () => {
+        // Update animated tiles BEFORE rendering
+        updateAnimatedTiles(tilemap);
+
         renderWorld();
         if (!disposed) {
           // If mouse is not inside, slowly return to center
