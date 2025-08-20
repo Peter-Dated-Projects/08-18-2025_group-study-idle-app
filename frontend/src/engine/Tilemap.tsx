@@ -171,7 +171,7 @@ async function loadLevel(file: string, spriteSheetDef?: SpriteSheetDef): Promise
       }
 
       const tileInfo = defaultSpriteSheet.tiles[tileIndex];
-      console.log(`Loading tile ID ${tileId} (index ${tileIndex}):`, tileInfo);
+      // console.log(`Loading tile ID ${tileId} (index ${tileIndex}):`, tileInfo);
 
       // Create texture from the tile area
       const tileTexture = new Texture({

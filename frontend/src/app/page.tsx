@@ -5,7 +5,6 @@ import GardenTasks from "@/components/GardenTasks";
 import MusicSync from "@/components/MusicSync";
 import GardenMenu from "@/components/GardenMenu";
 
-import { url } from "inspector/promises";
 import { useState } from "react";
 
 const BORDERWIDTH = "8px";

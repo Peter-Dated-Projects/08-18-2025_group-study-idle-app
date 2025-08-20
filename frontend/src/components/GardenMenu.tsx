@@ -1,4 +1,18 @@
-export default function GardenMenu() {
+import LightingControls from "./LightingControls";
+
+interface GardenMenuProps {
+  onCreateLight?: (config: { x: number; y: number; preset: string }) => void;
+  onToggleLight?: (lightId: string, enabled: boolean) => void;
+  onRemoveLight?: (lightId: string) => void;
+  lights?: any[];
+}
+
+export default function GardenMenu({
+  onCreateLight,
+  onToggleLight,
+  onRemoveLight,
+  lights = [],
+}: GardenMenuProps) {
   return (
     <div
       style={{
@@ -22,14 +36,19 @@ export default function GardenMenu() {
         style={{
           gridArea: "topleft",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          alignItems: "flex-start",
+          justifyContent: "flex-start",
           width: "100%",
           height: "100%",
-          border: "1px solid rgba(255,255,255,0.2)", // Optional: visual debugging
+          padding: "10px",
         }}
       >
-        avatar
+        <LightingControls
+          onCreateLight={onCreateLight}
+          onToggleLight={onToggleLight}
+          onRemoveLight={onRemoveLight}
+          lights={lights}
+        />
       </div>
       <div
         style={{
@@ -55,7 +74,7 @@ export default function GardenMenu() {
           border: "1px solid rgba(255,255,255,0.2)",
         }}
       >
-        topright
+        settings
       </div>
       <div
         style={{
@@ -68,7 +87,7 @@ export default function GardenMenu() {
           border: "1px solid rgba(255,255,255,0.2)",
         }}
       >
-        middleleft
+        inventory
       </div>
       <div
         style={{
@@ -78,10 +97,10 @@ export default function GardenMenu() {
           justifyContent: "center",
           width: "100%",
           height: "100%",
-          border: "1px solid rgba(255,255,255,0.2)",
+          // No border for center - this is where gameplay happens
         }}
       >
-        middlecenter
+        {/* Center area - transparent for gameplay */}
       </div>
       <div
         style={{
@@ -94,7 +113,7 @@ export default function GardenMenu() {
           border: "1px solid rgba(255,255,255,0.2)",
         }}
       >
-        middleright
+        stats
       </div>
       <div
         style={{
@@ -107,7 +126,7 @@ export default function GardenMenu() {
           border: "1px solid rgba(255,255,255,0.2)",
         }}
       >
-        bottomleft
+        tasks
       </div>
       <div
         style={{
@@ -120,7 +139,7 @@ export default function GardenMenu() {
           border: "1px solid rgba(255,255,255,0.2)",
         }}
       >
-        bottomcenter
+        chat/social
       </div>
       <div
         style={{
@@ -133,7 +152,7 @@ export default function GardenMenu() {
           border: "1px solid rgba(255,255,255,0.2)",
         }}
       >
-        bottomright
+        minimap
       </div>
     </div>
   );
