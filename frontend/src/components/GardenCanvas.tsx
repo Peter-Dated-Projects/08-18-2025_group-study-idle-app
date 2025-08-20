@@ -5,15 +5,16 @@ import * as PIXI from "pixi.js";
 import { AnimatedTile, loadLevel, updateAnimatedTiles } from "@/engine/Tilemap";
 import { Filter, GlProgram } from "pixi.js";
 import { loadTextFile } from "@/engine/utils";
-import { LightingSystem } from "@/engine/LightingSystem";
-import { createLightFromPreset } from "@/engine/LightPresets";
 
-export default function GardenCanvas() {
+export default function GardenCanvas({
+  onAppCreated,
+}: {
+  onAppCreated: (app: PIXI.Application) => void;
+}) {
   const parentRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const worldContainerRef = useRef<PIXI.Container | null>(null);
   const renderTextureRef = useRef<PIXI.RenderTexture | null>(null);
-  const lightingSystemRef = useRef<LightingSystem | null>(null);
 
   // World/camera settings
   const WORLD_WIDTH = 32 * 16; // Your tilemap size
@@ -45,6 +46,8 @@ export default function GardenCanvas() {
       });
 
       if (disposed) return;
+
+      onAppCreated(app);
       el.appendChild(app.canvas);
 
       // ------------------------------------------------------------------------------ //
@@ -134,7 +137,7 @@ export default function GardenCanvas() {
         }),
         resources: {
           timeUniforms: {
-            uCycle: { value: 1.0, type: "f32" },
+            uCycle: { value: DAY_DURATION / 2, type: "f32" },
             dayTint: { value: new Float32Array([1.0, 1.0, 1.0]), type: "vec3<f32>" },
             nightTint: { value: new Float32Array([0.7, 0.8, 1.05]), type: "vec3<f32>" },
             nightStrength: { value: 0.45, type: "f32" },
@@ -143,57 +146,13 @@ export default function GardenCanvas() {
         },
       });
 
-      // lighting system
-      const lightingSystem = await LightingSystem.create(world, tilemap);
-      lightingSystemRef.current = lightingSystem;
-
-      // Create some test lights
-      const torchLight1 = lightingSystem.createLight({
-        x: 200,
-        y: 200,
-        color: [1.0, 0.7, 0.4], // Warm orange
-        intensity: 1.2,
-        radius: 80,
-        castShadows: true,
-      });
-
-      const campfireLight = lightingSystem.createLight({
-        x: 400,
-        y: 300,
-        color: [1.0, 0.6, 0.2], // Orange-red
-        intensity: 1.5,
-        radius: 120,
-        castShadows: true,
-      });
-
-      const magicalLight = lightingSystem.createLight({
-        x: 600,
-        y: 150,
-        color: [0.7, 0.9, 1.0], // Cool blue
-        intensity: 1.3,
-        radius: 90,
-        castShadows: false,
-      });
-
-      // Set ambient lighting (lower for dramatic effect)
-      lightingSystem.setAmbientLighting(0.15, [0.3, 0.3, 0.5]);
-
-      // apply both filters to container (day/night + lighting)
+      // Apply day/night filter to world
       world.filters = [dayNightFilter];
 
       app.ticker.add(() => {
         const seconds = app.ticker.lastTime / 1000;
-        // 60.0s for a full day/night cycle
         const cycleValue = seconds / DAY_DURATION;
         dayNightFilter.resources.timeUniforms.uniforms.uCycle = cycleValue;
-
-        // Update lighting system
-        lightingSystem.update();
-
-        // Add some animation to lights for testing
-        lightingSystem.flickerLight(torchLight1.id, 0.15);
-        lightingSystem.pulseLight(campfireLight.id, seconds, 0.5, 1.2);
-        lightingSystem.pulseLight(magicalLight.id, seconds, 0.8, 1.5);
       });
 
       // ------------------------------------------------------------------------------ //
@@ -326,15 +285,10 @@ export default function GardenCanvas() {
           worldContainerRef.current.destroy({ children: true });
         }
 
-        if (lightingSystemRef.current) {
-          lightingSystemRef.current.destroy();
-        }
-
         app.destroy(true);
         appRef.current = null;
         worldContainerRef.current = null;
         renderTextureRef.current = null;
-        lightingSystemRef.current = null;
       }
 
       const elNow = parentRef.current;

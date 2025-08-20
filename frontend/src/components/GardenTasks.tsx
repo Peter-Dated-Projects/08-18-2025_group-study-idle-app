@@ -43,7 +43,23 @@ export default function GardenTasks() {
   return (
     <>
       <div>
-        <h1 style={{ fontFamily: HeaderFont, fontSize: "32px" }}>Task List</h1>
+        <div style={{ display: "flex", alignItems: "center", userSelect: "none" }}>
+          <img
+            src="/icon.png"
+            alt="App Icon"
+            style={{ width: 40, height: 40, marginRight: 12, userSelect: "none" }}
+          />
+          <h1
+            style={{
+              fontFamily: HeaderFont,
+              fontSize: "32px",
+              margin: 0,
+              userSelect: "none",
+            }}
+          >
+            Task List
+          </h1>
+        </div>
         <div>
           {isLoggedIn ? (
             <div>

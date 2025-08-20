@@ -1,18 +1,219 @@
-import LightingControls from "./LightingControls";
+import { useRef, useState, useEffect } from "react";
+import * as PIXI from "pixi.js";
+import { AnimationLoader, AnimatedSpriteWrapper } from "@/engine/AnimationLoader";
+import { CharacterAnimation } from "@/engine/CharacterAnimation";
+import { CheerIdleAnimationState } from "@/engine/CharacterStates";
 
-interface GardenMenuProps {
-  onCreateLight?: (config: { x: number; y: number; preset: string }) => void;
-  onToggleLight?: (lightId: string, enabled: boolean) => void;
-  onRemoveLight?: (lightId: string) => void;
-  lights?: any[];
+interface MenuTextures {
+  avatar: PIXI.RenderTexture | null;
+  inventory: PIXI.RenderTexture | null;
+  stats: PIXI.RenderTexture | null;
 }
 
-export default function GardenMenu({
-  onCreateLight,
-  onToggleLight,
-  onRemoveLight,
-  lights = [],
-}: GardenMenuProps) {
+interface GardenMenuProps {
+  // Accept the main PIXI app from GardenCanvas
+  pixiApp?: PIXI.Application;
+}
+
+export default function GardenMenu({ pixiApp }: GardenMenuProps) {
+  const canvasRefs = {
+    avatar: useRef<HTMLCanvasElement>(null),
+    inventory: useRef<HTMLCanvasElement>(null),
+    stats: useRef<HTMLCanvasElement>(null),
+  };
+
+  const [menuTextures, setMenuTextures] = useState<MenuTextures>({
+    avatar: null,
+    inventory: null,
+    stats: null,
+  });
+
+  const [avatarBackgroundTexture, setAvatarBackgroundTexture] = useState<PIXI.Texture | null>(null);
+  const avatarContainerRef = useRef<PIXI.Container | null>(null);
+  const animationLoaderRef = useRef<AnimationLoader | null>(null);
+  const characterAnimationRef = useRef<CharacterAnimation | null>(null);
+
+  // Menu containers for different UI elements
+  const menuContainers = useRef<{
+    avatar: PIXI.Container;
+    inventory: PIXI.Container;
+    stats: PIXI.Container;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!pixiApp) return;
+
+    const initMenus = async () => {
+      // Load assets
+      const avatarTexture = await PIXI.Assets.load("/avatar-box.png");
+
+      // Create containers for each menu section
+      menuContainers.current = {
+        avatar: new PIXI.Container(),
+        inventory: new PIXI.Container(),
+        stats: new PIXI.Container(),
+      };
+
+      // Setup avatar container with character animation
+      // First add the avatar-box as background
+      const avatarSprite = new PIXI.Sprite(avatarTexture);
+      avatarSprite.anchor.set(0.5);
+      avatarSprite.position.set(75, 75); // Center in 150x150 area
+      avatarSprite.width = 200;
+      avatarSprite.height = 200;
+      // Enable pixel perfect sampling for avatar-box
+      avatarSprite.texture.source.scaleMode = "nearest";
+      menuContainers.current.avatar.addChild(avatarSprite);
+
+      // Load emoticons animation
+      const animationLoader = new AnimationLoader();
+      animationLoaderRef.current = animationLoader;
+
+      try {
+        await animationLoader.load("/emoticons.png", "/emoticons.json", 150); // 150ms per frame
+
+        // Get the cheer_idle animation data
+        const cheerIdleAnimation = animationLoader.getAnimation("cheer_idle");
+        if (cheerIdleAnimation) {
+          // Create AnimatedTile for the cheer_idle animation
+          const cheerIdleAnimatedTile = {
+            id: "cheer_idle_tile",
+            x: 75,
+            y: 75,
+            animationFrames: cheerIdleAnimation.frames.map(
+              (frame) => `cheer_idle_${frame.frameIndex}`
+            ),
+            frameDuration: cheerIdleAnimation.frameDuration,
+            currentFrame: 0,
+            lastFrameTime: Date.now(),
+            sprite: new PIXI.Sprite(cheerIdleAnimation.frames[0].texture),
+            animationTextures: cheerIdleAnimation.frames.map((frame) => frame.texture), // Store the actual textures
+          };
+
+          // Create character animation system
+          const characterAnimation = new CharacterAnimation(cheerIdleAnimatedTile.sprite, []);
+          characterAnimationRef.current = characterAnimation;
+
+          // Create and add the cheer_idle state
+          const cheerIdleState = new CheerIdleAnimationState(cheerIdleAnimatedTile);
+          characterAnimation.addState(cheerIdleState);
+
+          // Transition to the cheer_idle state to start animation
+          characterAnimation.transitionTo("cheer_idle");
+
+          // Get the character sprite and configure it
+          const characterSprite = characterAnimation.getSprite();
+          characterSprite.anchor.set(0.5);
+          characterSprite.position.set(75, 75); // Center in 150x150 area, same as avatar-box
+          characterSprite.scale.set(2.5); // keep inside avatar box
+
+          // Enable pixel perfect sampling for character sprite
+          characterSprite.texture.source.scaleMode = "nearest";
+
+          // Add character on top of avatar-box
+          menuContainers.current.avatar.addChild(characterSprite);
+        }
+      } catch (error) {
+        // Avatar-box is already added as fallback
+      } // Force bounds calculation
+      menuContainers.current.avatar.getBounds();
+
+      // Setup other menu containers (placeholder content)
+      setupMenuContainer(menuContainers.current.inventory, "Inventory", 0x4444ff);
+      setupMenuContainer(menuContainers.current.stats, "Stats", 0xffff44);
+
+      // Create render textures
+      const newTextures: MenuTextures = {
+        avatar: PIXI.RenderTexture.create({ width: 150, height: 150 }),
+        inventory: PIXI.RenderTexture.create({ width: 150, height: 150 }),
+        stats: PIXI.RenderTexture.create({ width: 150, height: 150 }),
+      };
+
+      setMenuTextures(newTextures);
+
+      // Store reference
+      avatarContainerRef.current = menuContainers.current.avatar;
+
+      // Wait for next frame to ensure renderer is ready
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
+      // Initial render of all menu sections
+      renderMenuTextures(pixiApp, menuContainers.current, newTextures);
+
+      // Force multiple canvas updates with different delays
+      const forceCanvasUpdate = async () => {
+        // Try immediate update
+        updateAllCanvases(newTextures, pixiApp.renderer);
+
+        // Try after short delay
+        setTimeout(() => {
+          updateAllCanvases(newTextures, pixiApp.renderer);
+        }, 100);
+
+        // Try after longer delay
+        setTimeout(() => {
+          updateAllCanvases(newTextures, pixiApp.renderer);
+        }, 300);
+
+        // Try after even longer delay
+        setTimeout(() => {
+          updateAllCanvases(newTextures, pixiApp.renderer);
+        }, 1000);
+      };
+
+      await forceCanvasUpdate();
+    };
+
+    initMenus();
+  }, [pixiApp]);
+
+  // Helper function to update all canvases
+  const updateAllCanvases = (textures: MenuTextures, renderer: PIXI.Renderer) => {
+    Object.entries(canvasRefs).forEach(([key, ref]) => {
+      if (ref.current && textures[key as keyof MenuTextures]) {
+        const canvas = ref.current;
+        const ctx = canvas.getContext("2d");
+        if (ctx && textures[key as keyof MenuTextures]) {
+          try {
+            updateCanvasFromTexture(ctx, canvas, textures[key as keyof MenuTextures]!, renderer);
+          } catch (error) {
+            console.error(`❌ Failed to update ${key} canvas:`, error);
+          }
+        }
+      }
+    });
+  };
+
+  // Update menu textures periodically
+  useEffect(() => {
+    if (!pixiApp || !menuContainers.current || !menuTextures.avatar) return;
+
+    const updateInterval = setInterval(() => {
+      // Update character animation state machine
+      if (characterAnimationRef.current) {
+        characterAnimationRef.current.update(1 / 24); // 24 FPS delta time
+      }
+
+      renderMenuTextures(pixiApp, menuContainers.current!, menuTextures);
+      updateAllCanvases(menuTextures, pixiApp.renderer);
+    }, 1000 / 24); // 24 FPS for UI updates
+
+    return () => {
+      clearInterval(updateInterval);
+
+      // Cleanup animation resources
+      if (characterAnimationRef.current) {
+        characterAnimationRef.current.destroy();
+        characterAnimationRef.current = null;
+      }
+
+      if (animationLoaderRef.current) {
+        animationLoaderRef.current.destroy();
+        animationLoaderRef.current = null;
+      }
+    };
+  }, [pixiApp, menuTextures]);
+
   return (
     <div
       style={{
@@ -30,130 +231,175 @@ export default function GardenMenu({
           "middleleft middlecenter middleright"
           "bottomleft bottomcenter bottomright"
         `,
+        pointerEvents: "none",
       }}
     >
-      <div
-        style={{
-          gridArea: "topleft",
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "flex-start",
-          width: "100%",
-          height: "100%",
-          padding: "10px",
-        }}
-      >
-        <LightingControls
-          onCreateLight={onCreateLight}
-          onToggleLight={onToggleLight}
-          onRemoveLight={onRemoveLight}
-          lights={lights}
+      {/* Avatar */}
+      <div style={{ gridArea: "topleft", pointerEvents: "auto" }}>
+        <canvas
+          ref={canvasRefs.avatar}
+          width={150}
+          height={150}
+          style={{
+            width: "100%",
+            height: "100%",
+            maxWidth: "150px",
+            maxHeight: "150px",
+            objectFit: "contain",
+            border: "1px solid #333", // Debug border
+          }}
         />
       </div>
-      <div
-        style={{
-          gridArea: "topcenter",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "100%",
-          height: "100%",
-          border: "1px solid rgba(255,255,255,0.2)",
-        }}
-      >
-        boss_bar
+
+      {/* Empty top center */}
+      <div style={{ gridArea: "topcenter" }}></div>
+
+      {/* Empty top right */}
+      <div style={{ gridArea: "topright" }}></div>
+
+      {/* Inventory */}
+      <div style={{ gridArea: "middleleft", pointerEvents: "auto" }}>
+        <canvas
+          ref={canvasRefs.inventory}
+          width={150}
+          height={150}
+          style={{
+            width: "100%",
+            height: "100%",
+            maxWidth: "150px",
+            maxHeight: "150px",
+            objectFit: "contain",
+            border: "1px solid #333",
+          }}
+        />
       </div>
-      <div
-        style={{
-          gridArea: "topright",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "100%",
-          height: "100%",
-          border: "1px solid rgba(255,255,255,0.2)",
-        }}
-      >
-        settings
+
+      {/* Center area - transparent for gameplay */}
+      <div style={{ gridArea: "middlecenter" }}></div>
+
+      {/* Stats */}
+      <div style={{ gridArea: "middleright", pointerEvents: "auto" }}>
+        <canvas
+          ref={canvasRefs.stats}
+          width={150}
+          height={150}
+          style={{
+            width: "100%",
+            height: "100%",
+            maxWidth: "150px",
+            maxHeight: "150px",
+            objectFit: "contain",
+            border: "1px solid #333",
+          }}
+        />
       </div>
-      <div
-        style={{
-          gridArea: "middleleft",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "100%",
-          height: "100%",
-          border: "1px solid rgba(255,255,255,0.2)",
-        }}
-      >
-        inventory
-      </div>
-      <div
-        style={{
-          gridArea: "middlecenter",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "100%",
-          height: "100%",
-          // No border for center - this is where gameplay happens
-        }}
-      >
-        {/* Center area - transparent for gameplay */}
-      </div>
-      <div
-        style={{
-          gridArea: "middleright",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "100%",
-          height: "100%",
-          border: "1px solid rgba(255,255,255,0.2)",
-        }}
-      >
-        stats
-      </div>
-      <div
-        style={{
-          gridArea: "bottomleft",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "100%",
-          height: "100%",
-          border: "1px solid rgba(255,255,255,0.2)",
-        }}
-      >
-        tasks
-      </div>
-      <div
-        style={{
-          gridArea: "bottomcenter",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "100%",
-          height: "100%",
-          border: "1px solid rgba(255,255,255,0.2)",
-        }}
-      >
-        chat/social
-      </div>
-      <div
-        style={{
-          gridArea: "bottomright",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "100%",
-          height: "100%",
-          border: "1px solid rgba(255,255,255,0.2)",
-        }}
-      >
-        minimap
-      </div>
+
+      {/* Empty bottom areas */}
+      <div style={{ gridArea: "bottomleft" }}></div>
+      <div style={{ gridArea: "bottomcenter" }}></div>
+      <div style={{ gridArea: "bottomright" }}></div>
     </div>
   );
+}
+
+// Helper function to setup menu containers with placeholder content
+function setupMenuContainer(container: PIXI.Container, text: string, color: number) {
+  // Make sure container has proper bounds
+  container.x = 0;
+  container.y = 0;
+
+  const bg = new PIXI.Graphics();
+  bg.beginFill(color, 0.5); // Increased opacity for visibility
+  bg.drawRect(0, 0, 150, 150); // Changed to 150x150 to match render texture size
+  bg.endFill();
+  container.addChild(bg);
+
+  const textSprite = new PIXI.Text(text, {
+    fontFamily: "Arial",
+    fontSize: 14,
+    fill: 0xffffff,
+  });
+  textSprite.anchor.set(0.5);
+  textSprite.x = 75;
+  textSprite.y = 75; // Changed to center in 150x150 area
+  container.addChild(textSprite);
+
+  // Force calculate bounds to ensure container has proper dimensions
+  container.getBounds();
+}
+
+// Helper function to render all menu containers to their respective textures
+function renderMenuTextures(app: PIXI.Application, containers: any, textures: MenuTextures) {
+  Object.entries(containers).forEach(([key, container]) => {
+    const texture = textures[key as keyof MenuTextures];
+    if (texture && container) {
+      try {
+        // Ensure container is visible and has content
+        const cont = container as PIXI.Container;
+
+        // Make sure container is visible
+        cont.visible = true;
+        cont.alpha = 1.0;
+
+        // Render to texture
+        app.renderer.render({
+          container: cont,
+          target: texture,
+          clear: true,
+        });
+      } catch (error) {
+        console.error(`❌ Failed to render ${key}:`, error);
+      }
+    }
+  });
+}
+
+// Helper function to update canvas from PIXI render texture
+function updateCanvasFromTexture(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  texture: PIXI.RenderTexture,
+  renderer: PIXI.Renderer
+) {
+  try {
+    // First check if texture has valid dimensions
+    if (texture.width === 0 || texture.height === 0) {
+      return;
+    }
+
+    // Try canvas extraction first (more reliable)
+    const extractResult = renderer.extract.canvas(texture);
+
+    // Check if we got a valid canvas-like object
+    if (extractResult && extractResult.width > 0 && extractResult.height > 0) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Cast to any to avoid type issues with PIXI's ICanvas vs HTMLCanvasElement
+      ctx.drawImage(extractResult as any, 0, 0);
+      return;
+    }
+  } catch (error) {
+    try {
+      // Fallback to pixel extraction
+      const pixels = renderer.extract.pixels(texture);
+
+      // Convert to proper array format for newer PIXI versions
+      const pixelArray = pixels instanceof Uint8Array ? pixels : new Uint8Array(pixels as any);
+
+      if (pixelArray.length === 0) {
+        return;
+      }
+
+      // Convert to Uint8ClampedArray for ImageData
+      const clampedPixels = new Uint8ClampedArray(pixelArray);
+
+      // Create ImageData with proper parameters
+      const imageData = new ImageData(clampedPixels, texture.width, texture.height);
+
+      // Clear and draw to canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.putImageData(imageData, 0, 0);
+    } catch (fallbackError) {
+      console.error("Both texture extraction methods failed:", fallbackError);
+    }
+  }
 }

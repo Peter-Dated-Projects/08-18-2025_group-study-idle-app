@@ -4,8 +4,11 @@ import GardenCanvas from "@/components/GardenCanvas";
 import GardenTasks from "@/components/GardenTasks";
 import MusicSync from "@/components/MusicSync";
 import GardenMenu from "@/components/GardenMenu";
+import * as PIXI from "pixi.js";
 
 import { useState } from "react";
+import { useRef } from "react";
+import app from "next/app";
 
 const BORDERWIDTH = "8px";
 const BORDERFILL = "#c49a6c";
@@ -16,6 +19,8 @@ const FONTCOLOR = "#813706ff";
 export default function GardenPage() {
   const [isClicking, setIsClicking] = useState(false);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+
+  const pixiAppRef = useRef<PIXI.Application | null>(null);
 
   return (
     <main
@@ -45,8 +50,13 @@ export default function GardenPage() {
               position: "relative", // Add relative positioning here
             }}
           >
-            <GardenCanvas />
-            <GardenMenu />
+            <GardenCanvas
+              onAppCreated={(app) => {
+                console.log("PIXI App created:", app);
+                pixiAppRef.current = app;
+              }}
+            />
+            <GardenMenu pixiApp={pixiAppRef.current} />
           </div>
 
           <div
