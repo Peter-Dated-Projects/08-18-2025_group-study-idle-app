@@ -46,10 +46,7 @@ export default function GardenTasks() {
   // Monitor Google Auth state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log("Auth state changed:", user ? user.email : "no user");
-
       if (user?.email) {
-        console.log("User is signed in:", user.email);
         setIsGoogleSignedIn(true);
         setUserEmail(user.email);
 
@@ -57,7 +54,6 @@ export default function GardenTasks() {
         try {
           const sessionId = generateSessionId();
           await storeUserSessionAPI(user.email, sessionId);
-          console.log(`User authenticated: ${user.email} with session: ${sessionId}`);
 
           // Now check Notion auth status
           await checkAuthStatus();
@@ -65,15 +61,11 @@ export default function GardenTasks() {
           console.error("Error storing user session:", error);
         }
       } else {
-        console.log("No user signed in, clearing state");
         setIsGoogleSignedIn(false);
         setUserEmail(null);
         setIsConnected(false);
       }
     });
-
-    // Check current auth state immediately (in case user is already signed in)
-    console.log("Current auth user:", auth.currentUser);
 
     return () => unsubscribe();
   }, []);
@@ -164,32 +156,20 @@ export default function GardenTasks() {
       setIsSigningIn(true);
       setError(null);
 
-      console.log("🔄 Starting Google sign-in popup...");
-      console.log("Current domain:", window.location.origin);
-      console.log("Firebase config authDomain:", process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN);
-      console.log("Google OAuth Client ID:", process.env.NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID);
-
       // Use popup instead of redirect - this works without Firebase hosting
       const result = await signInWithPopup(auth, googleProvider);
-      
-      if (result?.user?.email) {
-        console.log("✅ Popup sign-in successful:", result.user.email);
-        // User state will be updated via onAuthStateChanged
-      } else {
-        console.log("⚠️ Sign-in completed but no user returned");
+
+      if (!result?.user?.email) {
+        setError("Sign-in completed but no user information received");
       }
     } catch (error: any) {
-      console.error("Google sign-in error:", error);
-      console.error("Error code:", error.code);
-      console.error("Error message:", error.message);
-      
       // Handle specific popup errors
       if (error.code === "auth/popup-closed-by-user") {
-        console.log("User closed the popup");
+        // User closed popup - don't show error, just reset state
       } else if (error.code === "auth/popup-blocked") {
         setError("Popup was blocked. Please allow popups for this site and try again.");
       } else if (error.code === "auth/cancelled-popup-request") {
-        console.log("Popup request was cancelled");
+        // Popup request was cancelled - don't show error
       } else {
         setError(`Failed to sign in with Google: ${error.message}`);
       }
@@ -197,7 +177,6 @@ export default function GardenTasks() {
       setIsSigningIn(false);
     }
   };
-
   const handleGoogleSignOut = async () => {
     try {
       setError(null);
@@ -213,8 +192,6 @@ export default function GardenTasks() {
       setSelectedDatabase(null);
       setDatabases([]);
       setShowDatabaseSelector(false);
-
-      console.log("User signed out successfully");
     } catch (error: any) {
       console.error("Sign out error:", error);
       setError(`Failed to sign out: ${error.message}`);
@@ -423,69 +400,6 @@ export default function GardenTasks() {
             </button>
           </div>
         )}
-
-        {/*for debugging */}
-        <div className="mt-4 text-center">
-          <button
-            onClick={() => {
-              console.log("=== COMPREHENSIVE AUTH DEBUG ===");
-              console.log("Firebase Auth State:");
-              console.log("  Current User:", auth.currentUser);
-              console.log("  User Email:", auth.currentUser?.email || "none");
-              console.log("  User UID:", auth.currentUser?.uid || "none");
-              console.log("");
-              console.log("Component State:");
-              console.log("  isGoogleSignedIn:", isGoogleSignedIn);
-              console.log("  userEmail:", userEmail);
-              console.log("  isConnected:", isConnected);
-              console.log("  isSigningIn:", isSigningIn);
-              console.log("");
-              console.log("Session Storage:");
-              console.log(
-                "  google_auth_redirect:",
-                sessionStorage.getItem("google_auth_redirect")
-              );
-              console.log("");
-              console.log("Cookies (document.cookie):");
-              console.log(document.cookie);
-              console.log("");
-              checkAuthStatus();
-            }}
-            style={{
-              display: "inline-block",
-              background: "#666",
-              color: "#fff",
-              padding: "8px 16px",
-              border: "none",
-              borderRadius: "6px",
-              fontWeight: "normal",
-              cursor: "pointer",
-              fontSize: "12px",
-            }}
-          >
-            Debug: Full Auth Status
-          </button>
-
-          <button
-            onClick={() => {
-              checkAuthStatus();
-            }}
-            style={{
-              display: "inline-block",
-              background: "#666",
-              color: "#fff",
-              padding: "8px 16px",
-              border: "none",
-              borderRadius: "6px",
-              fontWeight: "normal",
-              cursor: "pointer",
-              fontSize: "12px",
-              marginLeft: "8px",
-            }}
-          >
-            Debug: Check Auth Status
-          </button>
-        </div>
       </div>
     );
   }
