@@ -2,7 +2,15 @@ import { useRef, useState, useEffect } from "react";
 import * as PIXI from "pixi.js";
 import { AnimationLoader, AnimatedSpriteWrapper } from "@/engine/AnimationLoader";
 import { CharacterAnimation } from "@/engine/CharacterAnimation";
-import { CheerIdleAnimationState } from "@/engine/CharacterStates";
+import { buildAvatarStateMachine, CheerIdleAnimationState } from "@/scripts/AvatarStateMachine";
+import {
+  updateSignals,
+  registerSignalHandler,
+  unregisterSignalHandler,
+  emitSignal,
+} from "@/engine/GlobalSignalHandler";
+import { AvatarSignalHandler } from "@/scripts/AvatarSignalHandler";
+import "@/utils/AvatarSignals"; // Import for console testing functions
 
 interface MenuTextures {
   avatar: PIXI.RenderTexture | null;
@@ -32,6 +40,7 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
   const avatarContainerRef = useRef<PIXI.Container | null>(null);
   const animationLoaderRef = useRef<AnimationLoader | null>(null);
   const characterAnimationRef = useRef<CharacterAnimation | null>(null);
+  const avatarSignalHandlerRef = useRef<AvatarSignalHandler | null>(null);
 
   // Menu containers for different UI elements
   const menuContainers = useRef<{
@@ -70,50 +79,30 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
       animationLoaderRef.current = animationLoader;
 
       try {
-        await animationLoader.load("/emoticons.png", "/emoticons.json", 150); // 150ms per frame
+        const characterAnimation = await buildAvatarStateMachine(pixiApp, animationLoader);
 
-        // Get the cheer_idle animation data
-        const cheerIdleAnimation = animationLoader.getAnimation("cheer_idle");
-        if (cheerIdleAnimation) {
-          // Create AnimatedTile for the cheer_idle animation
-          const cheerIdleAnimatedTile = {
-            id: "cheer_idle_tile",
-            x: 75,
-            y: 75,
-            animationFrames: cheerIdleAnimation.frames.map(
-              (frame) => `cheer_idle_${frame.frameIndex}`
-            ),
-            frameDuration: cheerIdleAnimation.frameDuration,
-            currentFrame: 0,
-            lastFrameTime: Date.now(),
-            sprite: new PIXI.Sprite(cheerIdleAnimation.frames[0].texture),
-            animationTextures: cheerIdleAnimation.frames.map((frame) => frame.texture), // Store the actual textures
-          };
+        // Store the character animation reference for updates
+        characterAnimationRef.current = characterAnimation;
 
-          // Create character animation system
-          const characterAnimation = new CharacterAnimation(cheerIdleAnimatedTile.sprite, []);
-          characterAnimationRef.current = characterAnimation;
+        // Create and register the avatar signal handler
+        const avatarHandler = new AvatarSignalHandler(characterAnimation);
+        avatarSignalHandlerRef.current = avatarHandler;
+        registerSignalHandler(avatarHandler);
 
-          // Create and add the cheer_idle state
-          const cheerIdleState = new CheerIdleAnimationState(cheerIdleAnimatedTile);
-          characterAnimation.addState(cheerIdleState);
+        // Get the sprite and configure it
+        const characterSprite = characterAnimation.getSprite();
+        characterSprite.anchor.set(0.5);
+        characterSprite.position.set(75, 75);
+        characterSprite.width = 100; // Match the canvas size
+        characterSprite.height = 100; // Match the canvas size
 
-          // Transition to the cheer_idle state to start animation
-          characterAnimation.transitionTo("cheer_idle");
+        // Ensure pixel-perfect rendering (no antialiasing)
+        characterSprite.texture.source.scaleMode = "nearest";
 
-          // Get the character sprite and configure it
-          const characterSprite = characterAnimation.getSprite();
-          characterSprite.anchor.set(0.5);
-          characterSprite.position.set(75, 75); // Center in 150x150 area, same as avatar-box
-          characterSprite.scale.set(2.5); // keep inside avatar box
-
-          // Enable pixel perfect sampling for character sprite
-          characterSprite.texture.source.scaleMode = "nearest";
-
-          // Add character on top of avatar-box
-          menuContainers.current.avatar.addChild(characterSprite);
-        }
+        // Add to container
+        menuContainers.current.avatar.addChild(characterSprite);
       } catch (error) {
+        console.error("Failed to setup character animation:", error);
         // Avatar-box is already added as fallback
       } // Force bounds calculation
       menuContainers.current.avatar.getBounds();
@@ -122,11 +111,23 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
       setupMenuContainer(menuContainers.current.inventory, "Inventory", 0x4444ff);
       setupMenuContainer(menuContainers.current.stats, "Stats", 0xffff44);
 
-      // Create render textures
+      // Create render textures with nearest neighbor scaling for pixel-perfect rendering
       const newTextures: MenuTextures = {
-        avatar: PIXI.RenderTexture.create({ width: 150, height: 150 }),
-        inventory: PIXI.RenderTexture.create({ width: 150, height: 150 }),
-        stats: PIXI.RenderTexture.create({ width: 150, height: 150 }),
+        avatar: PIXI.RenderTexture.create({
+          width: 150,
+          height: 150,
+          scaleMode: "nearest",
+        }),
+        inventory: PIXI.RenderTexture.create({
+          width: 150,
+          height: 150,
+          scaleMode: "nearest",
+        }),
+        stats: PIXI.RenderTexture.create({
+          width: 150,
+          height: 150,
+          scaleMode: "nearest",
+        }),
       };
 
       setMenuTextures(newTextures);
@@ -189,6 +190,9 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
     if (!pixiApp || !menuContainers.current || !menuTextures.avatar) return;
 
     const updateInterval = setInterval(() => {
+      // Process global signals first
+      updateSignals();
+
       // Update character animation state machine
       if (characterAnimationRef.current) {
         characterAnimationRef.current.update(1 / 24); // 24 FPS delta time
@@ -200,6 +204,12 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
 
     return () => {
       clearInterval(updateInterval);
+
+      // Cleanup signal handler
+      if (avatarSignalHandlerRef.current) {
+        unregisterSignalHandler(avatarSignalHandlerRef.current);
+        avatarSignalHandlerRef.current = null;
+      }
 
       // Cleanup animation resources
       if (characterAnimationRef.current) {
@@ -213,6 +223,12 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
       }
     };
   }, [pixiApp, menuTextures]);
+
+  // Handle avatar click to trigger cheer animation
+  const handleAvatarClick = () => {
+    console.log("Avatar clicked!");
+    emitSignal("avatarCharacterClicked");
+  };
 
   return (
     <div
@@ -240,6 +256,7 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
           ref={canvasRefs.avatar}
           width={150}
           height={150}
+          onClick={handleAvatarClick}
           style={{
             width: "100%",
             height: "100%",
@@ -247,6 +264,7 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
             maxHeight: "150px",
             objectFit: "contain",
             border: "1px solid #333", // Debug border
+            imageRendering: "pixelated" as any, // Disable antialiasing for crisp pixels
           }}
         />
       </div>
@@ -354,13 +372,18 @@ function renderMenuTextures(app: PIXI.Application, containers: any, textures: Me
   });
 }
 
-// Helper function to update canvas from PIXI render texture
 function updateCanvasFromTexture(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   texture: PIXI.RenderTexture,
   renderer: PIXI.Renderer
 ) {
+  // Disable image smoothing for pixel-perfect rendering
+  (ctx as any).imageSmoothingEnabled = false;
+  (ctx as any).webkitImageSmoothingEnabled = false;
+  (ctx as any).mozImageSmoothingEnabled = false;
+  (ctx as any).msImageSmoothingEnabled = false;
+
   try {
     // First check if texture has valid dimensions
     if (texture.width === 0 || texture.height === 0) {

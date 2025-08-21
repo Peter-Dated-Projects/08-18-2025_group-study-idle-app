@@ -24,6 +24,18 @@ interface SpriteSheetData {
   info?: string;
 }
 
+export interface AnimationSprite {
+  id: string;
+  x: number;
+  y: number;
+  animationFrames: string[];
+  frameDuration: number;
+  currentFrame: number;
+  lastFrameTime: number;
+  sprite: PIXI.Sprite;
+  animationTextures: PIXI.Texture[];
+}
+
 export class AnimationLoader {
   private baseTexture: PIXI.Texture | null = null;
   private spriteSheetData: SpriteSheetData | null = null;
@@ -43,16 +55,18 @@ export class AnimationLoader {
     try {
       // Load the spritesheet texture
       this.baseTexture = await PIXI.Assets.load(textureUrl);
-      console.log("✅ Spritesheet texture loaded:", textureUrl);
+
+      // Ensure the base texture uses pixel-perfect rendering
+      if (this.baseTexture) {
+        this.baseTexture.source.scaleMode = "nearest";
+      }
 
       // Load the animation data
       const response = await fetch(dataUrl);
       this.spriteSheetData = await response.json();
-      console.log("✅ Animation data loaded:", dataUrl);
 
       // Create animations from the data
       this.createAnimations(defaultFrameDuration);
-      console.log(`✅ Created ${this.animations.size} animations`);
     } catch (error) {
       console.error("❌ Failed to load spritesheet:", error);
       throw error;
@@ -88,6 +102,9 @@ export class AnimationLoader {
           frame: new PIXI.Rectangle(x, y, frame_width, frame_height),
         });
 
+        // Ensure pixel-perfect rendering (no antialiasing)
+        frameTexture.source.scaleMode = "nearest";
+
         animationFrames.push({
           frameIndex,
           texture: frameTexture,
@@ -102,7 +119,6 @@ export class AnimationLoader {
       };
 
       this.animations.set(animDef.name, animation);
-      console.log(`Created animation: ${animDef.name} (${animationFrames.length} frames)`);
     });
   }
 
