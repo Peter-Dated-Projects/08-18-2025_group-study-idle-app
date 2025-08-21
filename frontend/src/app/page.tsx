@@ -19,8 +19,7 @@ const FONTCOLOR = "#813706ff";
 export default function GardenPage() {
   const [isClicking, setIsClicking] = useState(false);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-
-  const pixiAppRef = useRef<PIXI.Application | null>(null);
+  const [pixiApp, setPixiApp] = useState<PIXI.Application | null>(null);
 
   return (
     <main
@@ -53,10 +52,10 @@ export default function GardenPage() {
             <GardenCanvas
               onAppCreated={(app) => {
                 console.log("PIXI App created:", app);
-                pixiAppRef.current = app;
+                setPixiApp(app);
               }}
             />
-            <GardenMenu pixiApp={pixiAppRef.current} />
+            <GardenMenu pixiApp={pixiApp} />
           </div>
 
           <div

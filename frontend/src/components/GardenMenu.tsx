@@ -53,6 +53,33 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
     if (!pixiApp) return;
 
     const initMenus = async () => {
+      // CRITICAL: Wait for PIXI renderer to be fully ready
+      await new Promise((resolve) => {
+        // Check if renderer is ready by testing basic functionality
+        const testRenderTexture = PIXI.RenderTexture.create({ width: 1, height: 1 });
+        try {
+          const testContainer = new PIXI.Container();
+          pixiApp.renderer.render({ container: testContainer, target: testRenderTexture });
+          testRenderTexture.destroy();
+          resolve(undefined);
+        } catch (error) {
+          // Renderer not ready, wait and try again
+          setTimeout(() => {
+            const checkRenderer = () => {
+              try {
+                const testContainer = new PIXI.Container();
+                pixiApp.renderer.render({ container: testContainer, target: testRenderTexture });
+                testRenderTexture.destroy();
+                resolve(undefined);
+              } catch (error) {
+                requestAnimationFrame(checkRenderer);
+              }
+            };
+            requestAnimationFrame(checkRenderer);
+          }, 100);
+        }
+      });
+
       // Load assets
       const avatarTexture = await PIXI.Assets.load("/avatar-box.png");
 
@@ -141,28 +168,13 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
       // Initial render of all menu sections
       renderMenuTextures(pixiApp, menuContainers.current, newTextures);
 
-      // Force multiple canvas updates with different delays
-      const forceCanvasUpdate = async () => {
-        // Try immediate update
-        updateAllCanvases(newTextures, pixiApp.renderer);
-
-        // Try after short delay
-        setTimeout(() => {
+      // CRITICAL: Ensure initial canvas update happens after everything is set up
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => {
           updateAllCanvases(newTextures, pixiApp.renderer);
-        }, 100);
-
-        // Try after longer delay
-        setTimeout(() => {
-          updateAllCanvases(newTextures, pixiApp.renderer);
-        }, 300);
-
-        // Try after even longer delay
-        setTimeout(() => {
-          updateAllCanvases(newTextures, pixiApp.renderer);
-        }, 1000);
-      };
-
-      await forceCanvasUpdate();
+          resolve(undefined);
+        })
+      );
     };
 
     initMenus();
@@ -176,7 +188,11 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
         const ctx = canvas.getContext("2d");
         if (ctx && textures[key as keyof MenuTextures]) {
           try {
-            updateCanvasFromTexture(ctx, canvas, textures[key as keyof MenuTextures]!, renderer);
+            const texture = textures[key as keyof MenuTextures]!;
+            // CRITICAL: Check if texture has valid data before attempting update
+            if (texture.width > 0 && texture.height > 0) {
+              updateCanvasFromTexture(ctx, canvas, texture, renderer);
+            }
           } catch (error) {
             console.error(`❌ Failed to update ${key} canvas:`, error);
           }
@@ -226,7 +242,6 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
 
   // Handle avatar click to trigger cheer animation
   const handleAvatarClick = () => {
-    console.log("Avatar clicked!");
     emitSignal("avatarCharacterClicked");
   };
 
@@ -327,15 +342,19 @@ function setupMenuContainer(container: PIXI.Container, text: string, color: numb
   container.y = 0;
 
   const bg = new PIXI.Graphics();
-  bg.beginFill(color, 0.5); // Increased opacity for visibility
-  bg.drawRect(0, 0, 150, 150); // Changed to 150x150 to match render texture size
-  bg.endFill();
+  // Updated for PIXI v8: Draw shape first, then fill
+  bg.rect(0, 0, 150, 150); // Changed to 150x150 to match render texture size
+  bg.fill({ color: color, alpha: 0.5 });
   container.addChild(bg);
 
-  const textSprite = new PIXI.Text(text, {
-    fontFamily: "Arial",
-    fontSize: 14,
-    fill: 0xffffff,
+  // Updated for PIXI v8: Use new Text constructor syntax
+  const textSprite = new PIXI.Text({
+    text: text,
+    style: {
+      fontFamily: "Arial",
+      fontSize: 14,
+      fill: 0xffffff,
+    },
   });
   textSprite.anchor.set(0.5);
   textSprite.x = 75;

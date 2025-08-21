@@ -158,8 +158,8 @@ export default function GardenCanvas({
       // ------------------------------------------------------------------------------ //
       // Add test circle at world origin (with high zIndex to ensure it's visible)
       const circle = new PIXI.Graphics();
-      circle.fill(0xff0000);
       circle.circle(0, 0, 50);
+      circle.fill(0xff0000);
       circle.zIndex = 1000; // Ensure it's on top
       world.addChild(circle);
 

@@ -262,13 +262,13 @@ export class CharacterAnimation {
         : "unknown";
 
       // Log frame change with global frame IDs
-      console.log(
-        `🎬 Frame Change: State="${
-          this.currentState.id
-        }" | LocalFrame: ${prevFrameIndex}→${nextFrameIndex} | GlobalFrame: ${currentGlobalFrameId}→${nextGlobalFrameId} | Time: ${timeSinceLastFrame}ms${
-          this.pendingTransition ? " [TRANSITION PENDING - FRAME HELD]" : ""
-        }`
-      );
+      //   console.log(
+      //     `🎬 Frame Change: State="${
+      //       this.currentState.id
+      //     }" | LocalFrame: ${prevFrameIndex}→${nextFrameIndex} | GlobalFrame: ${currentGlobalFrameId}→${nextGlobalFrameId} | Time: ${timeSinceLastFrame}ms${
+      //       this.pendingTransition ? " [TRANSITION PENDING - FRAME HELD]" : ""
+      //     }`
+      //   );
 
       // Check if animation loop completed (wrapped back to 0) - but only if no pending transition
       if (
