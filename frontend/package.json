@@ -11,12 +11,18 @@
   "dependencies": {
     "@pixi/react": "8",
     "@tanstack/react-query": "^5.85.3",
+    "add": "^2.0.6",
     "clsx": "^2.1.1",
+    "firebase": "^12.1.0",
     "firebase-admin": "^13.4.0",
     "framer-motion": "^12.23.12",
+    "google-auth-library": "^10.2.1",
+    "google-one-tap": "^1.0.6",
     "next": "15.4.7",
     "pixi.js": "^8.12.0",
-    "react": "^19.1.1"
+    "pnpm": "^10.15.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

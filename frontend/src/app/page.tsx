@@ -8,7 +8,6 @@ import * as PIXI from "pixi.js";
 
 import { useState } from "react";
 import { useRef } from "react";
-import app from "next/app";
 
 const BORDERWIDTH = "8px";
 const BORDERFILL = "#c49a6c";
@@ -49,13 +48,13 @@ export default function GardenPage() {
               position: "relative", // Add relative positioning here
             }}
           >
-            <GardenCanvas
+            {/* <GardenCanvas
               onAppCreated={(app) => {
                 console.log("PIXI App created:", app);
                 setPixiApp(app);
               }}
             />
-            <GardenMenu pixiApp={pixiApp} />
+            <GardenMenu pixiApp={pixiApp} /> */}
           </div>
 
           <div

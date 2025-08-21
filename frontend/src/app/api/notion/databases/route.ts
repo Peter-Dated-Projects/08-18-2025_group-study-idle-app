@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getNotionTokens } from "@/lib/firestore";
 
 interface NotionDatabase {
   id: string;
@@ -23,23 +24,20 @@ interface NotionListDatabasesResponse {
 
 export async function GET(req: Request) {
   const cookieStore = await cookies();
-  const tokenCookie = cookieStore.get("notion_token")?.value;
+  const sessionId = cookieStore.get("notion_session_id")?.value;
 
-  if (!tokenCookie) {
+  if (!sessionId) {
+    return NextResponse.json({ error: "No session found" }, { status: 401 });
+  }
+
+  // Get tokens from Firestore
+  const tokenData = await getNotionTokens(sessionId);
+
+  if (!tokenData) {
     return NextResponse.json({ error: "No authentication token found" }, { status: 401 });
   }
 
-  let tokenData;
-  try {
-    tokenData = JSON.parse(tokenCookie);
-  } catch (error) {
-    return NextResponse.json({ error: "Invalid token data" }, { status: 401 });
-  }
-
-  const { access_token, workspace_id } = tokenData;
-  if (!access_token) {
-    return NextResponse.json({ error: "Missing access token" }, { status: 401 });
-  }
+  const { access_token } = tokenData;
 
   try {
     const response = await fetch("https://api.notion.com/v1/search", {
@@ -84,7 +82,7 @@ export async function GET(req: Request) {
     }));
 
     return NextResponse.json({
-      workspace_id,
+      workspace_id: tokenData.workspace_id,
       databases: formattedDatabases,
       has_more: data.has_more,
       next_cursor: data.next_cursor,

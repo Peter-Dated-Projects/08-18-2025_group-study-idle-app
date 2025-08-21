@@ -211,12 +211,12 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
 
       // Update character animation state machine
       if (characterAnimationRef.current) {
-        characterAnimationRef.current.update(1 / 24); // 24 FPS delta time
+        characterAnimationRef.current.update(1 / 16); // 16 FPS delta time
       }
 
       renderMenuTextures(pixiApp, menuContainers.current!, menuTextures);
       updateAllCanvases(menuTextures, pixiApp.renderer);
-    }, 1000 / 24); // 24 FPS for UI updates
+    }, 1000 / 16); // 16 FPS for UI updates
 
     return () => {
       clearInterval(updateInterval);
