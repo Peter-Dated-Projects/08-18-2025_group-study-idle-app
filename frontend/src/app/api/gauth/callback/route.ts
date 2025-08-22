@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { storeUserSession, simpleEncrypt } from "@/lib/firestore";
+import { storeUserSession, simpleEncrypt, UserSession } from "@/lib/firestore";
 
 export async function GET(req: Request) {
   try {
@@ -82,14 +82,16 @@ export async function GET(req: Request) {
     const sessionId = crypto.randomUUID();
 
     // Store user session
-    await storeUserSession({
+    const userSessionInfo: UserSession = {
       sessionId,
-      userId: userInfo.email,
+      userId: simpleEncrypt(userInfo.email), // generate userID based off encrypted version of user email
+      userEmail: userInfo.email,
       notionTokens: null,
       selectedDatabase: null,
       created_at: new Date(),
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-    });
+    };
+    await storeUserSession(userSessionInfo);
 
     // Set a session cookie for the frontend
     cookieStore.set("user_session", sessionId, {
@@ -101,7 +103,7 @@ export async function GET(req: Request) {
 
     // Store encrypted email for quick re-authentication check
     const encryptedEmail = simpleEncrypt(userInfo.email);
-    cookieStore.set("user_email_enc", encryptedEmail, {
+    cookieStore.set("user_id", encryptedEmail, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

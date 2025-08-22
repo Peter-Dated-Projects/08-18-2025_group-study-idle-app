@@ -34,7 +34,7 @@ export async function GET(req: Request) {
     const redirectUri = `${protocol}://${host}/api/notion/callback`;
 
     const notionAuthUrl = new URL("https://api.notion.com/v1/oauth/authorize");
-    notionAuthUrl.searchParams.set("client_id", process.env.NOTION_API_CLIENT_ID!);
+    notionAuthUrl.searchParams.set("client_id", process.env.NOTION_OAUTH_API_CLIENT_ID!);
     notionAuthUrl.searchParams.set("response_type", "code");
     notionAuthUrl.searchParams.set("owner", "user");
     notionAuthUrl.searchParams.set("redirect_uri", redirectUri);

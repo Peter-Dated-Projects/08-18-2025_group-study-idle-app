@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { storeNotionTokens, generateSessionId } from "@/lib/firestore";
+import {
+  storeNotionTokens,
+  generateSessionId,
+  getUserSession,
+  NotionTokenData,
+} from "@/lib/firestore";
+import { NOTION_API_VERSION } from "@/components/constants";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -32,7 +38,7 @@ export async function GET(req: Request) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Basic ${Buffer.from(
-          `${process.env.NOTION_API_CLIENT_ID}:${process.env.NOTION_API_CLIENT_SECRET}`
+          `${process.env.NOTION_OAUTH_API_CLIENT_ID}:${process.env.NOTION_OAUTH_API_CLIENT_SECRET}`
         ).toString("base64")}`,
       },
       body: JSON.stringify({
@@ -42,6 +48,7 @@ export async function GET(req: Request) {
       }),
     });
 
+    // Check if we received a token response from Notion API
     if (!tokenResponse.ok) {
       const error = await tokenResponse.json();
       return NextResponse.json(
@@ -50,50 +57,66 @@ export async function GET(req: Request) {
       );
     }
 
+    // query notion for the token's status
     const tokenData = await tokenResponse.json();
+    console.log("/api/notion/callback: tokenData:", tokenData);
 
     // Generate a user ID and store tokens in Firestore
     const cookieStore = await cookies();
-    console.log(cookieStore);
-    const userID = generateSessionId();
+    const userId = cookieStore.get("user_id")?.value;
 
-    await storeNotionTokens(userID, {
+    // Check if valid user ID
+    if (!userId) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
+
+    // Request to update the User Session data
+    const notionTokenData: NotionTokenData = {
       access_token: tokenData.access_token,
       workspace_id: tokenData.workspace_id,
       workspace_name: tokenData.workspace_name || "Unknown Workspace",
       bot_id: tokenData.bot_id,
       refresh_token: tokenData.refresh_token,
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
+      created_at: new Date(Date.now()),
+      updated_at: new Date(Date.now()),
+    };
 
-    // Store only the session ID in a secure cookie
-    cookieStore.set("notion_session_id", sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 86400 * 30, // 30 days
-      path: "/",
-    });
-
-    // Get return URL and clean up OAuth cookies
-    const returnUrl = cookieStore.get("notion_return_url")?.value;
-    cookieStore.delete("notion_oauth_state");
-    cookieStore.delete("notion_return_url");
-
-    // Determine redirect destination with fallbacks
-    let redirectUrl: string;
-    if (returnUrl && returnUrl !== url.origin) {
-      // Use stored return URL if it's different from the origin
-      redirectUrl = returnUrl;
-      console.log(`Redirecting user back to: ${returnUrl}`);
-    } else {
-      // Fallback to database selection page
-      redirectUrl = `${url.origin}/notion/select-database?workspace=${tokenData.workspace_id}`;
-      console.log(`No return URL found, redirecting to database selection`);
+    // Update the current user session with the new Notion tokens
+    try {
+      await storeNotionTokens(userId, notionTokenData);
+      console.log("Notion tokens stored successfully");
+    } catch (error) {
+      console.error("Error storing Notion tokens:", error);
+      return NextResponse.json({ error: "Failed to store Notion tokens" }, { status: 500 });
     }
 
-    return NextResponse.redirect(redirectUrl);
+    // Get return URL and clean up OAuth cookies
+    const returnUrl = cookieStore.get("notion_oauth_return_url")?.value;
+    cookieStore.delete("notion_oauth_state");
+    cookieStore.delete("notion_oauth_return_url");
+
+    // // check for status of the token we just created?
+    // await fetch("https://api.notion.com/v1/oauth/introspect", {
+    //   method: "POST",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //     Authorization: `Basic ${Buffer.from(
+    //       `${process.env.NOTION_OAUTH_API_CLIENT_ID}:${process.env.NOTION_OAUTH_API_CLIENT_SECRET}`
+    //     ).toString("base64")}`,
+    //     "Notion-Version": NOTION_API_VERSION,
+    //   },
+    //   body: JSON.stringify({
+    //     token: tokenData.access_token,
+    //   }),
+    // })
+    //   .then((response) => {
+    //     return response.json();
+    //   })
+    //   .then((json) => {
+    //     console.log("/api/notion/callback: token status: ", json);
+    //   });
+
+    return NextResponse.redirect(returnUrl!);
   } catch (error) {
     console.error("Error in OAuth callback:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

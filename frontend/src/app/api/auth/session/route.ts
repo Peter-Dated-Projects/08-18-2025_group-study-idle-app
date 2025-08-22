@@ -1,33 +1,43 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getUserSession } from "@/lib/firestore";
+import { getUserSession, UserSession } from "@/lib/firestore";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const cookieStore = await cookies();
-    const sessionId = cookieStore.get("user_session")?.value;
+    const userId = cookieStore.get("user_id")?.value;
 
-    if (!sessionId) {
-      return NextResponse.json({ success: false, error: "No session found" });
+    console.log(cookieStore);
+
+    // If we don't have a valid user id, then we can't retrieve the session
+    if (!userId) {
+      return NextResponse.json({ success: false, error: "No user ID found" });
     }
 
-    const session = await getUserSession(sessionId);
+    // Try to retrieve user session using userId
+    const session = await getUserSession(userId);
+    console.log("/api/auth/session: ", session);
 
     if (!session) {
-      // Clear invalid session cookie
+      // Clear invalid session cookie and encrypted email
+      console.log("Session not found for user:", userId);
       cookieStore.delete("user_session");
+      cookieStore.delete("user_id");
       return NextResponse.json({ success: false, error: "Invalid session" });
     }
 
     // Check if session is expired
-    if (session.expires_at < new Date()) {
+    if (new Date(session.expires_at) < new Date(Date.now())) {
+      console.log("Session expired for user:", userId);
       cookieStore.delete("user_session");
+      cookieStore.delete("user_id");
       return NextResponse.json({ success: false, error: "Session expired" });
     }
 
     return NextResponse.json({
       success: true,
-      userEmail: session.userId,
+      userId: session.userId,
+      userEmail: session.userEmail,
       sessionId: session.sessionId,
       hasNotionTokens: !!session.notionTokens,
       selectedDatabase: session.selectedDatabase,

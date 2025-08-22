@@ -82,6 +82,7 @@ export interface NotionTokenData {
 export interface UserSession {
   sessionId: string;
   userId: string;
+  userEmail: string;
   notionTokens: NotionTokenData | null;
   selectedDatabase?: {
     id: string;
@@ -199,13 +200,13 @@ export async function getSelectedDatabase(
 }
 
 // Get user session by sessionId
-export async function getUserSession(sessionId: string): Promise<UserSession | null> {
+export async function getUserSession(userID: string): Promise<UserSession | null> {
   const db = getFirestoreDb();
 
   // Find session by sessionId across all user documents
   const snapshot = await db
     .collection(FIRESTORE_USER_SESSIONS!)
-    .where("sessionId", "==", sessionId)
+    .where("userId", "==", userID)
     .get();
 
   if (snapshot.empty) {

@@ -1,7 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { HeaderFont } from "./utils";
 
+import { googleSVG } from "./utils";
+
 export const AUTH_TOKEN_KEY = "auth_token";
+
+// Helper function to extract plain text from Notion rich text objects
+const extractPlainText = (richTextArray: any): string => {
+  if (!richTextArray || !Array.isArray(richTextArray)) {
+    return "";
+  }
+  return richTextArray.map((textObj: any) => textObj.plain_text || "").join("");
+};
 
 interface Task {
   id: string;
@@ -14,7 +24,7 @@ interface Task {
 
 interface NotionDatabase {
   id: string;
-  title: string;
+  title: any[]; // Rich text array from Notion API
   url?: string;
   created_time?: string;
   last_edited_time?: string;
@@ -28,7 +38,6 @@ interface SelectedDatabase {
 
 export default function GardenTasks() {
   const [isLoading, setIsLoading] = useState(true); // Start with loading state
-  const [isConnected, setIsConnected] = useState(false);
   const [taskList, setTaskList] = useState<Task[]>([]);
   const [databases, setDatabases] = useState<NotionDatabase[]>([]);
   const [selectedDatabase, setSelectedDatabase] = useState<SelectedDatabase | null>(null);
@@ -43,6 +52,10 @@ export default function GardenTasks() {
   const [previousEmail, setPreviousEmail] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [hasProcessedRedirect, setHasProcessedRedirect] = useState(false);
+
+  // Notion Database states
+  const [hasNotionDatabase, setHasNotionDatabase] = useState(false);
+  const [isNotionConnected, setIsNotionConnected] = useState(false);
 
   // Check session on component mount
   useEffect(() => {
@@ -87,17 +100,18 @@ export default function GardenTasks() {
   // Check user session from server
   const checkUserSession = async () => {
     try {
-      const response = await fetch("/api/gauth/session", {
+      // Check if user is authed
+      const response = await fetch("/api/auth/session", {
         credentials: "include",
       });
-
       const data = await response.json();
-
       if (response.ok && data.success && data.userEmail) {
         setIsGoogleSignedIn(true);
         setUserEmail(data.userEmail);
         setPreviousEmail(null); // Clear previous email since we have an active session
-        await checkAuthStatus();
+
+        // Check notion status
+        await checkNotionStatus();
       } else {
         // No active session, but check if we have a previous email
         if (data.previousEmail) {
@@ -109,42 +123,93 @@ export default function GardenTasks() {
     }
   };
 
+  // Handle notion login
+  const handleNotionLogin = async () => {
+    try {
+      setError(null);
+
+      // Use redirect-based OAuth instead of popup
+      const returnUrl = encodeURIComponent(window.location.href);
+      window.location.href = `/api/notion/start?returnUrl=${returnUrl}`;
+
+      // Note: The page will redirect, so this code won't continue
+    } catch (error: any) {
+      console.error("Notion sign-in error:", error);
+      setError(`Failed to start Notion sign-in: ${error.message}`);
+    }
+  };
+
   // Load tasks when database is selected
   useEffect(() => {
-    if (isConnected && selectedDatabase) {
+    if (isNotionConnected && selectedDatabase) {
       loadTasks();
     }
-  }, [isConnected, selectedDatabase]);
+  }, [isNotionConnected, selectedDatabase]);
 
-  const checkAuthStatus = useCallback(async () => {
+  // Load databases when Notion is connected
+  useEffect(() => {
+    if (isNotionConnected) {
+      loadDatabases();
+    }
+  }, [isNotionConnected]);
+
+  const checkNotionStatus = useCallback(async () => {
     try {
-      if (!isGoogleSignedIn) {
-        setIsConnected(false);
-        return;
-      }
+      // Check if notion logged in
+      const response = await fetch("/api/notion/session", {
+        credentials: "include",
+      });
 
-      const response = await fetch("/api/notion/auth/check", {
-        method: "GET",
-        cache: "no-store",
+      console.log(response);
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.hasValidTokens) {
+          setIsNotionConnected(true);
+          setIsLoading(false);
+
+          // TODO - on bus
+          // for now we do something else
+
+          console.log("/api/notion/auth/check:", "Notion tokens found:", data.hasValidTokens);
+        } else {
+          setIsNotionConnected(false);
+        }
+      } else {
+        setIsNotionConnected(false);
+      }
+    } catch (error) {
+      console.error("Error checking auth status:", error);
+      setIsNotionConnected(false);
+    }
+  }, [isGoogleSignedIn]); // Remove loadTasks from dependency array
+
+  const loadDatabases = async () => {
+    try {
+      setError(null);
+      const response = await fetch("/api/notion/databases", {
         credentials: "include",
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.hasValidTokens) {
-          setIsConnected(true);
-          await loadTasks();
-        } else {
-          setIsConnected(false);
-        }
+        setDatabases(data.databases || []);
       } else {
-        setIsConnected(false);
+        const errorData = await response.json();
+
+        // Handle token expiration specifically
+        if (errorData.needsReauth) {
+          setError("Your Notion connection has expired. Please reconnect your account.");
+          setIsNotionConnected(false);
+        } else {
+          setError(errorData.error || "Failed to load databases");
+        }
       }
-    } catch (error) {
-      console.error("Error checking auth status:", error);
-      setIsConnected(false);
+    } catch (err) {
+      console.error("Error loading databases:", err);
+      setError("Failed to load databases");
     }
-  }, [isGoogleSignedIn]); // Remove loadTasks from dependency array
+  };
 
   const loadTasks = async () => {
     if (!selectedDatabase) return;
@@ -164,7 +229,7 @@ export default function GardenTasks() {
         // Handle token expiration specifically
         if (errorData.needsReauth) {
           setError("Your Notion connection has expired. Please reconnect your account.");
-          setIsConnected(false);
+          setIsNotionConnected(false);
           // Optionally, you could automatically trigger re-authentication here
         } else {
           setError(errorData.error || "Failed to load tasks");
@@ -192,12 +257,13 @@ export default function GardenTasks() {
       setIsSigningIn(false);
     }
   };
+
   const handleGoogleSignOut = async () => {
     try {
       setError(null);
 
       // Clear server session
-      await fetch("/api/gauth/logout", {
+      await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include",
       });
@@ -206,7 +272,7 @@ export default function GardenTasks() {
       setIsGoogleSignedIn(false);
       setUserEmail(null);
       setPreviousEmail(null);
-      setIsConnected(false);
+      setIsNotionConnected(false);
       setTaskList([]);
       setSelectedDatabase(null);
       setDatabases([]);
@@ -217,8 +283,37 @@ export default function GardenTasks() {
     }
   };
 
+  const handleNotionLogout = async () => {
+    try {
+      setError(null);
+
+      // Clear Notion tokens from server
+      const response = await fetch("/api/notion/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        // Reset only Notion-related local state, keep Google auth
+        setIsNotionConnected(false);
+        setTaskList([]);
+        setSelectedDatabase(null);
+        setDatabases([]);
+        setShowDatabaseSelector(false);
+        console.log("Successfully logged out of Notion");
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to log out of Notion");
+      }
+    } catch (error: any) {
+      console.error("Notion logout error:", error);
+      setError(`Failed to log out of Notion: ${error.message}`);
+    }
+  };
+
   const selectDatabase = async (database: NotionDatabase) => {
     try {
+      const plainTitle = extractPlainText(database.title);
       const response = await fetch("/api/notion/database-selection", {
         method: "POST",
         headers: {
@@ -227,14 +322,14 @@ export default function GardenTasks() {
         credentials: "include",
         body: JSON.stringify({
           databaseId: database.id,
-          databaseTitle: database.title,
+          databaseTitle: plainTitle,
         }),
       });
 
       if (response.ok) {
         setSelectedDatabase({
           id: database.id,
-          title: database.title,
+          title: plainTitle,
           selectedAt: new Date().toISOString(),
         });
         setShowDatabaseSelector(false);
@@ -245,7 +340,7 @@ export default function GardenTasks() {
         // Handle token expiration specifically
         if (errorData.needsReauth) {
           setError("Your Notion connection has expired. Please reconnect your account.");
-          setIsConnected(false);
+          setIsNotionConnected(false);
         } else {
           setError(errorData.error || "Failed to select database");
         }
@@ -253,111 +348,6 @@ export default function GardenTasks() {
     } catch (err) {
       console.error("Error selecting database:", err);
       setError("Failed to select database");
-    }
-  };
-
-  const createTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTaskTitle.trim() || !selectedDatabase || isCreatingTask) return;
-
-    setIsCreatingTask(true);
-    try {
-      const response = await fetch(`/api/notion/tasks?databaseId=${selectedDatabase.id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          title: newTaskTitle.trim(),
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTaskList((prev: Task[]) => [data.task, ...prev]);
-        setNewTaskTitle("");
-      } else {
-        const errorData = await response.json();
-
-        // Handle token expiration specifically
-        if (errorData.needsReauth) {
-          setError("Your Notion connection has expired. Please reconnect your account.");
-          setIsConnected(false);
-        } else {
-          setError(errorData.error || "Failed to create task");
-        }
-      }
-    } catch (err) {
-      console.error("Error creating task:", err);
-      setError("Failed to create task");
-    } finally {
-      setIsCreatingTask(false);
-    }
-  };
-
-  const toggleTaskCompletion = async (taskId: string, currentCompleted: boolean) => {
-    try {
-      const response = await fetch(`/api/notion/tasks/${taskId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          completed: !currentCompleted,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTaskList((prev: Task[]) =>
-          prev.map((task: Task) =>
-            task.id === taskId ? { ...task, completed: data.task.completed } : task
-          )
-        );
-      } else {
-        const errorData = await response.json();
-
-        // Handle token expiration specifically
-        if (errorData.needsReauth) {
-          setError("Your Notion connection has expired. Please reconnect your account.");
-          setIsConnected(false);
-        } else {
-          setError(errorData.error || "Failed to update task");
-        }
-      }
-    } catch (err) {
-      console.error("Error updating task:", err);
-      setError("Failed to update task");
-    }
-  };
-
-  const loadDatabases = async () => {
-    try {
-      setError(null);
-      const response = await fetch("/api/notion/databases", {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setDatabases(data.databases || []);
-        setShowDatabaseSelector(true);
-      } else {
-        const errorData = await response.json();
-
-        // Handle token expiration specifically
-        if (errorData.needsReauth) {
-          setError("Your Notion connection has expired. Please reconnect your account.");
-          setIsConnected(false);
-        } else {
-          setError(errorData.error || "Failed to load databases");
-        }
-      }
-    } catch (err) {
-      console.error("Error loading databases:", err);
-      setError("Failed to load databases");
     }
   };
 
@@ -380,10 +370,194 @@ export default function GardenTasks() {
         Loading...
       </div>
     );
-  }
+  } else {
+    let bodyHTML;
+    if (!isGoogleSignedIn) {
+      bodyHTML = (
+        <div style={{ textAlign: "center", padding: "20px" }}>
+          {previousEmail ? (
+            <>
+              <p style={{ marginBottom: "10px" }}>
+                Welcome back! Continue as <strong>{previousEmail}</strong>?
+              </p>
+              <p style={{ marginBottom: "20px", fontSize: "14px", color: "#666" }}>
+                Your session has expired. Sign in again to continue.
+              </p>
+            </>
+          ) : (
+            <p style={{ marginBottom: "20px" }}>
+              Sign in with Google to access your tasks and sync with Notion!
+            </p>
+          )}
+          <div className="mt-4 text-center">
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={isSigningIn}
+              className={`inline-flex items-center justify-center gap-2 bg-gray-200 text-white px-6 py-3 rounded-lg font-bold transition-opacity ${
+                isSigningIn ? "opacity-70 cursor-not-allowed" : "hover:bg-blue-700"
+              }`}
+              style={{
+                border: "1px solid #ccc", // Add a small border
+                textShadow: "0px 0px 2px #000",
+              }}
+            >
+              {googleSVG}
+              {isSigningIn ? "Signing in..." : previousEmail ? "Continue" : "Sign in with Google"}
+            </button>
+            {previousEmail && (
+              <p style={{ marginTop: "10px", fontSize: "12px", color: "#666" }}>
+                Or{" "}
+                <button
+                  onClick={() => {
+                    setPreviousEmail(null);
+                    handleGoogleSignIn();
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#007bff",
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    padding: "0",
+                  }}
+                >
+                  sign in with a different account
+                </button>
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    } else {
+      // Now we determine if Notion is logged in or not
 
-  // notion database not connected
-  if (!isConnected) {
+      let notionHTML;
+      if (!isNotionConnected) {
+        notionHTML = (
+          <div>
+            <p style={{ marginBottom: "20px" }}>Now connect your Notion workspace to sync tasks!</p>
+            <button
+              onClick={() => handleNotionLogin()}
+              className="inline-block bg-black text-white px-6 py-3 rounded-lg font-bold cursor-pointer transition-colors hover:bg-gray-900"
+            >
+              Connect to Notion
+            </button>
+
+            <p>After connecting, you will be able to sync your tasks between Google and Notion.</p>
+          </div>
+        );
+      } else {
+        notionHTML = (
+          <div className="overflow-auto" style={{ maxHeight: "350px", paddingRight: "8px" }}>
+            <p>Notion is logged in</p>
+
+            <div>
+              {databases.length > 0 ? (
+                <div>
+                  <h3 style={{ marginBottom: "15px", fontSize: "18px" }}>
+                    Select a database to sync tasks:
+                  </h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {databases.map((db: NotionDatabase) => (
+                      <div
+                        key={db.id}
+                        onClick={() => selectDatabase(db)}
+                        style={{
+                          padding: "12px",
+                          border: "1px solid #ddd",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          backgroundColor: selectedDatabase?.id === db.id ? "#e3f2fd" : "#f9f9f9",
+                          transition: "background-color 0.2s",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (selectedDatabase?.id !== db.id) {
+                            e.currentTarget.style.backgroundColor = "#f0f0f0";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (selectedDatabase?.id !== db.id) {
+                            e.currentTarget.style.backgroundColor = "#f9f9f9";
+                          }
+                        }}
+                      >
+                        <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
+                          {extractPlainText(db.title)}
+                        </div>
+                        <div style={{ fontSize: "12px", color: "#666" }}>ID: {db.id}</div>
+                        {db.url && (
+                          <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>
+                            <a
+                              href={db.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: "#007bff", textDecoration: "underline" }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              View in Notion
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {selectedDatabase && (
+                    <div
+                      style={{
+                        marginTop: "20px",
+                        padding: "12px",
+                        backgroundColor: "#e8f5e8",
+                        borderRadius: "6px",
+                      }}
+                    >
+                      <strong>Selected:</strong> {selectedDatabase.title}
+                      <br />
+                      <small>
+                        Selected at: {new Date(selectedDatabase.selectedAt).toLocaleString()}
+                      </small>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ textAlign: "center", color: "#666", fontStyle: "italic" }}>
+                  Loading databases...
+                </div>
+              )}
+            </div>
+
+            {/* Notion Logout Button */}
+            <div style={{ marginTop: "20px", textAlign: "center" }}>
+              <button
+                onClick={handleNotionLogout}
+                className="inline-block bg-red-600 text-white px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors hover:bg-red-700"
+                style={{ fontSize: "14px" }}
+              >
+                Log out of Notion
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      bodyHTML = (
+        <div style={{ textAlign: "center", padding: "20px" }}>
+          <p style={{ marginBottom: "10px" }}>Welcome, {userEmail}!</p>
+
+          <div className="p-5 my-5 h-[30%]">{notionHTML}</div>
+
+          <button
+            className="inline-block bg-black text-white px-6 py-3 rounded-lg font-bold cursor-pointer transition-colors hover:bg-red-700"
+            onClick={() => {
+              handleGoogleSignOut();
+            }}
+          >
+            Log out from Google
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div>
         <div
@@ -411,206 +585,67 @@ export default function GardenTasks() {
           </h1>
         </div>
 
+        {bodyHTML}
+
+        {/* Floating Error Card */}
         {error && (
           <div
             style={{
-              padding: "12px",
-              background: "#fee",
-              border: "1px solid #fcc",
-              borderRadius: "6px",
-              marginBottom: "16px",
+              position: "fixed",
+              bottom: "20px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              backgroundColor: "#fee",
+              border: "2px solid #fcc",
+              borderRadius: "12px",
+              padding: "16px 20px",
               color: "#c00",
+              fontSize: "14px",
+              fontWeight: "500",
+              boxShadow: "0 8px 25px rgba(0, 0, 0, 0.15)",
+              zIndex: 1000,
+              maxWidth: "90vw",
+              minWidth: "300px",
+              textAlign: "center",
+              animation: "slideUp 0.3s ease-out",
             }}
           >
-            {error}
-          </div>
-        )}
-
-        {!isGoogleSignedIn ? (
-          <div style={{ textAlign: "center", padding: "20px" }}>
-            {previousEmail ? (
-              <>
-                <p style={{ marginBottom: "10px" }}>
-                  Welcome back! Continue as <strong>{previousEmail}</strong>?
-                </p>
-                <p style={{ marginBottom: "20px", fontSize: "14px", color: "#666" }}>
-                  Your session has expired. Sign in again to continue.
-                </p>
-              </>
-            ) : (
-              <p style={{ marginBottom: "20px" }}>
-                Sign in with Google to access your tasks and sync with Notion!
-              </p>
-            )}
-            <div className="mt-4 text-center">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span>{error}</span>
               <button
-                onClick={handleGoogleSignIn}
-                disabled={isSigningIn}
-                className={`inline-flex items-center justify-center gap-2 bg-gray-200 text-white px-6 py-3 rounded-lg font-bold transition-opacity ${
-                  isSigningIn ? "opacity-70 cursor-not-allowed" : "hover:bg-blue-700"
-                }`}
+                onClick={() => setError(null)}
                 style={{
-                  border: "1px solid #ccc", // Add a small border
-                  textShadow: "0px 0px 2px #000",
+                  background: "none",
+                  border: "none",
+                  color: "#c00",
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  marginLeft: "12px",
+                  padding: "0",
+                  lineHeight: "1",
                 }}
+                title="Dismiss error"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24">
-                  <g>
-                    <path
-                      fill="#4285F4"
-                      d="M21.805 12.217c0-.638-.057-1.252-.163-1.837H12v3.478h5.548a4.74 4.74 0 0 1-2.057 3.113v2.583h3.323c1.943-1.79 3.05-4.428 3.05-7.337z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 22c2.7 0 4.97-.89 6.627-2.418l-3.323-2.583c-.92.62-2.09.99-3.304.99-2.54 0-4.69-1.72-5.46-4.03H2.41v2.602A9.997 9.997 0 0 0 12 22z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M6.54 13.959A5.996 5.996 0 0 1 6.09 12c0-.682.12-1.342.33-1.959V7.44H2.41A9.997 9.997 0 0 0 2 12c0 1.57.38 3.05 1.05 4.36l3.49-2.401z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 6.58c1.47 0 2.78.51 3.81 1.51l2.86-2.86C16.97 3.89 14.7 3 12 3 7.58 3 3.73 5.81 2.41 7.44l3.49 2.601C7.31 8.3 9.46 6.58 12 6.58z"
-                    />
-                  </g>
-                </svg>
-                {isSigningIn ? "Signing in..." : previousEmail ? "Continue" : "Sign in with Google"}
+                ×
               </button>
-              {previousEmail && (
-                <p style={{ marginTop: "10px", fontSize: "12px", color: "#666" }}>
-                  Or{" "}
-                  <button
-                    onClick={() => {
-                      setPreviousEmail(null);
-                      handleGoogleSignIn();
-                    }}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "#007bff",
-                      textDecoration: "underline",
-                      cursor: "pointer",
-                      fontSize: "12px",
-                      padding: "0",
-                    }}
-                  >
-                    sign in with a different account
-                  </button>
-                </p>
-              )}
             </div>
           </div>
-        ) : (
-          <div style={{ textAlign: "center", padding: "20px" }}>
-            <p style={{ marginBottom: "10px" }}>Welcome, {userEmail}!</p>
-            <p style={{ marginBottom: "20px" }}>Now connect your Notion workspace to sync tasks!</p>
-            <button
-              onClick={() => {
-                const returnUrl = encodeURIComponent(window.location.href);
-                window.location.href = `/api/notion/start?returnUrl=${returnUrl}`;
-              }}
-              className="inline-block bg-black text-white px-6 py-3 rounded-lg font-bold cursor-pointer transition-colors hover:bg-gray-900"
-            >
-              Connect to Notion
-            </button>
-
-            <p>After connecting, you will be able to sync your tasks between Google and Notion.</p>
-
-            <button
-              className="inline-block bg-black text-white px-6 py-3 rounded-lg font-bold cursor-pointer transition-colors hover:bg-red-700"
-              onClick={() => {
-                handleGoogleSignOut();
-              }}
-            >
-              Log out from Google
-            </button>
-          </div>
         )}
+
+        <style jsx>{`
+          @keyframes slideUp {
+            from {
+              opacity: 0;
+              transform: translateX(-50%) translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(-50%) translateY(0);
+            }
+          }
+        `}</style>
       </div>
     );
   }
-
-  if (showDatabaseSelector && databases.length > 0) {
-    return (
-      <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            userSelect: "none",
-            marginBottom: "20px",
-          }}
-        >
-          <img
-            src="/icon.png"
-            alt="App Icon"
-            style={{ width: 40, height: 40, marginRight: 12, userSelect: "none" }}
-          />
-          <h1
-            style={{
-              fontFamily: HeaderFont,
-              fontSize: "32px",
-              margin: 0,
-              userSelect: "none",
-            }}
-          >
-            Select Database
-          </h1>
-        </div>
-        <div>
-          <p style={{ marginBottom: "20px" }}>
-            Choose which Notion database to use for your tasks:
-          </p>
-          <div style={{ display: "grid", gap: "12px" }}>
-            {databases.map((db: NotionDatabase) => (
-              <button
-                key={db.id}
-                onClick={() => selectDatabase(db)}
-                style={{
-                  padding: "12px 16px",
-                  border: "2px solid #ccc",
-                  borderRadius: "8px",
-                  background: "#fff",
-                  textAlign: "left",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.borderColor = "#000";
-                  e.currentTarget.style.background = "#f5f5f5";
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.borderColor = "#ccc";
-                  e.currentTarget.style.background = "#fff";
-                }}
-              >
-                <strong>{db.title}</strong>
-                {db.url && (
-                  <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>{db.url}</div>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "60vh",
-        fontFamily: HeaderFont,
-        fontSize: "2rem",
-        color: "#333",
-        letterSpacing: "1px",
-      }}
-    >
-      Loading...
-    </div>
-  );
 }

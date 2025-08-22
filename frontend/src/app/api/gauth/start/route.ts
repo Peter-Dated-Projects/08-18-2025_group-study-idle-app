@@ -10,8 +10,14 @@ export async function GET(req: Request) {
     // Generate CSRF protection state parameter
     const state = crypto.randomBytes(32).toString("hex");
 
-    // Store state and return URL in HTTP-only cookies for verification
     const cookieStore = await cookies();
+
+    // If we're trying to log in, this means the notion cookies are invalid essentially
+    // Delete them
+    cookieStore.delete("notion_token");
+    cookieStore.delete("notion_session_id");
+
+    // Store state and return URL in HTTP-only cookies for verification
     cookieStore.set("google_oauth_state", state, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

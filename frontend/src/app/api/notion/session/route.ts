@@ -8,9 +8,11 @@ import { getUserSession } from "@/lib/firestore";
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const sessionId = cookieStore.get("user_session")?.value;
+    const userId = cookieStore.get("user_id")?.value;
 
-    if (!sessionId) {
+    // Check if user is authenticated
+    if (!userId) {
+      console.error("No user ID found in cookies");
       return NextResponse.json(
         {
           success: false,
@@ -18,13 +20,14 @@ export async function GET() {
           hasValidTokens: false,
           error: "No session found",
         },
-        { status: 401 }
+        { status: 400 }
       );
     }
 
-    const session = await getUserSession(sessionId);
-
+    // Request session
+    const session = await getUserSession(userId);
     if (!session) {
+      console.error("No session found");
       return NextResponse.json(
         {
           success: false,
@@ -32,12 +35,13 @@ export async function GET() {
           hasValidTokens: false,
           error: "Invalid session",
         },
-        { status: 401 }
+        { status: 400 }
       );
     }
 
     // Check if session is expired
-    if (session.expires_at < new Date()) {
+    if (new Date(session.expires_at) < new Date(Date.now())) {
+      console.error("Session expired");
       return NextResponse.json(
         {
           success: false,
@@ -45,13 +49,14 @@ export async function GET() {
           hasValidTokens: false,
           error: "Session expired",
         },
-        { status: 401 }
+        { status: 400 }
       );
     }
 
     // Check if we have Notion tokens
     const hasNotionTokens = !!session.notionTokens?.access_token;
 
+    console.log("/api/notion/session:", "Notion tokens found:", hasNotionTokens);
     return NextResponse.json(
       {
         success: true,

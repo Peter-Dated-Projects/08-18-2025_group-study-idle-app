@@ -8,6 +8,13 @@ export async function POST() {
     // Clear the session cookie
     cookieStore.delete("user_session");
 
+    // Clear the encrypted email cookie
+    cookieStore.delete("user_id");
+
+    // Clear all notion tokens too
+    cookieStore.delete("notion_token");
+    cookieStore.delete("notion_session_id");
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error during logout:", error);
