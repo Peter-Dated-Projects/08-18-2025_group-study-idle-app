@@ -23,6 +23,50 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  cursor: url("/ui/mouse_idle.png"), auto;
+}
+
+/* Custom cursor styles */
+* {
+  cursor: url("/ui/mouse_idle.png"), auto;
+}
+
+button,
+a,
+[role="button"],
+.cursor-pointer,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  cursor: url("/ui/mouse_click.png"), pointer;
+}
+
+button:hover,
+a:hover,
+[role="button"]:hover,
+.cursor-pointer:hover {
+  cursor: url("/ui/mouse_click.png"), pointer;
+}
+
+/* Text inputs should show text cursor for better UX */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+textarea {
+  cursor: text;
+}
+
+/* Disabled elements */
+button:disabled,
+input:disabled,
+[disabled] {
+  cursor: url("/ui/mouse_idle.png"), not-allowed;
+}
+
+/* Loading states */
+.cursor-wait {
+  cursor: url("/ui/mouse_idle.png"), wait;
 }
 
 /* Ensure preloaded fonts are used immediately to prevent warnings */
@@ -32,4 +76,16 @@ body {
   position: absolute;
   left: -9999px;
   visibility: hidden;
+}
+
+/* Animation for error card slide up */
+@keyframes slideUp {
+  from {
+    transform: translateX(-50%) translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
 }

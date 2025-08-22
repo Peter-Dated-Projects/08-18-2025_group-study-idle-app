@@ -62,7 +62,8 @@ export async function GET() {
         success: true,
         authenticated: true,
         hasValidTokens: hasNotionTokens,
-        userEmail: session.userId,
+        userEmail: session.userAccountInformation?.email || session.userId, // Fallback to userId if no account info
+        userName: session.userAccountInformation?.userName,
         selectedDatabase: session.selectedDatabase,
       },
       { status: 200 }

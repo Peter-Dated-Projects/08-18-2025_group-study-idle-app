@@ -79,18 +79,30 @@ export interface NotionTokenData {
   updated_at: Date;
 }
 
+export interface NotionDatabaseData {
+  id: string;
+  title: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface UserAccountInformation {
+  userId: string;
+  email: string;
+  created_at: Date;
+  updated_at: Date;
+
+  userName: string;
+}
+
 export interface UserSession {
   sessionId: string;
   userId: string;
-  userEmail: string;
   notionTokens: NotionTokenData | null;
-  selectedDatabase?: {
-    id: string;
-    title: string;
-    selectedAt: Date;
-  } | null;
+  selectedDatabase: NotionDatabaseData | null;
   created_at: Date;
   expires_at: Date;
+  userAccountInformation: UserAccountInformation | null;
 }
 
 // Generate a unique session ID
@@ -136,7 +148,7 @@ export async function storeNotionTokens(userID: string, tokenData: NotionTokenDa
 export async function getNotionTokens(sessionId: string): Promise<NotionTokenData | null> {
   const db = getFirestoreDb();
 
-  const doc = await db.collection("user_sessions").doc(sessionId).get();
+  const doc = await db.collection(FIRESTORE_USER_SESSIONS!).doc(sessionId).get();
   if (!doc.exists) {
     return null;
   }
@@ -171,26 +183,24 @@ export async function updateSelectedDatabase(
 ): Promise<void> {
   const db = getFirestoreDb();
 
-  await db
-    .collection("user_sessions")
-    .doc(sessionId)
-    .update({
-      selectedDatabase: {
-        id: databaseId,
-        title: databaseTitle,
-        selectedAt: new Date(),
-      },
-      updated_at: new Date(),
-    });
+  const selectedDatabase: NotionDatabaseData = {
+    id: databaseId,
+    title: databaseTitle,
+    created_at: new Date(),
+    updated_at: new Date(),
+  };
+
+  await db.collection(FIRESTORE_USER_SESSIONS!).doc(sessionId).update({
+    selectedDatabase,
+    updated_at: new Date(),
+  });
 }
 
 // Get selected database
-export async function getSelectedDatabase(
-  sessionId: string
-): Promise<{ id: string; title: string; selectedAt: Date } | null> {
+export async function getSelectedDatabase(sessionId: string): Promise<NotionDatabaseData | null> {
   const db = getFirestoreDb();
 
-  const doc = await db.collection("user_sessions").doc(sessionId).get();
+  const doc = await db.collection(FIRESTORE_USER_SESSIONS!).doc(sessionId).get();
   if (!doc.exists) {
     return null;
   }
@@ -223,7 +233,7 @@ export async function cleanupExpiredSessions(maxAgeInDays: number = 30): Promise
   const cutoffDate = new Date(Date.now() - maxAgeInDays * 24 * 60 * 60 * 1000);
 
   const expiredSessions = await db
-    .collection("user_sessions")
+    .collection(FIRESTORE_USER_SESSIONS!)
     .where("updated_at", "<", cutoffDate)
     .get();
 

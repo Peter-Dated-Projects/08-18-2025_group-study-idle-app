@@ -83,7 +83,9 @@ async function loadLevel(file: string, spriteSheetDef?: SpriteSheetDef): Promise
     spriteSheetConfig = spriteSheetDef;
   } else if (data.spritesheet) {
     // Use spritesheet path from JSON - assume it's in the public folder
-    spriteSheetPath = data.spritesheet;
+    // Make spritesheet path relative to the JSON file location
+    const jsonDir = file.substring(0, file.lastIndexOf("/") + 1);
+    spriteSheetPath = jsonDir + data.spritesheet;
 
     // For now, we need default tile dimensions - you might want to add these to your JSON
     spriteSheetConfig = {

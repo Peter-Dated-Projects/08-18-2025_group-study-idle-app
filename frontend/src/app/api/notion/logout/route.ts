@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getUserSession, getFirestoreDb } from "@/lib/firestore";
+import { getUserSession, getFirestoreDb, FIRESTORE_USER_SESSIONS } from "@/lib/firestore";
 
 export async function POST(request: Request) {
   try {
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     // Clear Notion tokens from Firestore
     try {
       const db = getFirestoreDb();
-      await db.collection("user_sessions").doc(userId).update({
+      await db.collection(FIRESTORE_USER_SESSIONS!).doc(userId).update({
         notionTokens: null,
         selectedDatabase: null, // Also clear selected database
         updated_at: new Date(),

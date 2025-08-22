@@ -85,11 +85,17 @@ export async function GET(req: Request) {
     const userSessionInfo: UserSession = {
       sessionId,
       userId: simpleEncrypt(userInfo.email), // generate userID based off encrypted version of user email
-      userEmail: userInfo.email,
       notionTokens: null,
       selectedDatabase: null,
       created_at: new Date(),
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      userAccountInformation: {
+        userId: simpleEncrypt(userInfo.email),
+        email: userInfo.email,
+        userName: userInfo.name || userInfo.email.split("@")[0], // Use name if available, else email prefix
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
     };
     await storeUserSession(userSessionInfo);
 

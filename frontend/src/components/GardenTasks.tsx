@@ -49,6 +49,7 @@ export default function GardenTasks() {
   // Google Auth state
   const [isGoogleSignedIn, setIsGoogleSignedIn] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const [previousEmail, setPreviousEmail] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [hasProcessedRedirect, setHasProcessedRedirect] = useState(false);
@@ -108,6 +109,7 @@ export default function GardenTasks() {
       if (response.ok && data.success && data.userEmail) {
         setIsGoogleSignedIn(true);
         setUserEmail(data.userEmail);
+        setUserName(data.userName || null);
         setPreviousEmail(null); // Clear previous email since we have an active session
 
         // Check notion status
@@ -171,7 +173,7 @@ export default function GardenTasks() {
           // TODO - on bus
           // for now we do something else
 
-          console.log("/api/notion/auth/check:", "Notion tokens found:", data.hasValidTokens);
+          console.log("/api/notion/session:", "Notion tokens found:", data.hasValidTokens);
         } else {
           setIsNotionConnected(false);
         }
@@ -271,6 +273,7 @@ export default function GardenTasks() {
       // Reset all local state
       setIsGoogleSignedIn(false);
       setUserEmail(null);
+      setUserName(null);
       setPreviousEmail(null);
       setIsNotionConnected(false);
       setTaskList([]);
@@ -542,7 +545,7 @@ export default function GardenTasks() {
 
       bodyHTML = (
         <div style={{ textAlign: "center", padding: "20px" }}>
-          <p style={{ marginBottom: "10px" }}>Welcome, {userEmail}!</p>
+          <p style={{ marginBottom: "10px" }}>Welcome, {userName || userEmail}!</p>
 
           <div className="p-5 my-5 h-[30%]">{notionHTML}</div>
 

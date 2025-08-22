@@ -37,7 +37,8 @@ export async function GET(req: Request) {
     return NextResponse.json({
       success: true,
       userId: session.userId,
-      userEmail: session.userEmail,
+      userEmail: session.userAccountInformation?.email || session.userId, // Fallback to userId if no account info
+      userName: session.userAccountInformation?.userName,
       sessionId: session.sessionId,
       hasNotionTokens: !!session.notionTokens,
       selectedDatabase: session.selectedDatabase,

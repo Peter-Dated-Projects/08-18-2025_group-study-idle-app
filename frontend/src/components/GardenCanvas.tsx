@@ -75,7 +75,7 @@ export default function GardenCanvas({
 
       // ------------------------------------------------------------------------------ //
       // Load tilemap
-      const tilemap = await loadLevel("/island.json");
+      const tilemap = await loadLevel("/level/island.json");
 
       console.log(`Loaded ${tilemap.layers.length} layers:`);
       tilemap.layers.forEach((layer, index) => {
@@ -128,8 +128,8 @@ export default function GardenCanvas({
       // Day/Night Cycle Filter + Lighting System
 
       // day/night system
-      const vert = await loadTextFile("/global-vertex-shader.glsl");
-      const frag = await loadTextFile("/global-fragment-shader.glsl");
+      const vert = await loadTextFile("/shaders/global-vertex-shader.glsl");
+      const frag = await loadTextFile("/shaders/global-fragment-shader.glsl");
       const dayNightFilter = new Filter({
         glProgram: new GlProgram({
           fragment: frag,
