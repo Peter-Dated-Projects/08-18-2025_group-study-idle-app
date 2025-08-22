@@ -101,13 +101,7 @@ export function generateSessionId(): string {
 export async function storeUserSession(userSession: UserSession): Promise<void> {
   try {
     const db = getFirestoreDb();
-
-    console.log(`Storing user session in collection: ${FIRESTORE_USER_SESSIONS}`);
-    console.log(`Session ID: ${userSession.sessionId}`);
-
     await db.collection(FIRESTORE_USER_SESSIONS!).doc(userSession.userId).set(userSession);
-
-    console.log(`Successfully stored user session: ${userSession.sessionId}`);
   } catch (error) {
     console.error("Error storing user session:", error);
     console.error("Collection name:", FIRESTORE_USER_SESSIONS);
@@ -117,10 +111,7 @@ export async function storeUserSession(userSession: UserSession): Promise<void> 
 }
 
 // Store Notion tokens in Firestore
-export async function storeNotionTokens(
-  sessionId: string,
-  tokenData: NotionTokenData
-): Promise<void> {
+export async function storeNotionTokens(userID: string, tokenData: NotionTokenData): Promise<void> {
   const db = getFirestoreDb();
 
   // Encrypt sensitive data
@@ -131,7 +122,7 @@ export async function storeNotionTokens(
   };
 
   // Only update notionTokens and updated_at, do not change expires_at or created_at
-  await db.collection(FIRESTORE_USER_SESSIONS).doc(sessionId).set(
+  await db.collection(FIRESTORE_USER_SESSIONS!).doc(userID).set(
     {
       notionTokens: encryptedTokenData,
       updated_at: new Date(),
@@ -205,6 +196,24 @@ export async function getSelectedDatabase(
 
   const userSession = doc.data() as UserSession;
   return userSession.selectedDatabase || null;
+}
+
+// Get user session by sessionId
+export async function getUserSession(sessionId: string): Promise<UserSession | null> {
+  const db = getFirestoreDb();
+
+  // Find session by sessionId across all user documents
+  const snapshot = await db
+    .collection(FIRESTORE_USER_SESSIONS!)
+    .where("sessionId", "==", sessionId)
+    .get();
+
+  if (snapshot.empty) {
+    return null;
+  }
+
+  const doc = snapshot.docs[0];
+  return doc.data() as UserSession;
 }
 
 // Clean up expired sessions (optional utility)

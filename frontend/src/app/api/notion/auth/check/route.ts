@@ -1,55 +1,77 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import {
-  FIRESTORE_USER_SESSIONS,
-  generateSessionId,
-  getFirestoreDb,
-  storeUserSession,
-  UserSession,
-} from "@/lib/firestore";
+import { getUserSession } from "@/lib/firestore";
 
 /**
  * Checks if user has a valid Notion Token
- * @returns
  */
 export async function GET() {
-  // check if token stored in cookies
-  const cookieStore = await cookies();
-  const cookieSessionInfo = cookieStore.get(process.env.TOKEN_SESSION_INFO!)?.value;
+  try {
+    const cookieStore = await cookies();
+    const sessionId = cookieStore.get("user_session")?.value;
 
-  // confirm valid session information
-  let hasValidSessionInfo = true;
-  if (!cookieSessionInfo) hasValidSessionInfo = false;
-  else {
-    // the cookie exists, but data might not be valid
-    const cookieJSON: UserSession = JSON.parse(cookieSessionInfo);
+    if (!sessionId) {
+      return NextResponse.json(
+        {
+          success: false,
+          authenticated: false,
+          hasValidTokens: false,
+          error: "No session found",
+        },
+        { status: 401 }
+      );
+    }
 
-    // check -- valid session ID
-    if (!cookieJSON?.sessionId || !cookieJSON.userId) hasValidSessionInfo = false;
-    if (!cookieJSON?.notionTokens?.access_token) hasValidSessionInfo = false;
+    const session = await getUserSession(sessionId);
 
-    // if all tokens exists, check if still valid
-    const currentDate = new Date(Date.now());
-    if (!cookieJSON?.expires_at || !cookieJSON?.created_at) hasValidSessionInfo = false;
-    if (cookieJSON?.expires_at < currentDate) hasValidSessionInfo = false;
-  }
+    if (!session) {
+      return NextResponse.json(
+        {
+          success: false,
+          authenticated: false,
+          hasValidTokens: false,
+          error: "Invalid session",
+        },
+        { status: 401 }
+      );
+    }
 
-  // if not valid session
-  if (!hasValidSessionInfo) {
-    // return a response
+    // Check if session is expired
+    if (session.expires_at < new Date()) {
+      return NextResponse.json(
+        {
+          success: false,
+          authenticated: false,
+          hasValidTokens: false,
+          error: "Session expired",
+        },
+        { status: 401 }
+      );
+    }
+
+    // Check if we have Notion tokens
+    const hasNotionTokens = !!session.notionTokens?.access_token;
+
     return NextResponse.json(
       {
-        authenticated: false,
-        warning: "No valid authentication token found.",
+        success: true,
+        authenticated: true,
+        hasValidTokens: hasNotionTokens,
+        userEmail: session.userId,
+        selectedDatabase: session.selectedDatabase,
       },
-      { status: 404 }
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error checking Notion auth:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        authenticated: false,
+        hasValidTokens: false,
+        error: "Internal server error",
+      },
+      { status: 500 }
     );
   }
-
-  return NextResponse.json(
-    {
-      authenticated: true,
-    },
-    { status: 200 }
-  );
 }

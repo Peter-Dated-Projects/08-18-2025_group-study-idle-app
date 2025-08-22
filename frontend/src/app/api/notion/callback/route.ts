@@ -52,10 +52,12 @@ export async function GET(req: Request) {
 
     const tokenData = await tokenResponse.json();
 
-    // Generate a session ID and store tokens in Firestore
-    const sessionId = generateSessionId();
+    // Generate a user ID and store tokens in Firestore
+    const cookieStore = await cookies();
+    console.log(cookieStore);
+    const userID = generateSessionId();
 
-    await storeNotionTokens(sessionId, {
+    await storeNotionTokens(userID, {
       access_token: tokenData.access_token,
       workspace_id: tokenData.workspace_id,
       workspace_name: tokenData.workspace_name || "Unknown Workspace",

@@ -1,6 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
-import { auth, googleProvider } from "@/lib/firebase";
 import { HeaderFont } from "./utils";
 
 export const AUTH_TOKEN_KEY = "auth_token";
@@ -41,41 +39,62 @@ export default function GardenTasks() {
   // Google Auth state
   const [isGoogleSignedIn, setIsGoogleSignedIn] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [previousEmail, setPreviousEmail] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
-  // Monitor Google Auth state
+  // Check session on component mount
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user?.email) {
-        setIsGoogleSignedIn(true);
-        setUserEmail(user.email);
-
-        // Store user session via API
-        try {
-          const sessionId = generateSessionId();
-          await storeUserSessionAPI(user.email, sessionId);
-
-          // Now check Notion auth status
-          await checkAuthStatus();
-        } catch (error) {
-          console.error("Error storing user session:", error);
-        }
-      } else {
-        setIsGoogleSignedIn(false);
-        setUserEmail(null);
-        setIsConnected(false);
-      }
-    });
-
-    return () => unsubscribe();
+    checkUserSession();
   }, []);
 
-  // Helper function to generate session ID
-  function generateSessionId(): string {
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
-  }
+  // Handle OAuth redirect success
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const authSuccess = urlParams.get("auth");
+    const authError = urlParams.get("error");
+
+    if (authSuccess === "success") {
+      // Clear URL parameters
+      const url = new URL(window.location.href);
+      url.searchParams.delete("auth");
+      window.history.replaceState({}, "", url.toString());
+
+      // Check auth status and reload user data
+      checkUserSession();
+    } else if (authError) {
+      setError(`Authentication failed: ${decodeURIComponent(authError)}`);
+
+      // Clear URL parameters
+      const url = new URL(window.location.href);
+      url.searchParams.delete("error");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
+
+  // Check user session from server
+  const checkUserSession = async () => {
+    try {
+      const response = await fetch("/api/gauth/session", {
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success && data.userEmail) {
+        setIsGoogleSignedIn(true);
+        setUserEmail(data.userEmail);
+        setPreviousEmail(null); // Clear previous email since we have an active session
+        await checkAuthStatus();
+      } else {
+        // No active session, but check if we have a previous email
+        if (data.previousEmail) {
+          setPreviousEmail(data.previousEmail);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking user session:", error);
+    }
+  };
 
   // Load tasks when database is selected
   useEffect(() => {
@@ -83,23 +102,6 @@ export default function GardenTasks() {
       loadTasks();
     }
   }, [isConnected, selectedDatabase]);
-
-  async function storeUserSessionAPI(userEmail: string, sessionId: string) {
-    const response = await fetch("/api/auth/store-session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sessionId,
-        userId: userEmail,
-        notionTokens: null,
-        selectedDatabase: null,
-        created_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      }),
-    });
-    if (!response.ok) throw new Error("Failed to store user session");
-    return await response.json();
-  }
 
   const checkAuthStatus = useCallback(async () => {
     try {
@@ -136,14 +138,24 @@ export default function GardenTasks() {
 
     try {
       setError(null);
-      const response = await fetch(`/api/notion/tasks?databaseId=${selectedDatabase.id}`);
+      const response = await fetch(`/api/notion/tasks?databaseId=${selectedDatabase.id}`, {
+        credentials: "include",
+      });
 
       if (response.ok) {
         const data = await response.json();
         setTaskList(data.tasks || []);
       } else {
         const errorData = await response.json();
-        setError(errorData.error || "Failed to load tasks");
+
+        // Handle token expiration specifically
+        if (errorData.needsReauth) {
+          setError("Your Notion connection has expired. Please reconnect your account.");
+          setIsConnected(false);
+          // Optionally, you could automatically trigger re-authentication here
+        } else {
+          setError(errorData.error || "Failed to load tasks");
+        }
       }
     } catch (err) {
       console.error("Error loading tasks:", err);
@@ -156,24 +168,14 @@ export default function GardenTasks() {
       setIsSigningIn(true);
       setError(null);
 
-      // Use popup instead of redirect - this works without Firebase hosting
-      const result = await signInWithPopup(auth, googleProvider);
+      // Use redirect-based OAuth instead of popup
+      const returnUrl = encodeURIComponent(window.location.href);
+      window.location.href = `/api/gauth/start?returnUrl=${returnUrl}`;
 
-      if (!result?.user?.email) {
-        setError("Sign-in completed but no user information received");
-      }
+      // Note: The page will redirect, so this code won't continue
     } catch (error: any) {
-      // Handle specific popup errors
-      if (error.code === "auth/popup-closed-by-user") {
-        // User closed popup - don't show error, just reset state
-      } else if (error.code === "auth/popup-blocked") {
-        setError("Popup was blocked. Please allow popups for this site and try again.");
-      } else if (error.code === "auth/cancelled-popup-request") {
-        // Popup request was cancelled - don't show error
-      } else {
-        setError(`Failed to sign in with Google: ${error.message}`);
-      }
-    } finally {
+      console.error("Google sign-in error:", error);
+      setError(`Failed to start Google sign-in: ${error.message}`);
       setIsSigningIn(false);
     }
   };
@@ -181,12 +183,16 @@ export default function GardenTasks() {
     try {
       setError(null);
 
-      // Sign out from Firebase Auth
-      await signOut(auth);
+      // Clear server session
+      await fetch("/api/gauth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
 
       // Reset all local state
       setIsGoogleSignedIn(false);
       setUserEmail(null);
+      setPreviousEmail(null);
       setIsConnected(false);
       setTaskList([]);
       setSelectedDatabase(null);
@@ -205,6 +211,7 @@ export default function GardenTasks() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           databaseId: database.id,
           databaseTitle: database.title,
@@ -220,7 +227,15 @@ export default function GardenTasks() {
         setShowDatabaseSelector(false);
         // Tasks will load automatically via useEffect
       } else {
-        setError("Failed to select database");
+        const errorData = await response.json();
+
+        // Handle token expiration specifically
+        if (errorData.needsReauth) {
+          setError("Your Notion connection has expired. Please reconnect your account.");
+          setIsConnected(false);
+        } else {
+          setError(errorData.error || "Failed to select database");
+        }
       }
     } catch (err) {
       console.error("Error selecting database:", err);
@@ -239,6 +254,7 @@ export default function GardenTasks() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           title: newTaskTitle.trim(),
         }),
@@ -250,7 +266,14 @@ export default function GardenTasks() {
         setNewTaskTitle("");
       } else {
         const errorData = await response.json();
-        setError(errorData.error || "Failed to create task");
+
+        // Handle token expiration specifically
+        if (errorData.needsReauth) {
+          setError("Your Notion connection has expired. Please reconnect your account.");
+          setIsConnected(false);
+        } else {
+          setError(errorData.error || "Failed to create task");
+        }
       }
     } catch (err) {
       console.error("Error creating task:", err);
@@ -267,6 +290,7 @@ export default function GardenTasks() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           completed: !currentCompleted,
         }),
@@ -281,11 +305,46 @@ export default function GardenTasks() {
         );
       } else {
         const errorData = await response.json();
-        setError(errorData.error || "Failed to update task");
+
+        // Handle token expiration specifically
+        if (errorData.needsReauth) {
+          setError("Your Notion connection has expired. Please reconnect your account.");
+          setIsConnected(false);
+        } else {
+          setError(errorData.error || "Failed to update task");
+        }
       }
     } catch (err) {
       console.error("Error updating task:", err);
       setError("Failed to update task");
+    }
+  };
+
+  const loadDatabases = async () => {
+    try {
+      setError(null);
+      const response = await fetch("/api/notion/databases", {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDatabases(data.databases || []);
+        setShowDatabaseSelector(true);
+      } else {
+        const errorData = await response.json();
+
+        // Handle token expiration specifically
+        if (errorData.needsReauth) {
+          setError("Your Notion connection has expired. Please reconnect your account.");
+          setIsConnected(false);
+        } else {
+          setError(errorData.error || "Failed to load databases");
+        }
+      }
+    } catch (err) {
+      console.error("Error loading databases:", err);
+      setError("Failed to load databases");
     }
   };
 
@@ -335,9 +394,20 @@ export default function GardenTasks() {
 
         {!isGoogleSignedIn ? (
           <div style={{ textAlign: "center", padding: "20px" }}>
-            <p style={{ marginBottom: "20px" }}>
-              Sign in with Google to access your tasks and sync with Notion!
-            </p>
+            {previousEmail ? (
+              <>
+                <p style={{ marginBottom: "10px" }}>
+                  Welcome back! Continue as <strong>{previousEmail}</strong>?
+                </p>
+                <p style={{ marginBottom: "20px", fontSize: "14px", color: "#666" }}>
+                  Your session has expired. Sign in again to continue.
+                </p>
+              </>
+            ) : (
+              <p style={{ marginBottom: "20px" }}>
+                Sign in with Google to access your tasks and sync with Notion!
+              </p>
+            )}
             <div className="mt-4 text-center">
               <button
                 onClick={handleGoogleSignIn}
@@ -370,8 +440,30 @@ export default function GardenTasks() {
                     />
                   </g>
                 </svg>
-                {isSigningIn ? "Signing in..." : "Sign in with Google"}
+                {isSigningIn ? "Signing in..." : previousEmail ? "Continue" : "Sign in with Google"}
               </button>
+              {previousEmail && (
+                <p style={{ marginTop: "10px", fontSize: "12px", color: "#666" }}>
+                  Or{" "}
+                  <button
+                    onClick={() => {
+                      setPreviousEmail(null);
+                      handleGoogleSignIn();
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#007bff",
+                      textDecoration: "underline",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      padding: "0",
+                    }}
+                  >
+                    sign in with a different account
+                  </button>
+                </p>
+              )}
             </div>
           </div>
         ) : (
@@ -499,7 +591,7 @@ export default function GardenTasks() {
           </h1>
         </div>
         <button
-          onClick={() => setShowDatabaseSelector(true)}
+          onClick={loadDatabases}
           style={{
             padding: "6px 12px",
             border: "1px solid #ccc",
