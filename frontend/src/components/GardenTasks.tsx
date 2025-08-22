@@ -27,6 +27,7 @@ interface SelectedDatabase {
 }
 
 export default function GardenTasks() {
+  const [isLoading, setIsLoading] = useState(true); // Start with loading state
   const [isConnected, setIsConnected] = useState(false);
   const [taskList, setTaskList] = useState<Task[]>([]);
   const [databases, setDatabases] = useState<NotionDatabase[]>([]);
@@ -41,10 +42,13 @@ export default function GardenTasks() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [previousEmail, setPreviousEmail] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [hasProcessedRedirect, setHasProcessedRedirect] = useState(false);
 
   // Check session on component mount
   useEffect(() => {
-    checkUserSession();
+    checkUserSession().finally(() => {
+      setIsLoading(false);
+    });
   }, []);
 
   // Handle OAuth redirect success
@@ -53,23 +57,32 @@ export default function GardenTasks() {
     const authSuccess = urlParams.get("auth");
     const authError = urlParams.get("error");
 
+    // Only process redirect once
+    if (hasProcessedRedirect) return;
+
     if (authSuccess === "success") {
-      // Clear URL parameters
+      setHasProcessedRedirect(true);
+
+      // Clear URL parameters immediately to prevent multiple processing
       const url = new URL(window.location.href);
-      url.searchParams.delete("auth");
+      url.search = ""; // Clear all search parameters
       window.history.replaceState({}, "", url.toString());
 
       // Check auth status and reload user data
-      checkUserSession();
+      setIsLoading(true);
+      checkUserSession().finally(() => {
+        setIsLoading(false);
+      });
     } else if (authError) {
+      setHasProcessedRedirect(true);
       setError(`Authentication failed: ${decodeURIComponent(authError)}`);
 
       // Clear URL parameters
       const url = new URL(window.location.href);
-      url.searchParams.delete("error");
+      url.search = ""; // Clear all search parameters
       window.history.replaceState({}, "", url.toString());
     }
-  }, []);
+  }, [hasProcessedRedirect]);
 
   // Check user session from server
   const checkUserSession = async () => {
@@ -348,6 +361,27 @@ export default function GardenTasks() {
     }
   };
 
+  // Show loading screen while checking authentication
+  if (isLoading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "60vh",
+          fontFamily: HeaderFont,
+          fontSize: "2rem",
+          color: "#333",
+          letterSpacing: "1px",
+        }}
+      >
+        Loading...
+      </div>
+    );
+  }
+
   // notion database not connected
   if (!isConnected) {
     return (
@@ -563,161 +597,20 @@ export default function GardenTasks() {
   }
 
   return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          userSelect: "none",
-          marginBottom: "20px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <img
-            src="/icon.png"
-            alt="App Icon"
-            style={{ width: 40, height: 40, marginRight: 12, userSelect: "none" }}
-          />
-          <h1
-            style={{
-              fontFamily: HeaderFont,
-              fontSize: "32px",
-              margin: 0,
-              userSelect: "none",
-            }}
-          >
-            Tasks
-          </h1>
-        </div>
-        <button
-          onClick={loadDatabases}
-          style={{
-            padding: "6px 12px",
-            border: "1px solid #ccc",
-            borderRadius: "6px",
-            background: "#f5f5f5",
-            cursor: "pointer",
-            fontSize: "12px",
-          }}
-        >
-          Change DB
-        </button>
-      </div>
-
-      {selectedDatabase && (
-        <div style={{ marginBottom: "16px", fontSize: "14px", color: "#666" }}>
-          <strong>Database:</strong> {selectedDatabase.title}
-        </div>
-      )}
-
-      {error && (
-        <div
-          style={{
-            padding: "12px",
-            background: "#fee",
-            border: "1px solid #fcc",
-            borderRadius: "6px",
-            marginBottom: "16px",
-            color: "#c00",
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      {/* Add new task form */}
-      <form onSubmit={createTask} style={{ marginBottom: "20px", display: "flex", gap: "8px" }}>
-        <input
-          type="text"
-          value={newTaskTitle}
-          onChange={(e) => setNewTaskTitle(e.target.value)}
-          placeholder="Add a new task..."
-          style={{
-            flex: 1,
-            padding: "12px",
-            border: "2px solid #ccc",
-            borderRadius: "6px",
-            fontSize: "16px",
-          }}
-          disabled={isCreatingTask}
-        />
-        <button
-          type="submit"
-          disabled={!newTaskTitle.trim() || isCreatingTask}
-          style={{
-            padding: "12px 20px",
-            background: isCreatingTask ? "#ccc" : "#000",
-            color: "#fff",
-            border: "none",
-            borderRadius: "6px",
-            cursor: isCreatingTask ? "not-allowed" : "pointer",
-            fontSize: "16px",
-          }}
-        >
-          {isCreatingTask ? "Adding..." : "Add"}
-        </button>
-      </form>
-
-      {/* Task list */}
-      <div>
-        {taskList.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "40px", color: "#666" }}>
-            <p>No tasks yet. Add your first task above!</p>
-          </div>
-        ) : (
-          <div style={{ display: "grid", gap: "8px" }}>
-            {taskList.map((task: Task) => (
-              <div
-                key={task.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "12px",
-                  border: "1px solid #ddd",
-                  borderRadius: "6px",
-                  background: task.completed ? "#f0f9f0" : "#fff",
-                  gap: "12px",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={task.completed}
-                  onChange={() => toggleTaskCompletion(task.id, task.completed)}
-                  style={{
-                    width: "18px",
-                    height: "18px",
-                    cursor: "pointer",
-                  }}
-                />
-                <div style={{ flex: 1 }}>
-                  <span
-                    style={{
-                      textDecoration: task.completed ? "line-through" : "none",
-                      color: task.completed ? "#666" : "#000",
-                      fontSize: "16px",
-                    }}
-                  >
-                    {task.title}
-                  </span>
-                  {task.notionUrl && (
-                    <div style={{ fontSize: "12px", marginTop: "4px" }}>
-                      <a
-                        href={task.notionUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: "#666", textDecoration: "none" }}
-                      >
-                        Open in Notion →
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "60vh",
+        fontFamily: HeaderFont,
+        fontSize: "2rem",
+        color: "#333",
+        letterSpacing: "1px",
+      }}
+    >
+      Loading...
     </div>
   );
 }

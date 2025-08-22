@@ -24,3 +24,12 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Ensure preloaded fonts are used immediately to prevent warnings */
+.font-preload-fix::before {
+  content: "";
+  font-family: var(--font-geist-sans), var(--font-geist-mono);
+  position: absolute;
+  left: -9999px;
+  visibility: hidden;
+}
