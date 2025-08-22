@@ -57,7 +57,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Failed to fetch Notion databases" }, { status: 500 });
   }
 
-  console.log("/api/notion/databases: notionDatabases:", notionDatabases);
+  //   console.log("/api/notion/databases: notionDatabases:", notionDatabases);
 
   return NextResponse.json({ databases: notionDatabases });
 }

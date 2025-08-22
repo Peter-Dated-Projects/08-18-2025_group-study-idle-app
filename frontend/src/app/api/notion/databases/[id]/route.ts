@@ -19,7 +19,7 @@ interface NotionDatabaseDetails {
   last_edited_time: string;
 }
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const cookieStore = await cookies();
   const tokenCookie = cookieStore.get("notion_token")?.value;
 
@@ -35,7 +35,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 
   const { access_token } = tokenData;
-  const databaseId = params.id;
+  const { id: databaseId } = await params;
 
   if (!databaseId) {
     return NextResponse.json({ error: "Database ID is required" }, { status: 400 });

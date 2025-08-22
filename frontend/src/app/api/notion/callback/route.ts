@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import {
-  storeNotionTokens,
-  generateSessionId,
-  getUserSession,
-  NotionTokenData,
-} from "@/lib/firestore";
+import { storeNotionTokens, getUserSession, NotionTokenData } from "@/lib/firestore";
 import { NOTION_API_VERSION } from "@/components/constants";
 
 export async function GET(req: Request) {
@@ -85,6 +80,12 @@ export async function GET(req: Request) {
     try {
       await storeNotionTokens(userId, notionTokenData);
       console.log("Notion tokens stored successfully");
+
+      console.log("✅ OAuth completed - tokens stored, no automatic database discovery");
+      console.log("🔍 User will manually select databases to enable in the UI");
+
+      // Note: We no longer automatically discover and store databases
+      // Users will manually select which databases to enable through the UI
     } catch (error) {
       console.error("Error storing Notion tokens:", error);
       return NextResponse.json({ error: "Failed to store Notion tokens" }, { status: 500 });
@@ -94,27 +95,6 @@ export async function GET(req: Request) {
     const returnUrl = cookieStore.get("notion_oauth_return_url")?.value;
     cookieStore.delete("notion_oauth_state");
     cookieStore.delete("notion_oauth_return_url");
-
-    // // check for status of the token we just created?
-    // await fetch("https://api.notion.com/v1/oauth/introspect", {
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //     Authorization: `Basic ${Buffer.from(
-    //       `${process.env.NOTION_OAUTH_API_CLIENT_ID}:${process.env.NOTION_OAUTH_API_CLIENT_SECRET}`
-    //     ).toString("base64")}`,
-    //     "Notion-Version": NOTION_API_VERSION,
-    //   },
-    //   body: JSON.stringify({
-    //     token: tokenData.access_token,
-    //   }),
-    // })
-    //   .then((response) => {
-    //     return response.json();
-    //   })
-    //   .then((json) => {
-    //     console.log("/api/notion/callback: token status: ", json);
-    //   });
 
     return NextResponse.redirect(returnUrl!);
   } catch (error) {

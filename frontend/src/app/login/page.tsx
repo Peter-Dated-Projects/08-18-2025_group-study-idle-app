@@ -214,10 +214,37 @@ export default function LoginPage() {
     }
   };
 
-  const selectDatabase = async (database: NotionDatabase) => {
+  const handleSelectDatabase = async (database: NotionDatabase) => {
     try {
       const plainTitle = extractPlainText(database.title);
-      // leave empty for now
+
+      // Call the API endpoint to update the selected database
+      const response = await fetch("/api/notion/databases/select", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          id: database.id,
+          title: plainTitle,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to select database");
+      }
+
+      const data = await response.json();
+      console.log("Database selected:", data);
+
+      // Set selected database state
+      setSelectedDatabase({
+        id: database.id,
+        title: plainTitle,
+        selectedAt: new Date().toISOString(),
+      });
     } catch (err) {
       console.error("Error selecting database:", err);
       setError("Failed to select database");
@@ -313,7 +340,7 @@ export default function LoginPage() {
               {databases.map((db: NotionDatabase) => (
                 <div
                   key={db.id}
-                  onClick={() => selectDatabase(db)}
+                  onClick={() => handleSelectDatabase(db)}
                   className={`p-3 border border-gray-300 rounded-md cursor-pointer transition-colors hover:bg-gray-100 ${
                     selectedDatabase?.id === db.id ? "bg-blue-50" : "bg-gray-50"
                   }`}

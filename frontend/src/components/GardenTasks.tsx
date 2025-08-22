@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { HeaderFont } from "./utils";
-
-import { googleSVG } from "./utils";
+import { useNotionFilters } from "@/hooks/useNotionFilters";
 
 export const AUTH_TOKEN_KEY = "auth_token";
 
@@ -16,18 +15,27 @@ const extractPlainText = (richTextArray: any): string => {
 interface Task {
   id: string;
   title: string;
-  completed: boolean;
+  completed?: boolean;
+  status?: string;
+  dueDate?: string;
+  priority?: string;
+  assignee?: any;
   notionUrl?: string;
   createdTime?: string;
   lastEditedTime?: string;
+  archived?: boolean;
 }
 
-interface NotionDatabase {
+interface DatabasePage {
   id: string;
-  title: any[]; // Rich text array from Notion API
-  url?: string;
-  created_time?: string;
-  last_edited_time?: string;
+  title: string;
+  properties?: Record<string, any>;
+  notionUrl?: string;
+  createdTime?: string;
+  lastEditedTime?: string;
+  archived?: boolean;
+  icon?: any;
+  cover?: any;
 }
 
 interface SelectedDatabase {
@@ -37,320 +45,235 @@ interface SelectedDatabase {
 }
 
 export default function GardenTasks() {
-  const [isLoading, setIsLoading] = useState(true); // Start with loading state
+  const [isLoading, setIsLoading] = useState(true);
   const [taskList, setTaskList] = useState<Task[]>([]);
-  const [databases, setDatabases] = useState<NotionDatabase[]>([]);
+  const [pageList, setPageList] = useState<DatabasePage[]>([]);
+  const [isTaskDatabase, setIsTaskDatabase] = useState(false);
   const [selectedDatabase, setSelectedDatabase] = useState<SelectedDatabase | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [isCreatingTask, setIsCreatingTask] = useState(false);
-  const [showDatabaseSelector, setShowDatabaseSelector] = useState(false);
 
-  // Google Auth state
-  const [isGoogleSignedIn, setIsGoogleSignedIn] = useState(false);
+  // Filter system integration
+  const {
+    filterOptions,
+    currentFilter,
+    setFilter,
+    applyCommonFilter,
+    loadFilterOptions,
+    isLoadingFilters,
+    error: filterError,
+  } = useNotionFilters();
+
+  const [showFilterOptions, setShowFilterOptions] = useState(false);
+
+  // Auth states - simplified
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
-  const [previousEmail, setPreviousEmail] = useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = useState(false);
-  const [hasProcessedRedirect, setHasProcessedRedirect] = useState(false);
 
-  // Notion Database states
-  const [hasNotionDatabase, setHasNotionDatabase] = useState(false);
-  const [isNotionConnected, setIsNotionConnected] = useState(false);
-
-  // Check session on component mount
+  // Check if user is authenticated (both Google and Notion)
   useEffect(() => {
-    checkUserSession().finally(() => {
-      setIsLoading(false);
-    });
+    checkAuthentication();
   }, []);
 
-  // Handle OAuth redirect success
+  // Load default database on startup after authentication
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const authSuccess = urlParams.get("auth");
-    const authError = urlParams.get("error");
-
-    // Only process redirect once
-    if (hasProcessedRedirect) return;
-
-    if (authSuccess === "success") {
-      setHasProcessedRedirect(true);
-
-      // Clear URL parameters immediately to prevent multiple processing
-      const url = new URL(window.location.href);
-      url.search = ""; // Clear all search parameters
-      window.history.replaceState({}, "", url.toString());
-
-      // Check auth status and reload user data
-      setIsLoading(true);
-      checkUserSession().finally(() => {
-        setIsLoading(false);
-      });
-    } else if (authError) {
-      setHasProcessedRedirect(true);
-      setError(`Authentication failed: ${decodeURIComponent(authError)}`);
-
-      // Clear URL parameters
-      const url = new URL(window.location.href);
-      url.search = ""; // Clear all search parameters
-      window.history.replaceState({}, "", url.toString());
+    if (isAuthenticated && !selectedDatabase) {
+      loadDefaultDatabase();
     }
-  }, [hasProcessedRedirect]);
+  }, [isAuthenticated, selectedDatabase]);
 
-  // Check user session from server
-  const checkUserSession = async () => {
+  // Listen for database change events from other components
+  useEffect(() => {
+    const handleDatabaseChange = (event: CustomEvent) => {
+      console.log("Database changed:", event.detail);
+      setSelectedDatabase({
+        id: event.detail.databaseId,
+        title: event.detail.databaseTitle,
+        selectedAt: new Date().toISOString(),
+      });
+    };
+
+    window.addEventListener("databaseChanged", handleDatabaseChange as EventListener);
+
+    return () => {
+      window.removeEventListener("databaseChanged", handleDatabaseChange as EventListener);
+    };
+  }, []);
+
+  // Load tasks/pages when database is selected or filter changes
+  useEffect(() => {
+    if (isAuthenticated && selectedDatabase) {
+      loadTasksOrPages();
+    }
+  }, [isAuthenticated, selectedDatabase, currentFilter]);
+
+  // Load filter options when database changes
+  useEffect(() => {
+    if (selectedDatabase) {
+      loadFilterOptions(selectedDatabase.id);
+    }
+  }, [selectedDatabase, loadFilterOptions]);
+
+  const loadDefaultDatabase = async () => {
     try {
-      // Check if user is authed
-      const response = await fetch("/api/auth/session", {
+      // Use the enabled databases endpoint for GardenTasks (only Firestore-enabled databases)
+      const response = await fetch("/api/notion/databases/enabled", {
         credentials: "include",
       });
+
+      if (!response.ok) {
+        console.error("Failed to load enabled databases for default selection");
+        setError("Failed to load available databases. Please try refreshing.");
+        return;
+      }
+
       const data = await response.json();
-      if (response.ok && data.success && data.userEmail) {
-        setIsGoogleSignedIn(true);
-        setUserEmail(data.userEmail);
-        setUserName(data.userName || null);
-        setPreviousEmail(null); // Clear previous email since we have an active session
+      const databases = data.databases || [];
 
-        // Check notion status
-        await checkNotionStatus();
+      if (databases.length > 0) {
+        // Select the first database as default
+        const defaultDb = databases[0];
+        const selectedDb = {
+          id: defaultDb.id,
+          title: defaultDb.title?.[0]?.plain_text || defaultDb.title || "Untitled Database",
+          selectedAt: new Date().toISOString(),
+        };
+
+        setSelectedDatabase(selectedDb);
+        console.log("Default enabled database selected:", selectedDb.title);
       } else {
-        // No active session, but check if we have a previous email
-        if (data.previousEmail) {
-          setPreviousEmail(data.previousEmail);
-        }
+        // No enabled databases available - user needs to duplicate template
+        setError(
+          data.message ||
+            "No databases found. Please duplicate a template from your Notion integration to get started."
+        );
+        console.log("No enabled databases available for user");
       }
     } catch (error) {
-      console.error("Error checking user session:", error);
+      console.error("Error loading default database:", error);
+      setError("Error loading databases. Please try refreshing the page.");
     }
   };
 
-  // Handle notion login
-  const handleNotionLogin = async () => {
+  const checkAuthentication = async () => {
     try {
-      setError(null);
-
-      // Use redirect-based OAuth instead of popup
-      const returnUrl = encodeURIComponent(window.location.href);
-      window.location.href = `/api/notion/start?returnUrl=${returnUrl}`;
-
-      // Note: The page will redirect, so this code won't continue
-    } catch (error: any) {
-      console.error("Notion sign-in error:", error);
-      setError(`Failed to start Notion sign-in: ${error.message}`);
-    }
-  };
-
-  // Load tasks when database is selected
-  useEffect(() => {
-    if (isNotionConnected && selectedDatabase) {
-      loadTasks();
-    }
-  }, [isNotionConnected, selectedDatabase]);
-
-  // Load databases when Notion is connected
-  useEffect(() => {
-    if (isNotionConnected) {
-      loadDatabases();
-    }
-  }, [isNotionConnected]);
-
-  const checkNotionStatus = useCallback(async () => {
-    try {
-      // Check if notion logged in
-      const response = await fetch("/api/notion/session", {
+      // Check Google auth
+      const googleResponse = await fetch("/api/auth/session", {
         credentials: "include",
       });
 
-      console.log(response);
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.hasValidTokens) {
-          setIsNotionConnected(true);
-          setIsLoading(false);
-
-          // TODO - on bus
-          // for now we do something else
-
-          console.log("/api/notion/session:", "Notion tokens found:", data.hasValidTokens);
-        } else {
-          setIsNotionConnected(false);
-        }
-      } else {
-        setIsNotionConnected(false);
+      if (!googleResponse.ok) {
+        redirectToLogin();
+        return;
       }
-    } catch (error) {
-      console.error("Error checking auth status:", error);
-      setIsNotionConnected(false);
-    }
-  }, [isGoogleSignedIn]); // Remove loadTasks from dependency array
 
-  const loadDatabases = async () => {
-    try {
-      setError(null);
-      const response = await fetch("/api/notion/databases", {
+      const googleData = await googleResponse.json();
+      if (!googleData.success || !googleData.userEmail) {
+        redirectToLogin();
+        return;
+      }
+
+      // Check Notion auth
+      const notionResponse = await fetch("/api/notion/session", {
         credentials: "include",
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setDatabases(data.databases || []);
-      } else {
-        const errorData = await response.json();
-
-        // Handle token expiration specifically
-        if (errorData.needsReauth) {
-          setError("Your Notion connection has expired. Please reconnect your account.");
-          setIsNotionConnected(false);
-        } else {
-          setError(errorData.error || "Failed to load databases");
-        }
+      if (!notionResponse.ok) {
+        redirectToLogin();
+        return;
       }
-    } catch (err) {
-      console.error("Error loading databases:", err);
-      setError("Failed to load databases");
+
+      const notionData = await notionResponse.json();
+      if (!notionData.success || !notionData.hasValidTokens) {
+        redirectToLogin();
+        return;
+      }
+
+      // Both are authenticated
+      setUserEmail(googleData.userEmail);
+      setUserName(googleData.userName || null);
+      setIsAuthenticated(true);
+    } catch (error) {
+      console.error("Authentication check failed:", error);
+      redirectToLogin();
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const loadTasks = async () => {
+  const redirectToLogin = () => {
+    window.location.href = "/login";
+  };
+
+  const loadTasksOrPages = async () => {
     if (!selectedDatabase) return;
 
     try {
       setError(null);
-      const response = await fetch(`/api/notion/tasks?databaseId=${selectedDatabase.id}`, {
+
+      // Build query URL with filter if present
+      let queryUrl = `/api/notion/tasks?databaseId=${selectedDatabase.id}`;
+      if (currentFilter) {
+        const filterParam = encodeURIComponent(JSON.stringify(currentFilter));
+        queryUrl += `&filter=${filterParam}`;
+      }
+
+      const response = await fetch(queryUrl, {
         credentials: "include",
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      if (!response.ok) {
+        const errorData = await response.json();
+
+        if (errorData.needsReauth) {
+          // Check if this is a Notion token issue or a complete auth failure
+          if (errorData.error?.includes("Notion")) {
+            // This is a Notion-specific issue - don't redirect to login
+            setError(
+              "Notion connection expired. Please reconnect to Notion to access your databases."
+            );
+            setTaskList([]);
+            setPageList([]);
+            return;
+          } else if (
+            errorData.error?.includes("session") ||
+            errorData.error?.includes("authenticated")
+          ) {
+            // This is a complete session failure - redirect to login
+            redirectToLogin();
+            return;
+          }
+        }
+
+        // For other errors, show them without redirecting
+        throw new Error(errorData.error || "Failed to load data");
+      }
+
+      const data = await response.json();
+
+      if (data.is_task_database) {
+        setIsTaskDatabase(true);
         setTaskList(data.tasks || []);
+        setPageList([]);
       } else {
-        const errorData = await response.json();
-
-        // Handle token expiration specifically
-        if (errorData.needsReauth) {
-          setError("Your Notion connection has expired. Please reconnect your account.");
-          setIsNotionConnected(false);
-          // Optionally, you could automatically trigger re-authentication here
-        } else {
-          setError(errorData.error || "Failed to load tasks");
-        }
-      }
-    } catch (err) {
-      console.error("Error loading tasks:", err);
-      setError("Failed to load tasks");
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    try {
-      setIsSigningIn(true);
-      setError(null);
-
-      // Use redirect-based OAuth instead of popup
-      const returnUrl = encodeURIComponent(window.location.href);
-      window.location.href = `/api/gauth/start?returnUrl=${returnUrl}`;
-
-      // Note: The page will redirect, so this code won't continue
-    } catch (error: any) {
-      console.error("Google sign-in error:", error);
-      setError(`Failed to start Google sign-in: ${error.message}`);
-      setIsSigningIn(false);
-    }
-  };
-
-  const handleGoogleSignOut = async () => {
-    try {
-      setError(null);
-
-      // Clear server session
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-
-      // Reset all local state
-      setIsGoogleSignedIn(false);
-      setUserEmail(null);
-      setUserName(null);
-      setPreviousEmail(null);
-      setIsNotionConnected(false);
-      setTaskList([]);
-      setSelectedDatabase(null);
-      setDatabases([]);
-      setShowDatabaseSelector(false);
-    } catch (error: any) {
-      console.error("Sign out error:", error);
-      setError(`Failed to sign out: ${error.message}`);
-    }
-  };
-
-  const handleNotionLogout = async () => {
-    try {
-      setError(null);
-
-      // Clear Notion tokens from server
-      const response = await fetch("/api/notion/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        // Reset only Notion-related local state, keep Google auth
-        setIsNotionConnected(false);
+        setIsTaskDatabase(false);
+        setPageList(data.pages || []);
         setTaskList([]);
-        setSelectedDatabase(null);
-        setDatabases([]);
-        setShowDatabaseSelector(false);
-        console.log("Successfully logged out of Notion");
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || "Failed to log out of Notion");
       }
-    } catch (error: any) {
-      console.error("Notion logout error:", error);
-      setError(`Failed to log out of Notion: ${error.message}`);
+    } catch (err) {
+      console.error("Error loading data:", err);
+      setError(`Failed to load data: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
   };
 
-  const selectDatabase = async (database: NotionDatabase) => {
+  const handleLogout = async () => {
     try {
-      const plainTitle = extractPlainText(database.title);
-      const response = await fetch("/api/notion/database-selection", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          databaseId: database.id,
-          databaseTitle: plainTitle,
-        }),
-      });
-
-      if (response.ok) {
-        setSelectedDatabase({
-          id: database.id,
-          title: plainTitle,
-          selectedAt: new Date().toISOString(),
-        });
-        setShowDatabaseSelector(false);
-        // Tasks will load automatically via useEffect
-      } else {
-        const errorData = await response.json();
-
-        // Handle token expiration specifically
-        if (errorData.needsReauth) {
-          setError("Your Notion connection has expired. Please reconnect your account.");
-          setIsNotionConnected(false);
-        } else {
-          setError(errorData.error || "Failed to select database");
-        }
-      }
-    } catch (err) {
-      console.error("Error selecting database:", err);
-      setError("Failed to select database");
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      await fetch("/api/notion/logout", { method: "POST", credentials: "include" });
+      redirectToLogin();
+    } catch (error) {
+      console.error("Logout error:", error);
+      redirectToLogin();
     }
   };
 
@@ -373,282 +296,494 @@ export default function GardenTasks() {
         Loading...
       </div>
     );
-  } else {
-    let bodyHTML;
-    if (!isGoogleSignedIn) {
-      bodyHTML = (
-        <div style={{ textAlign: "center", padding: "20px" }}>
-          {previousEmail ? (
-            <>
-              <p style={{ marginBottom: "10px" }}>
-                Welcome back! Continue as <strong>{previousEmail}</strong>?
-              </p>
-              <p style={{ marginBottom: "20px", fontSize: "14px", color: "#666" }}>
-                Your session has expired. Sign in again to continue.
-              </p>
-            </>
-          ) : (
-            <p style={{ marginBottom: "20px" }}>
-              Sign in with Google to access your tasks and sync with Notion!
-            </p>
-          )}
-          <div className="mt-4 text-center">
-            <button
-              onClick={handleGoogleSignIn}
-              disabled={isSigningIn}
-              className={`inline-flex items-center justify-center gap-2 bg-gray-200 text-white px-6 py-3 rounded-lg font-bold transition-opacity ${
-                isSigningIn ? "opacity-70 cursor-not-allowed" : "hover:bg-blue-700"
-              }`}
-              style={{
-                border: "1px solid #ccc", // Add a small border
-                textShadow: "0px 0px 2px #000",
-              }}
-            >
-              {googleSVG}
-              {isSigningIn ? "Signing in..." : previousEmail ? "Continue" : "Sign in with Google"}
-            </button>
-            {previousEmail && (
-              <p style={{ marginTop: "10px", fontSize: "12px", color: "#666" }}>
-                Or{" "}
-                <button
-                  onClick={() => {
-                    setPreviousEmail(null);
-                    handleGoogleSignIn();
-                  }}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#007bff",
-                    textDecoration: "underline",
-                    cursor: "pointer",
-                    fontSize: "12px",
-                    padding: "0",
-                  }}
-                >
-                  sign in with a different account
-                </button>
-              </p>
-            )}
-          </div>
-        </div>
-      );
-    } else {
-      // Now we determine if Notion is logged in or not
+  }
 
-      let notionHTML;
-      if (!isNotionConnected) {
-        notionHTML = (
-          <div>
-            <p style={{ marginBottom: "20px" }}>Now connect your Notion workspace to sync tasks!</p>
-            <button
-              onClick={() => handleNotionLogin()}
-              className="inline-block bg-black text-white px-6 py-3 rounded-lg font-bold cursor-pointer transition-colors hover:bg-gray-900"
-            >
-              Connect to Notion
-            </button>
-
-            <p>After connecting, you will be able to sync your tasks between Google and Notion.</p>
-          </div>
-        );
-      } else {
-        notionHTML = (
-          <div className="overflow-auto" style={{ maxHeight: "350px", paddingRight: "8px" }}>
-            <p>Notion is logged in</p>
-
-            <div>
-              {databases.length > 0 ? (
-                <div>
-                  <h3 style={{ marginBottom: "15px", fontSize: "18px" }}>
-                    Select a database to sync tasks:
-                  </h3>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    {databases.map((db: NotionDatabase) => (
-                      <div
-                        key={db.id}
-                        onClick={() => selectDatabase(db)}
-                        style={{
-                          padding: "12px",
-                          border: "1px solid #ddd",
-                          borderRadius: "6px",
-                          cursor: "pointer",
-                          backgroundColor: selectedDatabase?.id === db.id ? "#e3f2fd" : "#f9f9f9",
-                          transition: "background-color 0.2s",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (selectedDatabase?.id !== db.id) {
-                            e.currentTarget.style.backgroundColor = "#f0f0f0";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (selectedDatabase?.id !== db.id) {
-                            e.currentTarget.style.backgroundColor = "#f9f9f9";
-                          }
-                        }}
-                      >
-                        <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
-                          {extractPlainText(db.title)}
-                        </div>
-                        <div style={{ fontSize: "12px", color: "#666" }}>ID: {db.id}</div>
-                        {db.url && (
-                          <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>
-                            <a
-                              href={db.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ color: "#007bff", textDecoration: "underline" }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              View in Notion
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {selectedDatabase && (
-                    <div
-                      style={{
-                        marginTop: "20px",
-                        padding: "12px",
-                        backgroundColor: "#e8f5e8",
-                        borderRadius: "6px",
-                      }}
-                    >
-                      <strong>Selected:</strong> {selectedDatabase.title}
-                      <br />
-                      <small>
-                        Selected at: {new Date(selectedDatabase.selectedAt).toLocaleString()}
-                      </small>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div style={{ textAlign: "center", color: "#666", fontStyle: "italic" }}>
-                  Loading databases...
-                </div>
-              )}
-            </div>
-
-            {/* Notion Logout Button */}
-            <div style={{ marginTop: "20px", textAlign: "center" }}>
-              <button
-                onClick={handleNotionLogout}
-                className="inline-block bg-red-600 text-white px-4 py-2 rounded-lg font-bold cursor-pointer transition-colors hover:bg-red-700"
-                style={{ fontSize: "14px" }}
-              >
-                Log out of Notion
-              </button>
-            </div>
-          </div>
-        );
-      }
-
-      bodyHTML = (
-        <div style={{ textAlign: "center", padding: "20px" }}>
-          <p style={{ marginBottom: "10px" }}>Welcome, {userName || userEmail}!</p>
-
-          <div className="p-5 my-5 h-[30%]">{notionHTML}</div>
-
-          <button
-            className="inline-block bg-black text-white px-6 py-3 rounded-lg font-bold cursor-pointer transition-colors hover:bg-red-700"
-            onClick={() => {
-              handleGoogleSignOut();
-            }}
-          >
-            Log out from Google
-          </button>
-        </div>
-      );
-    }
-
+  // If not authenticated, this shouldn't show (should redirect), but just in case
+  if (!isAuthenticated) {
     return (
-      <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            userSelect: "none",
-            marginBottom: "20px",
-          }}
-        >
-          <img
-            src="/icon.png"
-            alt="Icon"
-            style={{ width: 40, height: 40, marginRight: 12, userSelect: "none" }}
-          />
-          <h1
-            style={{
-              fontFamily: HeaderFont,
-              fontSize: "32px",
-              margin: 0,
-              userSelect: "none",
-            }}
-          >
-            Task List
-          </h1>
-        </div>
-
-        {bodyHTML}
-
-        {/* Floating Error Card */}
-        {error && (
-          <div
-            style={{
-              position: "fixed",
-              bottom: "20px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              backgroundColor: "#fee",
-              border: "2px solid #fcc",
-              borderRadius: "12px",
-              padding: "16px 20px",
-              color: "#c00",
-              fontSize: "14px",
-              fontWeight: "500",
-              boxShadow: "0 8px 25px rgba(0, 0, 0, 0.15)",
-              zIndex: 1000,
-              maxWidth: "90vw",
-              minWidth: "300px",
-              textAlign: "center",
-              animation: "slideUp 0.3s ease-out",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span>{error}</span>
-              <button
-                onClick={() => setError(null)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#c00",
-                  fontSize: "18px",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  marginLeft: "12px",
-                  padding: "0",
-                  lineHeight: "1",
-                }}
-                title="Dismiss error"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
-
-        <style jsx>{`
-          @keyframes slideUp {
-            from {
-              opacity: 0;
-              transform: translateX(-50%) translateY(20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateX(-50%) translateY(0);
-            }
-          }
-        `}</style>
+      <div style={{ textAlign: "center", padding: "20px" }}>
+        <p>Redirecting to login...</p>
       </div>
     );
   }
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          userSelect: "none",
+          marginBottom: "20px",
+        }}
+      >
+        <img
+          src="/icon.png"
+          alt="Icon"
+          style={{ width: 40, height: 40, marginRight: 12, userSelect: "none" }}
+        />
+        <h1
+          style={{
+            fontFamily: HeaderFont,
+            fontSize: "32px",
+            margin: 0,
+            userSelect: "none",
+          }}
+        >
+          Task List
+        </h1>
+      </div>
+
+      <div style={{ textAlign: "center", padding: "20px" }}>
+        <p style={{ marginBottom: "10px" }}>Welcome, {userName || userEmail}!</p>
+
+        <div className="p-5 my-5">
+          <div className="overflow-auto" style={{ maxHeight: "500px", paddingRight: "8px" }}>
+            {selectedDatabase ? (
+              <div>
+                <div
+                  style={{
+                    marginBottom: "20px",
+                    padding: "12px",
+                    backgroundColor: "#e8f5e8",
+                    borderRadius: "6px",
+                  }}
+                >
+                  <strong>Current Database:</strong> {selectedDatabase.title}
+                  <br />
+                  <small>
+                    Selected at: {new Date(selectedDatabase.selectedAt).toLocaleString()}
+                  </small>
+                </div>
+
+                {/* Filter Controls */}
+                <div
+                  style={{
+                    marginTop: "20px",
+                    padding: "12px",
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: "6px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "10px",
+                    }}
+                  >
+                    <h4 style={{ margin: 0, fontSize: "16px" }}>Filters</h4>
+                    <button
+                      onClick={() => setShowFilterOptions(!showFilterOptions)}
+                      style={{
+                        background: "none",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        padding: "4px 8px",
+                        fontSize: "12px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {showFilterOptions ? "Hide" : "Show"} Options
+                    </button>
+                  </div>
+
+                  {currentFilter && (
+                    <div style={{ marginBottom: "10px", fontSize: "12px", color: "#666" }}>
+                      <strong>Active Filter:</strong>{" "}
+                      {JSON.stringify(currentFilter).length > 100
+                        ? JSON.stringify(currentFilter).substring(0, 100) + "..."
+                        : JSON.stringify(currentFilter)}
+                      <button
+                        onClick={() => setFilter(null)}
+                        style={{
+                          marginLeft: "8px",
+                          background: "none",
+                          border: "none",
+                          color: "#dc3545",
+                          fontSize: "12px",
+                          cursor: "pointer",
+                          textDecoration: "underline",
+                        }}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
+
+                  {showFilterOptions && (
+                    <div style={{ borderTop: "1px solid #ddd", paddingTop: "10px" }}>
+                      {isLoadingFilters ? (
+                        <div style={{ textAlign: "center", color: "#666", fontSize: "14px" }}>
+                          Loading filter options...
+                        </div>
+                      ) : (
+                        <div>
+                          {/* Quick Filter Buttons */}
+                          <div style={{ marginBottom: "15px" }}>
+                            <div
+                              style={{
+                                fontSize: "14px",
+                                fontWeight: "bold",
+                                marginBottom: "8px",
+                              }}
+                            >
+                              Quick Filters:
+                            </div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
+                              {filterOptions.some(
+                                (opt) =>
+                                  opt.name.toLowerCase().includes("completed") ||
+                                  opt.name.toLowerCase().includes("done")
+                              ) && (
+                                <button
+                                  onClick={() => {
+                                    const completedProp = filterOptions.find(
+                                      (opt) =>
+                                        opt.name.toLowerCase().includes("completed") ||
+                                        opt.name.toLowerCase().includes("done")
+                                    );
+                                    if (completedProp) {
+                                      applyCommonFilter("incomplete", completedProp.property);
+                                    }
+                                  }}
+                                  style={{
+                                    padding: "4px 8px",
+                                    fontSize: "12px",
+                                    backgroundColor: "#007bff",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "4px",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  Incomplete Only
+                                </button>
+                              )}
+                              {filterOptions.some((opt) =>
+                                opt.name.toLowerCase().includes("priority")
+                              ) && (
+                                <button
+                                  onClick={() => {
+                                    const priorityProp = filterOptions.find((opt) =>
+                                      opt.name.toLowerCase().includes("priority")
+                                    );
+                                    if (priorityProp) {
+                                      applyCommonFilter("priority", priorityProp.property, "High");
+                                    }
+                                  }}
+                                  style={{
+                                    padding: "4px 8px",
+                                    fontSize: "12px",
+                                    backgroundColor: "#dc3545",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "4px",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  High Priority
+                                </button>
+                              )}
+                              {filterOptions.some(
+                                (opt) =>
+                                  opt.name.toLowerCase().includes("due") ||
+                                  opt.name.toLowerCase().includes("date")
+                              ) && (
+                                <button
+                                  onClick={() => {
+                                    const dueProp = filterOptions.find(
+                                      (opt) =>
+                                        opt.name.toLowerCase().includes("due") ||
+                                        opt.name.toLowerCase().includes("date")
+                                    );
+                                    if (dueProp) {
+                                      applyCommonFilter("dueSoon", dueProp.property);
+                                    }
+                                  }}
+                                  style={{
+                                    padding: "4px 8px",
+                                    fontSize: "12px",
+                                    backgroundColor: "#28a745",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "4px",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  Due Soon
+                                </button>
+                              )}
+                              <button
+                                onClick={() => applyCommonFilter("recentlyCreated")}
+                                style={{
+                                  padding: "4px 8px",
+                                  fontSize: "12px",
+                                  backgroundColor: "#17a2b8",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Recently Created
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Available Properties */}
+                          {filterOptions.length > 0 && (
+                            <div style={{ fontSize: "12px", color: "#666" }}>
+                              <strong>Available properties:</strong>{" "}
+                              {filterOptions.map((opt) => opt.name).join(", ")}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Data Display */}
+                <div
+                  style={{
+                    marginTop: "20px",
+                    padding: "12px",
+                    backgroundColor: "#ffffff",
+                    borderRadius: "6px",
+                    border: "1px solid #ddd",
+                  }}
+                >
+                  <h4 style={{ margin: "0 0 15px 0", fontSize: "16px" }}>
+                    {isTaskDatabase ? "Tasks" : "Pages"}
+                    <span style={{ fontSize: "12px", color: "#666", fontWeight: "normal" }}>
+                      ({isTaskDatabase ? taskList.length : pageList.length} items)
+                    </span>
+                  </h4>
+
+                  <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+                    {isTaskDatabase ? (
+                      taskList.length > 0 ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                          {taskList.map((task: Task) => (
+                            <div
+                              key={task.id}
+                              style={{
+                                padding: "8px 12px",
+                                border: "1px solid #eee",
+                                borderRadius: "4px",
+                                backgroundColor: task.completed ? "#f8f9fa" : "#ffffff",
+                                opacity: task.archived ? 0.6 : 1,
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <input
+                                  type="checkbox"
+                                  checked={task.completed || false}
+                                  readOnly
+                                  style={{ margin: 0 }}
+                                />
+                                <div style={{ flex: 1 }}>
+                                  <div
+                                    style={{
+                                      fontWeight: "500",
+                                      textDecoration: task.completed ? "line-through" : "none",
+                                      color: task.completed ? "#666" : "#333",
+                                    }}
+                                  >
+                                    {task.title}
+                                  </div>
+                                  <div style={{ fontSize: "11px", color: "#666" }}>
+                                    {task.status && <span>Status: {task.status} • </span>}
+                                    {task.priority && <span>Priority: {task.priority} • </span>}
+                                    {task.dueDate && (
+                                      <span>
+                                        Due: {new Date(task.dueDate).toLocaleDateString()}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {task.notionUrl && (
+                                  <a
+                                    href={task.notionUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      color: "#007bff",
+                                      fontSize: "11px",
+                                      textDecoration: "underline",
+                                    }}
+                                  >
+                                    View
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            textAlign: "center",
+                            color: "#666",
+                            fontStyle: "italic",
+                            padding: "20px",
+                          }}
+                        >
+                          No tasks found
+                          {currentFilter && (
+                            <div style={{ fontSize: "12px", marginTop: "5px" }}>
+                              Try adjusting your filters
+                            </div>
+                          )}
+                        </div>
+                      )
+                    ) : pageList.length > 0 ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        {pageList.map((page: DatabasePage) => (
+                          <div
+                            key={page.id}
+                            style={{
+                              padding: "8px 12px",
+                              border: "1px solid #eee",
+                              borderRadius: "4px",
+                              backgroundColor: "#ffffff",
+                              opacity: page.archived ? 0.6 : 1,
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              {page.icon && (
+                                <span style={{ fontSize: "16px" }}>
+                                  {page.icon.type === "emoji" ? page.icon.emoji : "📄"}
+                                </span>
+                              )}
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: "500", color: "#333" }}>{page.title}</div>
+                                <div style={{ fontSize: "11px", color: "#666" }}>
+                                  Created: {new Date(page.createdTime || "").toLocaleDateString()}
+                                  {page.lastEditedTime && (
+                                    <span>
+                                      {" "}
+                                      • Edited: {new Date(page.lastEditedTime).toLocaleDateString()}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {page.notionUrl && (
+                                <a
+                                  href={page.notionUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    color: "#007bff",
+                                    fontSize: "11px",
+                                    textDecoration: "underline",
+                                  }}
+                                >
+                                  View
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          textAlign: "center",
+                          color: "#666",
+                          fontStyle: "italic",
+                          padding: "20px",
+                        }}
+                      >
+                        No pages found
+                        {currentFilter && (
+                          <div style={{ fontSize: "12px", marginTop: "5px" }}>
+                            Try adjusting your filters
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{ textAlign: "center", color: "#666", fontStyle: "italic", padding: "40px" }}
+              >
+                Please select a database to view tasks and pages.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <button
+          onClick={handleLogout}
+          className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg font-bold cursor-pointer transition-colors hover:bg-red-700"
+        >
+          Logout
+        </button>
+      </div>
+
+      {/* Floating Error Card */}
+      {(error || filterError) && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "20px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            backgroundColor: "#fee",
+            border: "2px solid #fcc",
+            borderRadius: "12px",
+            padding: "16px 20px",
+            color: "#c00",
+            fontSize: "14px",
+            fontWeight: "500",
+            boxShadow: "0 8px 25px rgba(0, 0, 0, 0.15)",
+            zIndex: 1000,
+            maxWidth: "90vw",
+            minWidth: "300px",
+            textAlign: "center",
+            animation: "slideUp 0.3s ease-out",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span>{error || filterError}</span>
+            <button
+              onClick={() => setError(null)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#c00",
+                fontSize: "18px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                marginLeft: "12px",
+                padding: "0",
+                lineHeight: "1",
+              }}
+              title="Dismiss error"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
+        }
+      `}</style>
+    </div>
+  );
 }

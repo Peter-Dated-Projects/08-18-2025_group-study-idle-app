@@ -82,7 +82,15 @@ export interface NotionTokenData {
 export interface NotionDatabaseData {
   id: string;
   title: string;
-  created_at: Date;
+}
+
+export interface UserEnabledDatabase {
+  databaseName: string;
+  databaseId: string;
+}
+
+export interface UserEnabledDatabases {
+  databases: UserEnabledDatabase[];
   updated_at: Date;
 }
 
@@ -99,7 +107,6 @@ export interface UserSession {
   sessionId: string;
   userId: string;
   notionTokens: NotionTokenData | null;
-  selectedDatabase: NotionDatabaseData | null;
   created_at: Date;
   expires_at: Date;
   userAccountInformation: UserAccountInformation | null;
@@ -175,40 +182,6 @@ export async function getNotionTokens(sessionId: string): Promise<NotionTokenDat
   return decryptedTokens;
 }
 
-// Update selected database
-export async function updateSelectedDatabase(
-  sessionId: string,
-  databaseId: string,
-  databaseTitle: string
-): Promise<void> {
-  const db = getFirestoreDb();
-
-  const selectedDatabase: NotionDatabaseData = {
-    id: databaseId,
-    title: databaseTitle,
-    created_at: new Date(),
-    updated_at: new Date(),
-  };
-
-  await db.collection(FIRESTORE_USER_SESSIONS!).doc(sessionId).update({
-    selectedDatabase,
-    updated_at: new Date(),
-  });
-}
-
-// Get selected database
-export async function getSelectedDatabase(sessionId: string): Promise<NotionDatabaseData | null> {
-  const db = getFirestoreDb();
-
-  const doc = await db.collection(FIRESTORE_USER_SESSIONS!).doc(sessionId).get();
-  if (!doc.exists) {
-    return null;
-  }
-
-  const userSession = doc.data() as UserSession;
-  return userSession.selectedDatabase || null;
-}
-
 // Get user session by sessionId
 export async function getUserSession(userID: string): Promise<UserSession | null> {
   const db = getFirestoreDb();
@@ -244,4 +217,51 @@ export async function cleanupExpiredSessions(maxAgeInDays: number = 30): Promise
 
   await batch.commit();
   return expiredSessions.size;
+}
+
+// User-enabled databases management
+export async function storeUserEnabledDatabases(
+  userId: string,
+  databases: UserEnabledDatabase[]
+): Promise<void> {
+  const db = getFirestoreDb();
+
+  const userEnabledDbs: UserEnabledDatabases = {
+    databases,
+    updated_at: new Date(),
+  };
+
+  await db.collection("user_notion_enabled_dbs").doc(userId).set(userEnabledDbs);
+}
+
+export async function getUserEnabledDatabases(userId: string): Promise<UserEnabledDatabase[]> {
+  const db = getFirestoreDb();
+
+  const doc = await db.collection("user_notion_enabled_dbs").doc(userId).get();
+
+  if (!doc.exists) {
+    console.log("🔥 No enabled databases found for user");
+    return [];
+  }
+
+  const data = doc.data() as UserEnabledDatabases;
+  return data.databases || [];
+}
+
+export async function addUserEnabledDatabase(
+  userId: string,
+  database: UserEnabledDatabase
+): Promise<void> {
+  const existingDatabases = await getUserEnabledDatabases(userId);
+
+  // Check if database already exists
+  const exists = existingDatabases.some((db) => db.databaseId === database.databaseId);
+  if (exists) {
+    console.log("🔥 Database already exists, skipping");
+    return; // Already exists, no need to add
+  }
+
+  const updatedDatabases = [...existingDatabases, database];
+
+  await storeUserEnabledDatabases(userId, updatedDatabases);
 }
