@@ -4,8 +4,11 @@ import GardenCanvas from "@/components/GardenCanvas";
 import MusicSync from "@/components/MusicSync";
 import GardenMenu from "@/components/GardenMenu";
 import GardenTasks from "@/components/GardenTasks";
+import GardenSettings from "@/components/GardenSettings";
+import { ErrorProvider, useGlobalError } from "@/components/ErrorProvider";
 import * as PIXI from "pixi.js";
 
+import { FONTCOLOR, BORDERFILL, BORDERLINE, PANELFILL } from "@/components/constants";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -25,13 +28,17 @@ interface NotionDatabase {
   last_edited_time?: string;
 }
 
-const BORDERWIDTH = "8px";
-const BORDERFILL = "#c49a6c";
-const BORDERLINE = "#9b6542ff";
-const PANELFILL = "#e8cfa6";
-const FONTCOLOR = "#813706ff";
-
 export default function GardenPage() {
+  return (
+    <ErrorProvider>
+      <GardenPageContent />
+    </ErrorProvider>
+  );
+}
+
+function GardenPageContent() {
+  const { addError } = useGlobalError();
+
   const [isClicking, setIsClicking] = useState(false);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [pixiApp, setPixiApp] = useState<PIXI.Application | null>(null);
@@ -44,7 +51,6 @@ export default function GardenPage() {
   );
   const [isLoadingDatabases, setIsLoadingDatabases] = useState(false);
   const [showDatabaseDropdown, setShowDatabaseDropdown] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -79,7 +85,6 @@ export default function GardenPage() {
   const loadDatabases = async () => {
     try {
       setIsLoadingDatabases(true);
-      setError(null);
 
       const response = await fetch("/api/notion/databases/enabled", {
         credentials: "include",
@@ -101,15 +106,15 @@ export default function GardenPage() {
       } else {
         const errorData = await response.json();
         if (errorData.needsReauth) {
-          setError("Your Notion connection has expired. Please reconnect your account.");
+          addError("Your Notion connection has expired. Please reconnect your account.");
           router.push("/login");
         } else {
-          setError(errorData.error || "Failed to load enabled databases");
+          addError(errorData.error || "Failed to load enabled databases");
         }
       }
     } catch (err) {
       console.error("Error loading enabled databases:", err);
-      setError("Failed to load enabled databases");
+      addError("Failed to load enabled databases");
     } finally {
       setIsLoadingDatabases(false);
     }
@@ -134,7 +139,6 @@ export default function GardenPage() {
 
   const handleSelectDatabase = async (database: NotionDatabase) => {
     try {
-      setError(null);
       const plainTitle = extractPlainText(database.title);
 
       // Show immediate feedback
@@ -170,7 +174,7 @@ export default function GardenPage() {
       window.dispatchEvent(databaseChangeEvent);
     } catch (err) {
       console.error("Error selecting database:", err);
-      setError("Failed to select database");
+      addError("Failed to select database");
     }
   };
 
@@ -237,157 +241,146 @@ export default function GardenPage() {
   }
 
   return (
-    <main
-      className="flex flex-col min-h-screen w-full bg-black overflow-hidden"
-      style={{
-        backgroundColor: BORDERFILL,
-        border: `5px solid ${BORDERLINE}`,
-        cursor: isClicking
-          ? `url("/ui/mouse_click.png") 8 8, auto`
-          : `url("/ui/mouse_idle.png") 8 8, auto`,
-        color: FONTCOLOR,
-        textShadow: `1px 1px 1px ${BORDERFILL}`,
-      }}
-      onMouseDown={() => setIsClicking(true)}
-      onMouseUp={() => setIsClicking(false)}
-      onMouseLeave={() => setIsClicking(false)}
-    >
-      <div className="w-full h-full" style={{ border: `8px solid ${BORDERFILL}` }}>
-        <div
-          className={`flex w-full h-full flex-1 gap-[10px]`}
-          style={{ border: `2px solid ${BORDERFILL}` }}
-        >
+    <ErrorProvider>
+      <main
+        className="flex flex-col min-h-screen w-full bg-black overflow-hidden"
+        style={{
+          backgroundColor: BORDERFILL,
+          border: `5px solid ${BORDERLINE}`,
+          cursor: isClicking
+            ? `url("/ui/mouse_click.png") 8 8, auto`
+            : `url("/ui/mouse_idle.png") 8 8, auto`,
+          color: FONTCOLOR,
+          textShadow: `1px 1px 1px ${BORDERFILL}`,
+        }}
+        onMouseDown={() => setIsClicking(true)}
+        onMouseUp={() => setIsClicking(false)}
+        onMouseLeave={() => setIsClicking(false)}
+      >
+        <div className="w-full h-full" style={{ border: `8px solid ${BORDERFILL}` }}>
           <div
-            className="w-7/10 flex-1"
-            style={{
-              border: `5px solid ${BORDERLINE}`,
-              position: "relative", // Add relative positioning here
-            }}
+            className={`flex w-full h-full flex-1 gap-[10px]`}
+            style={{ border: `2px solid ${BORDERFILL}` }}
           >
-            {/* <GardenCanvas
+            <div
+              className="w-7/10 flex-1"
+              style={{
+                border: `5px solid ${BORDERLINE}`,
+                position: "relative", // Add relative positioning here
+              }}
+            >
+              {/* <GardenCanvas
               onAppCreated={(app) => {
                 console.log("PIXI App created:", app);
                 setPixiApp(app);
               }}
             />
             <GardenMenu pixiApp={pixiApp} /> */}
-          </div>
+              <GardenSettings />
+            </div>
 
-          <div
-            className={`w-3/10 flex flex-col h-full gap-[10px]`}
-            style={{ border: `5px solid ${BORDERLINE}`, backgroundColor: BORDERFILL }}
-          >
-            {/* Database Selector */}
             <div
-              style={{
-                padding: "10px",
-                backgroundColor: PANELFILL,
-                borderBottom: `3px solid ${BORDERLINE}`,
-                minHeight: "60px",
-              }}
+              className={`w-3/10 flex flex-col h-full gap-[10px]`}
+              style={{ border: `5px solid ${BORDERLINE}`, backgroundColor: BORDERFILL }}
             >
-              <div className="flex flex-col gap-2 database-dropdown-container relative">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium" style={{ color: FONTCOLOR }}>
-                    Current Database:
-                  </span>
-                  <button
-                    onClick={() => setShowDatabaseDropdown(!showDatabaseDropdown)}
-                    className="text-xs px-2 py-1 rounded border"
-                    style={{
-                      backgroundColor: BORDERFILL,
-                      border: `1px solid ${BORDERLINE}`,
-                      color: FONTCOLOR,
-                    }}
-                    disabled={isLoadingDatabases}
-                  >
-                    {isLoadingDatabases ? "Loading..." : "Change"}
-                  </button>
-                </div>
+              {/* Database Selector */}
+              <div
+                style={{
+                  padding: "10px",
+                  backgroundColor: PANELFILL,
+                  borderBottom: `3px solid ${BORDERLINE}`,
+                  minHeight: "60px",
+                }}
+              >
+                <div className="flex flex-col gap-2 database-dropdown-container relative">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium" style={{ color: FONTCOLOR }}>
+                      Current Database:
+                    </span>
+                    <button
+                      onClick={() => setShowDatabaseDropdown(!showDatabaseDropdown)}
+                      className="text-xs px-2 py-1 rounded border"
+                      style={{
+                        backgroundColor: BORDERFILL,
+                        border: `1px solid ${BORDERLINE}`,
+                        color: FONTCOLOR,
+                      }}
+                      disabled={isLoadingDatabases}
+                    >
+                      {isLoadingDatabases ? "Loading..." : "Change"}
+                    </button>
+                  </div>
 
-                <div className="text-xs" style={{ color: FONTCOLOR }}>
-                  {selectedDatabase ? selectedDatabase.title : "No database selected"}
-                </div>
+                  <div className="text-xs" style={{ color: FONTCOLOR }}>
+                    {selectedDatabase ? selectedDatabase.title : "No database selected"}
+                  </div>
 
-                {/* Dropdown */}
-                {showDatabaseDropdown && (
-                  <div
-                    className="absolute z-10 mt-1 max-h-60 overflow-auto rounded border shadow-lg"
-                    style={{
-                      backgroundColor: PANELFILL,
-                      border: `2px solid ${BORDERLINE}`,
-                      width: "280px",
-                      top: "100%",
-                    }}
-                  >
-                    {databases.length > 0 ? (
-                      databases.map((db: NotionDatabase) => (
-                        <div
-                          key={db.id}
-                          onClick={() => handleSelectDatabase(db)}
-                          className="px-3 py-2 cursor-pointer border-b hover:bg-opacity-80"
-                          style={{
-                            borderBottom: `1px solid ${BORDERLINE}`,
-                            backgroundColor:
-                              selectedDatabase?.id === db.id ? BORDERFILL : "transparent",
-                            color: FONTCOLOR,
-                          }}
-                        >
-                          <div className="text-sm font-medium">{extractPlainText(db.title)}</div>
-                          <div className="text-xs opacity-70">ID: {db.id.substring(0, 8)}...</div>
+                  {/* Dropdown */}
+                  {showDatabaseDropdown && (
+                    <div
+                      className="absolute z-10 mt-1 max-h-60 overflow-auto rounded border shadow-lg"
+                      style={{
+                        backgroundColor: PANELFILL,
+                        border: `2px solid ${BORDERLINE}`,
+                        width: "280px",
+                        top: "100%",
+                      }}
+                    >
+                      {databases.length > 0 ? (
+                        databases.map((db: NotionDatabase) => (
+                          <div
+                            key={db.id}
+                            onClick={() => handleSelectDatabase(db)}
+                            className="px-3 py-2 cursor-pointer border-b hover:bg-opacity-80"
+                            style={{
+                              borderBottom: `1px solid ${BORDERLINE}`,
+                              backgroundColor:
+                                selectedDatabase?.id === db.id ? BORDERFILL : "transparent",
+                              color: FONTCOLOR,
+                            }}
+                          >
+                            <div className="text-sm font-medium">{extractPlainText(db.title)}</div>
+                            <div className="text-xs opacity-70">ID: {db.id.substring(0, 8)}...</div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-sm" style={{ color: FONTCOLOR }}>
+                          No databases found
                         </div>
-                      ))
-                    ) : (
-                      <div className="px-3 py-2 text-sm" style={{ color: FONTCOLOR }}>
-                        No databases found
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Error display */}
-                {error && (
-                  <div
-                    className="text-xs p-2 rounded"
-                    style={{
-                      backgroundColor: "#fee",
-                      border: "1px solid #fcc",
-                      color: "#800",
-                    }}
-                  >
-                    {error}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div
-              className="flex-1"
-              style={{
-                flexBasis: "60%",
-                minHeight: 100,
-                padding: "10px",
-                backgroundColor: PANELFILL,
-                borderBottom: `5px solid ${BORDERLINE}`,
-              }}
-            >
-              <GardenTasks />
-            </div>
-            <div
-              className="flex-1"
-              style={{
-                flexBasis: "30%",
-                minHeight: 100,
-                padding: "10px",
-                backgroundColor: PANELFILL,
-                borderTop: `5px solid ${BORDERLINE}`,
-              }}
-            >
-              <MusicSync />
+              <div
+                className="flex-1"
+                style={{
+                  flexBasis: "60%",
+                  minHeight: 100,
+                  padding: "10px",
+                  backgroundColor: PANELFILL,
+                  borderBottom: `5px solid ${BORDERLINE}`,
+                }}
+              >
+                <GardenTasks />
+              </div>
+              <div
+                className="flex-1"
+                style={{
+                  flexBasis: "30%",
+                  minHeight: 100,
+                  padding: "10px",
+                  backgroundColor: PANELFILL,
+                  borderTop: `5px solid ${BORDERLINE}`,
+                }}
+              >
+                <MusicSync />
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </ErrorProvider>
   );
 }

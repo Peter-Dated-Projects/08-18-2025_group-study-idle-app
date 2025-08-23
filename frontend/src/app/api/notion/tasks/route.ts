@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { NOTION_API_VERSION } from "@/components/constants";
 import { getUserSession, simpleDecrypt } from "@/lib/firestore";
+import { fetchWithTokenRefresh } from "@/lib/notion-token-refresh";
 
 // Helper function to extract plain text from Notion rich text objects
 const extractPlainText = (richTextArray: any): string => {
@@ -138,8 +139,6 @@ export async function GET(req: Request) {
       );
     }
 
-    // Decrypt the access token
-    const access_token = simpleDecrypt(session.notionTokens.access_token);
     const url = new URL(req.url);
     const databaseId = url.searchParams.get("databaseId");
     const filterParam = url.searchParams.get("filter");
@@ -159,13 +158,13 @@ export async function GET(req: Request) {
     }
 
     // Get database schema first
-    const databaseResponse = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-        "Notion-Version": "2022-06-28",
-      },
-    });
+    const databaseResponse = await fetchWithTokenRefresh(
+      userId,
+      `https://api.notion.com/v1/databases/${databaseId}`,
+      {
+        method: "GET",
+      }
+    );
 
     if (!databaseResponse.ok) {
       const error = await databaseResponse.json();
@@ -193,22 +192,24 @@ export async function GET(req: Request) {
 
     // Query database pages
     const queryBody: any = {
-      page_size: 20,
+      page_size: 100,
     };
 
     if (filter) {
       queryBody.filter = filter;
     }
 
-    const pagesResponse = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-        "Notion-Version": NOTION_API_VERSION,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(queryBody),
-    });
+    const pagesResponse = await fetchWithTokenRefresh(
+      userId,
+      `https://api.notion.com/v1/databases/${databaseId}/query`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(queryBody),
+      }
+    );
 
     if (!pagesResponse.ok) {
       const error = await pagesResponse.json();
@@ -235,7 +236,7 @@ export async function GET(req: Request) {
     const pagesData = await pagesResponse.json();
 
     // Check if this looks like a task database
-    console.log("/api/notion/tasks received pages from database: ", pagesData);
+    // console.log("/api/notion/tasks received pages from database: ", pagesData);
     const isTaskDatabase = isTaskPage({}, database);
 
     if (isTaskDatabase) {
@@ -340,9 +341,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Decrypt the access token
-    const access_token = simpleDecrypt(session.notionTokens.access_token);
-
     const body = await request.json();
     const { database_id, filter, sort, page_size = 100, start_cursor } = body;
 
@@ -351,13 +349,13 @@ export async function POST(request: Request) {
     }
 
     // Get database info
-    const databaseResponse = await fetch(`https://api.notion.com/v1/databases/${database_id}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-        "Notion-Version": "2022-06-28",
-      },
-    });
+    const databaseResponse = await fetchWithTokenRefresh(
+      userId,
+      `https://api.notion.com/v1/databases/${database_id}`,
+      {
+        method: "GET",
+      }
+    );
 
     if (!databaseResponse.ok) {
       const error = await databaseResponse.json();
@@ -399,15 +397,17 @@ export async function POST(request: Request) {
     }
 
     // Query database pages
-    const pagesResponse = await fetch(`https://api.notion.com/v1/databases/${database_id}/query`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-        "Notion-Version": "2022-06-28",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(queryBody),
-    });
+    const pagesResponse = await fetchWithTokenRefresh(
+      userId,
+      `https://api.notion.com/v1/databases/${database_id}/query`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(queryBody),
+      }
+    );
 
     if (!pagesResponse.ok) {
       const error = await pagesResponse.json();

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getUserSession } from "@/lib/firestore";
+import { fetchWithTokenRefresh } from "@/lib/notion-token-refresh";
 
 interface NotionPage {
   id: string;
@@ -125,20 +127,23 @@ function formatPropertyValue(property: any, type: string): any {
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const cookieStore = await cookies();
-  const tokenCookie = cookieStore.get("notion_token")?.value;
+  const userId = cookieStore.get("user_id")?.value;
 
-  if (!tokenCookie) {
-    return NextResponse.json({ error: "No authentication token found" }, { status: 401 });
+  if (!userId) {
+    return NextResponse.json({ error: "User not authenticated" }, { status: 401 });
   }
 
-  let tokenData;
-  try {
-    tokenData = JSON.parse(tokenCookie);
-  } catch (error) {
-    return NextResponse.json({ error: "Invalid token data" }, { status: 401 });
+  // Fetch user session from Firestore
+  const session = await getUserSession(userId);
+  if (!session) {
+    return NextResponse.json({ error: "User session not found" }, { status: 404 });
   }
 
-  const { access_token } = tokenData;
+  // Check if user has Notion tokens
+  if (!session.notionTokens) {
+    return NextResponse.json({ error: "Notion tokens not found" }, { status: 401 });
+  }
+
   const { id: databaseId } = await params;
 
   if (!databaseId) {
@@ -155,13 +160,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   try {
     // First, get the database schema to understand property types
-    const databaseResponse = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-        "Notion-Version": "2022-06-28",
-      },
-    });
+    const databaseResponse = await fetchWithTokenRefresh(
+      userId,
+      `https://api.notion.com/v1/databases/${databaseId}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (!databaseResponse.ok) {
       const error = await databaseResponse.json();
@@ -200,15 +208,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       queryBody.start_cursor = requestBody.start_cursor;
     }
 
-    const pagesResponse = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-        "Notion-Version": "2022-06-28",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(queryBody),
-    });
+    const pagesResponse = await fetchWithTokenRefresh(
+      userId,
+      `https://api.notion.com/v1/databases/${databaseId}/query`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(queryBody),
+      }
+    );
 
     if (!pagesResponse.ok) {
       const error = await pagesResponse.json();

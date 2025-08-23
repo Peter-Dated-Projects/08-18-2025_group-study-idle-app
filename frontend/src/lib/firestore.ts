@@ -200,6 +200,29 @@ export async function getUserSession(userID: string): Promise<UserSession | null
   return doc.data() as UserSession;
 }
 
+// Update user session with new data (e.g., refreshed tokens)
+export async function updateUserSession(
+  userID: string,
+  updatedSession: UserSession
+): Promise<void> {
+  const db = getFirestoreDb();
+
+  const snapshot = await db
+    .collection(FIRESTORE_USER_SESSIONS!)
+    .where("userId", "==", userID)
+    .get();
+
+  if (snapshot.empty) {
+    throw new Error("User session not found");
+  }
+
+  const doc = snapshot.docs[0];
+  await doc.ref.update({
+    ...updatedSession,
+    updated_at: new Date().toISOString(),
+  });
+}
+
 // Clean up expired sessions (optional utility)
 export async function cleanupExpiredSessions(maxAgeInDays: number = 30): Promise<number> {
   const db = getFirestoreDb();

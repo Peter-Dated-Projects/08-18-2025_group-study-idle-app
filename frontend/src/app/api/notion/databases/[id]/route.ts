@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getUserSession } from "@/lib/firestore";
+import { NOTION_API_VERSION } from "@/components/constants";
+import { fetchWithTokenRefresh } from "@/lib/notion-token-refresh";
 
 interface NotionProperty {
   id: string;
@@ -21,20 +24,23 @@ interface NotionDatabaseDetails {
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const cookieStore = await cookies();
-  const tokenCookie = cookieStore.get("notion_token")?.value;
+  const userId = cookieStore.get("user_id")?.value;
 
-  if (!tokenCookie) {
-    return NextResponse.json({ error: "No authentication token found" }, { status: 401 });
+  if (!userId) {
+    return NextResponse.json({ error: "User not authenticated" }, { status: 401 });
   }
 
-  let tokenData;
-  try {
-    tokenData = JSON.parse(tokenCookie);
-  } catch (error) {
-    return NextResponse.json({ error: "Invalid token data" }, { status: 401 });
+  // Fetch user session from Firestore
+  const session = await getUserSession(userId);
+  if (!session) {
+    return NextResponse.json({ error: "User session not found" }, { status: 404 });
   }
 
-  const { access_token } = tokenData;
+  // Check if user has Notion tokens
+  if (!session.notionTokens) {
+    return NextResponse.json({ error: "Notion tokens not found" }, { status: 401 });
+  }
+
   const { id: databaseId } = await params;
 
   if (!databaseId) {
@@ -42,16 +48,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   try {
-    const response = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-        "Notion-Version": "2022-06-28",
-      },
-    });
+    const response = await fetchWithTokenRefresh(
+      userId,
+      `https://api.notion.com/v1/databases/${databaseId}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (!response.ok) {
       const error = await response.json();
+      console.warn(`/api/notion/databases/${databaseId}: Failed to fetch database details:`, error);
       return NextResponse.json(
         {
           error: "Failed to fetch database details",
@@ -62,6 +72,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     const database: NotionDatabaseDetails = await response.json();
+
+    if (!database) {
+      return NextResponse.json({ error: "Failed to fetch database details" }, { status: 500 });
+    }
 
     // Format the database schema for easier consumption
     const formattedProperties = Object.entries(database.properties).map(([key, property]) => ({
@@ -104,10 +118,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       last_edited_time: database.last_edited_time,
     });
   } catch (error) {
-    console.error("Error fetching database details:", error);
+    console.error(`Error fetching database details for ${databaseId}:`, error);
     return NextResponse.json(
       {
         error: "Internal server error while fetching database details",
+        databaseId: databaseId,
       },
       { status: 500 }
     );

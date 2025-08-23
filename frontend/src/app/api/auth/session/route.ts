@@ -7,7 +7,7 @@ export async function GET(req: Request) {
     const cookieStore = await cookies();
     const userId = cookieStore.get("user_id")?.value;
 
-    console.log(cookieStore);
+    // console.log(cookieStore);
 
     // If we don't have a valid user id, then we can't retrieve the session
     if (!userId) {
@@ -16,11 +16,11 @@ export async function GET(req: Request) {
 
     // Try to retrieve user session using userId
     const session = await getUserSession(userId);
-    console.log("/api/auth/session: ", session);
+    // console.log("/api/auth/session: ", session);
 
     if (!session) {
       // Clear invalid session cookie and encrypted email
-      console.log("Session not found for user:", userId);
+      console.warn("Session not found for user:", userId);
       cookieStore.delete("user_session");
       cookieStore.delete("user_id");
       return NextResponse.json({ success: false, error: "Invalid session" });
@@ -28,7 +28,7 @@ export async function GET(req: Request) {
 
     // Check if session is expired
     if (new Date(session.expires_at) < new Date(Date.now())) {
-      console.log("Session expired for user:", userId);
+      console.warn("Session expired for user:", userId);
       cookieStore.delete("user_session");
       cookieStore.delete("user_id");
       return NextResponse.json({ success: false, error: "Session expired" });
@@ -41,7 +41,6 @@ export async function GET(req: Request) {
       userName: session.userAccountInformation?.userName,
       sessionId: session.sessionId,
       hasNotionTokens: !!session.notionTokens,
-      selectedDatabase: session.selectedDatabase,
     });
   } catch (error) {
     console.error("Error checking session:", error);

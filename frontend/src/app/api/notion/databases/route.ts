@@ -2,14 +2,12 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getUserSession, NotionTokenData, simpleDecrypt } from "@/lib/firestore";
 import { NOTION_API_VERSION } from "@/components/constants";
+import { fetchWithTokenRefresh } from "@/lib/notion-token-refresh";
 
-async function fetchNotionDatabases(notionTokenData: NotionTokenData) {
-  const decryptedAccessToken = simpleDecrypt(notionTokenData.access_token);
-  const response = await fetch("https://api.notion.com/v1/search", {
+async function fetchNotionDatabases(userId: string) {
+  const response = await fetchWithTokenRefresh(userId, "https://api.notion.com/v1/search", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${decryptedAccessToken}`,
-      "Notion-Version": NOTION_API_VERSION,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -51,13 +49,13 @@ export async function GET(request: Request) {
   }
 
   // Ensure fetchNotionDatabases completes before continuing
-  const notionDatabases = await fetchNotionDatabases(session.notionTokens);
+  const notionDatabases = await fetchNotionDatabases(userId);
   if (!notionDatabases) {
     console.log("/api/notion/databases: Failed to fetch Notion databases");
     return NextResponse.json({ error: "Failed to fetch Notion databases" }, { status: 500 });
   }
 
-  //   console.log("/api/notion/databases: notionDatabases:", notionDatabases);
+  console.log("/api/notion/databases: notionDatabases:", notionDatabases);
 
   return NextResponse.json({ databases: notionDatabases });
 }

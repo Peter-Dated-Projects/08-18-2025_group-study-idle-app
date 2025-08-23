@@ -64,7 +64,6 @@ export async function GET() {
         hasValidTokens: hasNotionTokens,
         userEmail: session.userAccountInformation?.email || session.userId, // Fallback to userId if no account info
         userName: session.userAccountInformation?.userName,
-        selectedDatabase: session.selectedDatabase,
       },
       { status: 200 }
     );

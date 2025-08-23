@@ -1,8 +1,4 @@
-const HeaderFont = "Rubik Bubbles";
-const BodyFont = "Geist Sans";
-
-export { HeaderFont, BodyFont };
-
+// svgs
 export const googleSVG = (
   <svg width="20" height="20" viewBox="0 0 24 24">
     <g>
@@ -25,3 +21,20 @@ export const googleSVG = (
     </g>
   </svg>
 );
+
+export const BORDERWIDTH = "8px";
+export const BORDERFILL = "#c49a6c";
+export const BORDERLINE = "#9b6542ff";
+export const PANELFILL = "#e8cfa6";
+export const FONTCOLOR = "#813706ff";
+
+// sprite paths
+export const SETTINGS_ICON = "/ui/settings.png";
+export const SETTINGS_HEADER = "/ui/settings_header.png";
+
+// env variables
+export const NOTION_API_VERSION = process.env.NOTION_API_VERSION!;
+
+// fonts
+export const HeaderFont = "Rubik Bubbles";
+export const BodyFont = "Geist Sans";

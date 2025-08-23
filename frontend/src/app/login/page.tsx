@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { HeaderFont } from "@/components/utils";
-import { googleSVG } from "@/components/utils";
+import { HeaderFont, googleSVG } from "@/components/constants";
 
 export const AUTH_TOKEN_KEY = "auth_token";
 
@@ -133,7 +132,7 @@ export default function LoginPage() {
         credentials: "include",
       });
 
-      console.log(response);
+      //   console.log(response);
 
       if (response.ok) {
         const data = await response.json();

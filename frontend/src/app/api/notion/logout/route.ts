@@ -8,13 +8,19 @@ export async function POST(request: Request) {
     const userId = cookieStore.get("user_id")?.value;
 
     if (!userId) {
-      return NextResponse.json({ error: "User not authenticated" }, { status: 401 });
+      return NextResponse.json(
+        { error: "User not authenticated", redirect: "/login" },
+        { status: 401 }
+      );
     }
 
     // Get current user session
     const session = await getUserSession(userId);
     if (!session) {
-      return NextResponse.json({ error: "User session not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "User session not found", redirect: "/login" },
+        { status: 404 }
+      );
     }
 
     // Clear Notion tokens from Firestore

@@ -52,7 +52,9 @@ export function useNotionFilters(initialDatabaseId?: string): UseNotionFiltersRe
           throw new Error("Failed to load filter options");
         }
         const data = await response.json();
-        setFilterOptions(data.filterOptions || []);
+        const filterOptions = data.filterOptions || [];
+        console.log("🔍 Filter options loaded from current session:", filterOptions);
+        setFilterOptions(filterOptions);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load filters");
@@ -71,7 +73,13 @@ export function useNotionFilters(initialDatabaseId?: string): UseNotionFiltersRe
         throw new Error("Failed to load filter options");
       }
       const data = await response.json();
-      setFilterOptions(data.filterOptions || []);
+      const filterOptions = data.filterOptions || [];
+      console.log(`🔍 Filter options loaded for database ${databaseId}:`, filterOptions);
+      console.log(
+        `📋 Found ${filterOptions.length} filterable properties:`,
+        filterOptions.map((opt: FilterOption) => `${opt.name} (${opt.type})`)
+      );
+      setFilterOptions(filterOptions);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load filters");
@@ -84,8 +92,10 @@ export function useNotionFilters(initialDatabaseId?: string): UseNotionFiltersRe
   // Set a filter
   const setFilter = useCallback(
     (filter: DatabaseFilter | null) => {
+      console.log("🎯 Setting filter:", filter);
       setCurrentFilter(filter);
       if (filter === null) {
+        console.log("🔄 Resetting filter builder");
         filterBuilder.reset();
       }
     },
@@ -100,6 +110,7 @@ export function useNotionFilters(initialDatabaseId?: string): UseNotionFiltersRe
 
   // Apply common filter patterns
   const applyCommonFilter = useCallback((filterType: string, ...args: any[]) => {
+    console.log(`🚀 Applying common filter: ${filterType}`, args);
     let filter: DatabaseFilter | null = null;
 
     switch (filterType) {
@@ -139,7 +150,10 @@ export function useNotionFilters(initialDatabaseId?: string): UseNotionFiltersRe
     }
 
     if (filter) {
+      console.log("✅ Common filter applied successfully:", filter);
       setCurrentFilter(filter);
+    } else {
+      console.log("❌ No filter was created for the given type and args");
     }
   }, []);
 
