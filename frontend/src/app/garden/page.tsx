@@ -269,13 +269,13 @@ function GardenPageContent() {
                 position: "relative", // Add relative positioning here
               }}
             >
-              {/* <GardenCanvas
-              onAppCreated={(app) => {
-                console.log("PIXI App created:", app);
-                setPixiApp(app);
-              }}
-            />
-            <GardenMenu pixiApp={pixiApp} /> */}
+              <GardenCanvas
+                onAppCreated={(app) => {
+                  console.log("PIXI App created:", app);
+                  setPixiApp(app);
+                }}
+              />
+              <GardenMenu pixiApp={pixiApp} />
               <GardenSettings />
             </div>
 

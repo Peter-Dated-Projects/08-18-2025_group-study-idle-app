@@ -24,8 +24,8 @@ export class IdleAnimationState extends AnimationState {
     this.animatedTile.currentFrame = 0;
     this.animatedTile.lastFrameTime = Date.now();
 
-    // Random wait time between 3-5 seconds (3000-5000ms)
-    this.waitTime = Math.floor(Math.random() * (5000 - 3000 + 1)) + 3000;
+    // Random wait time between 1-3 seconds (1000-3000ms)
+    this.waitTime = Math.floor(Math.random() * 2000) + 1000;
     this.counter = 0;
   }
 
@@ -462,7 +462,7 @@ export async function buildAvatarStateMachine(
   animationLoader: AnimationLoader
 ): Promise<CharacterAnimation> {
   // Load the animations first
-  await animationLoader.load("/emoticons.png", "/emoticons.json", 150); // 150ms per frame
+  await animationLoader.load("/effects/emoticons.png", "/effects/emoticons.json", 150); // 150ms per frame
 
   // Create a sprite for the character animation
   const sprite = new PIXI.Sprite();

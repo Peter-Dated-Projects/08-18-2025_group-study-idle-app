@@ -12,6 +12,8 @@ import {
 import { AvatarSignalHandler } from "@/scripts/AvatarSignalHandler";
 import "@/utils/AvatarSignals"; // Import for console testing functions
 
+import { AVATAR_BOX } from "./constants";
+
 interface MenuTextures {
   avatar: PIXI.RenderTexture | null;
   inventory: PIXI.RenderTexture | null;
@@ -81,7 +83,7 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
       });
 
       // Load assets
-      const avatarTexture = await PIXI.Assets.load("/avatar-box.png");
+      const avatarTexture = await PIXI.Assets.load(AVATAR_BOX);
 
       // Create containers for each menu section
       menuContainers.current = {
@@ -247,22 +249,17 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
 
   return (
     <div
+      className="
+      absolute inset-0 z-[1000] 
+      grid grid-cols-3 grid-rows-3 
+      pointer-events-none
+      "
       style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 1000,
-        display: "grid",
-        gridTemplateColumns: "repeat(3, 1fr)",
-        gridTemplateRows: "repeat(3, 1fr)",
         gridTemplateAreas: `
-          "topleft topcenter topright"
-          "middleleft middlecenter middleright"
-          "bottomleft bottomcenter bottomright"
-        `,
-        pointerEvents: "none",
+        "topleft topcenter topright"
+        "middleleft middlecenter middleright"
+        "bottomleft bottomcenter bottomright"
+      `,
       }}
     >
       {/* Avatar */}
