@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { HeaderFont } from "@/components/constants";
 import { useNotionFilters } from "@/hooks/useNotionFilters";
-import { useGlobalError } from "@/components/ErrorProvider";
+import { useGlobalNotification } from "@/components/NotificationProvider";
 import GardenTaskListContainer from "./GardenTaskListContainer";
 
 export const AUTH_TOKEN_KEY = "auth_token";
@@ -49,11 +49,9 @@ interface SelectedDatabase {
 export default function GardenTasks() {
   const [isLoading, setIsLoading] = useState(true);
   const [taskList, setTaskList] = useState<Task[]>([]);
-  const [pageList, setPageList] = useState<DatabasePage[]>([]);
-  const [isTaskDatabase, setIsTaskDatabase] = useState(false);
   const [selectedDatabase, setSelectedDatabase] = useState<SelectedDatabase | null>(null);
 
-  const { addError } = useGlobalError();
+  const { addError } = useGlobalNotification();
 
   // Filter system integration
   const {
@@ -208,14 +206,8 @@ export default function GardenTasks() {
     window.location.href = "/login";
   };
 
-  const handleDataLoaded = (data: {
-    taskList: Task[];
-    pageList: DatabasePage[];
-    isTaskDatabase: boolean;
-  }) => {
+  const handleDataLoaded = (data: { taskList: Task[] }) => {
     setTaskList(data.taskList);
-    setPageList(data.pageList);
-    setIsTaskDatabase(data.isTaskDatabase);
   };
 
   // Show loading screen while checking authentication
@@ -264,8 +256,8 @@ export default function GardenTasks() {
           <div className="mb-4 text-center">
             <h3 className="text-lg font-semibold text-gray-800">{selectedDatabase.title}</h3>
             <p className="text-sm text-gray-500">
-              {isTaskDatabase ? "Task Database" : "Page Database"} •{" "}
-              {isTaskDatabase ? taskList.length : pageList.length} items
+              {"Database • "}
+              {taskList.length} items
             </p>
           </div>
         )}

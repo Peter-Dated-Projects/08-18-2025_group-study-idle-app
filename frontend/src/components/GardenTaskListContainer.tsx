@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { BORDERFILL } from "./constants";
-import { useGlobalError } from "./ErrorProvider";
+import { useGlobalNotification } from "./NotificationProvider";
+import { UserEnabledDatabases } from "@/lib/firestore";
+import style from "styled-jsx/style";
 
 interface Task {
   id: string;
@@ -28,6 +30,21 @@ interface DatabasePage {
   cover?: any;
 }
 
+interface DatabaseProperty {
+  id: string;
+  name: string;
+  type: string;
+  key: string;
+  options: DatabasePropertyOption[] | null;
+}
+
+interface DatabasePropertyOption {
+  id: string;
+  name: string;
+  color: string;
+  description: string;
+}
+
 interface GardenTaskListContainerProps {
   selectedDatabase?: any;
   currentFilter?: any;
@@ -35,11 +52,7 @@ interface GardenTaskListContainerProps {
   onTaskClick?: (task: Task) => void;
   isAuthenticated: boolean;
   onRedirectToLogin: () => void;
-  onDataLoaded: (data: {
-    taskList: Task[];
-    pageList: DatabasePage[];
-    isTaskDatabase: boolean;
-  }) => void;
+  onDataLoaded: (data: { taskList: Task[] }) => void;
   filterOptions: any[];
   onFilterChange: (filter: any) => void;
 }
@@ -55,13 +68,336 @@ export default function GardenTaskListContainer({
   filterOptions,
   onFilterChange,
 }: GardenTaskListContainerProps) {
-  const { addError } = useGlobalError();
+  const { addNotification } = useGlobalNotification();
   const [taskList, setTaskList] = useState<Task[]>([]);
-  const [pageList, setPageList] = useState<DatabasePage[]>([]);
-  const [isTaskDatabase, setIsTaskDatabase] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [databaseSchema, setDatabaseSchema] = useState<any>(null);
+  const [databaseSchema, setDatabaseSchema] = useState<DatabaseProperty[] | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [enabledDatabases, setEnabledDatabases] = useState<UserEnabledDatabases | null>(null);
+  const [tableColumns, setTableColumns] = useState<DatabaseProperty[]>([]);
+
+  // Helper function to retrieve all "Enabled" databases
+  const loadEnabledDatabases = async () => {
+    try {
+      const response = await fetch("/api/notion/databases/enabled");
+      const data = await response.json();
+      setEnabledDatabases(data);
+    } catch (error) {
+      console.error("Error fetching enabled databases:", error);
+      return null;
+    }
+  };
+
+  // Helper function to get start of week (Sunday) - normalized to start of day
+  const getStartOfWeek = (date: Date) => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day;
+    const startOfWeek = new Date(d.setDate(diff));
+    // Normalize to start of day (00:00:00)
+    startOfWeek.setHours(0, 0, 0, 0);
+    return startOfWeek;
+  };
+
+  // Helper function to create date range filters
+  const createDateRangeFilter = (startDate: Date, endDate: Date) => {
+    // Find date properties from database schema
+    const dateProperties = getDateProperties();
+
+    // If no date properties found, try common fallback names
+    let primaryDateProperty = null;
+
+    if (dateProperties.length > 0) {
+      primaryDateProperty = dateProperties[0];
+    } else {
+      // Try common date property names as fallbacks
+      const commonDateNames = [
+        "Due Date",
+        "Due",
+        "Date",
+        "Created",
+        "Modified",
+        "Last Edited",
+        "Start Date",
+        "End Date",
+        "Deadline",
+        "Created Time",
+        "Last Edited Time",
+      ];
+
+      if (databaseSchema?.properties) {
+        for (const commonName of commonDateNames) {
+          if (databaseSchema.properties[commonName]) {
+            primaryDateProperty = commonName;
+            console.log(`Using fallback date property: ${commonName}`);
+            break;
+          }
+        }
+      }
+    }
+
+    // If still no date property found, return null (will trigger error message)
+    if (!primaryDateProperty) {
+      console.warn("No date properties found in database schema:", databaseSchema?.properties);
+      return null;
+    }
+
+    // console.log(`Creating date filter using property: ${primaryDateProperty}`);
+
+    return {
+      and: [
+        {
+          property: primaryDateProperty,
+          date: {
+            on_or_after: startDate.toISOString().split("T")[0],
+          },
+        },
+        {
+          property: primaryDateProperty,
+          date: {
+            on_or_before: endDate.toISOString().split("T")[0],
+          },
+        },
+      ],
+    };
+  };
+
+  // Helper function to get date properties from database schema
+  const getDateProperties = () => {
+    if (!databaseSchema?.properties) {
+      console.warn("Database schema not loaded or has no properties");
+      return [];
+    }
+
+    const dateProps = Object.entries(databaseSchema.properties)
+      .filter(([_, prop]: [string, any]) => prop.type === "date")
+      .map(([key]) => key);
+
+    return dateProps;
+  };
+
+  // Load up Enabled Databases and Schema when database is selected
+  useEffect(() => {
+    if (isAuthenticated && selectedDatabase) {
+      console.log("Loading database schema and tasks/pages...");
+      loadEnabledDatabases();
+      loadDatabaseSchema();
+    }
+  }, [isAuthenticated, selectedDatabase, currentFilter]);
+
+  // Load up tasks when database is selected
+  useEffect(() => {
+    if (isAuthenticated && selectedDatabase) {
+      console.log("Loading tasks...");
+      loadTableColumns();
+      loadTasks();
+    }
+  }, [databaseSchema]);
+
+  // Notify parent when data changes
+  useEffect(() => {
+    onDataLoaded({
+      taskList,
+    });
+  }, [taskList, onDataLoaded]);
+
+  // Close filter dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showFilters) {
+        const target = event.target as Element;
+        if (!target.closest(".filter-dropdown-container")) {
+          setShowFilters(false);
+        }
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [showFilters]);
+
+  const loadDatabaseSchema = async () => {
+    if (!selectedDatabase) return;
+
+    try {
+      const response = await fetch(`/api/notion/databases/${selectedDatabase.id}`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        console.warn("Could not load database schema");
+        return;
+      }
+
+      const data = await response.json();
+      setDatabaseSchema(data);
+    } catch (err) {
+      console.error("Error loading database schema:", err);
+    }
+  };
+
+  const loadTasks = async () => {
+    if (!selectedDatabase) return;
+
+    console.log("Loading tasks...");
+
+    try {
+      setIsLoading(true);
+
+      // Build query URL with filter if present
+      let queryUrl = `/api/notion/tasks?databaseId=${selectedDatabase.id}`;
+      if (currentFilter) {
+        const filterParam = encodeURIComponent(JSON.stringify(currentFilter));
+        queryUrl += `&filter=${filterParam}`;
+      }
+
+      const response = await fetch(queryUrl, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+
+        if (errorData.needsReauth) {
+          // Check if this is a Notion token issue or a complete auth failure
+          if (errorData.error?.includes("Notion")) {
+            // This is a Notion-specific issue - don't redirect to login
+            addNotification({
+              message:
+                "Notion connection expired. Please reconnect to Notion to access your databases.",
+              type: "error",
+            });
+            setTaskList([]);
+            return;
+          } else if (
+            errorData.error?.includes("session") ||
+            errorData.error?.includes("authenticated")
+          ) {
+            // This is a complete session failure - redirect to login
+            onRedirectToLogin();
+            return;
+          }
+        }
+
+        // For other errors, show them without redirecting
+        throw new Error(errorData.error || "Failed to load data");
+      }
+
+      const data = await response.json();
+      console.log(data);
+
+      if (data.is_task_database) {
+        setTaskList(data.tasks || []);
+      } else {
+        setTaskList([]);
+      }
+    } catch (err) {
+      console.error("Error loading data:", err);
+      addNotification({
+        message: `Failed to load data: ${err instanceof Error ? err.message : "Unknown error"}`,
+        type: "error",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Helper function to get columns from database schema
+  const loadTableColumns = () => {
+    if (!databaseSchema?.properties) {
+      // Default columns if schema not available
+
+      console.warn("Database schema not available, using default columns");
+      setTableColumns([
+        { id: "0", name: "Completed", type: "checkbox", key: "completed" },
+        { id: "1", name: "Title", type: "title", key: "title" },
+      ]);
+
+      return;
+    }
+
+    const columns: DatabaseProperty[] = [];
+
+    // Add Checkbox column first
+    Object.entries(databaseSchema.properties).forEach(([key, value]: [string, any]) => {
+      if (value?.type === "checkbox") {
+        columns.push(value);
+        // only add one checkbox column
+        return;
+      }
+    });
+
+    // If not checkbox column found, create one + let user know
+    if (columns.length === 0) {
+      console.warn("No checkbox property found in database schema, adding default checkbox column");
+      fetch(`/api/notion/databases/${selectedDatabase.id}/update`, {
+        method: "POST",
+        body: JSON.stringify({
+          properties: {
+            Completed: {
+              checkbox: {},
+            },
+          },
+        }),
+      });
+
+      columns.push({
+        id: "0",
+        name: "Completed",
+        type: "checkbox",
+        key: "completed",
+        options: null,
+      });
+
+      // make a notification for the user so they know something happened
+      addNotification({
+        message: "No checkbox property found in database schema, adding default checkbox column",
+        type: "info",
+      });
+    }
+
+    addNotification({
+      message: "You can customize columns in the database settings.",
+      type: "info",
+    });
+
+    // Add Title column 2nd
+    Object.entries(databaseSchema.properties).forEach(([key, value]: [string, any]) => {
+      if (value?.type === "title") {
+        columns.push(value);
+        // Only add 1 title column
+        return;
+      }
+    });
+
+    console.log(columns);
+
+    setTableColumns(columns);
+  };
+
+  // Helper function to render cell content based on property type
+  const renderCellContent = (item: Task, column: any) => {
+    if (!item) return "";
+
+    switch (column.type) {
+      case "title":
+        return item.title || "";
+      case "checkbox":
+        return item.completed ? "✓" : "[ ]";
+      default:
+        return String(item[column.key]) || "";
+    }
+  };
+
+  // Helper function to apply filter
+  const applyFilter = (property: string, condition: string, value: any) => {
+    const filter = {
+      property,
+      [condition]: value,
+    };
+    onFilterChange(filter);
+    setShowFilters(false);
+  };
 
   // Predefined time-based filters - memoized to only recalculate when database schema changes
   const predefinedFilters = useMemo(() => {
@@ -136,302 +472,6 @@ export default function GardenTaskListContainer({
       },
     ];
   }, [databaseSchema]); // Only recalculate when database schema changes
-
-  // Helper function to get start of week (Sunday) - normalized to start of day
-  const getStartOfWeek = (date: Date) => {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day;
-    const startOfWeek = new Date(d.setDate(diff));
-    // Normalize to start of day (00:00:00)
-    startOfWeek.setHours(0, 0, 0, 0);
-    return startOfWeek;
-  };
-
-  // Helper function to create date range filters
-  const createDateRangeFilter = (startDate: Date, endDate: Date) => {
-    // Find date properties from database schema
-    const dateProperties = getDateProperties();
-
-    // If no date properties found, try common fallback names
-    let primaryDateProperty = null;
-
-    if (dateProperties.length > 0) {
-      primaryDateProperty = dateProperties[0];
-    } else {
-      // Try common date property names as fallbacks
-      const commonDateNames = [
-        "Due Date",
-        "Due",
-        "Date",
-        "Created",
-        "Modified",
-        "Last Edited",
-        "Start Date",
-        "End Date",
-        "Deadline",
-        "Created Time",
-        "Last Edited Time",
-      ];
-
-      if (databaseSchema?.properties) {
-        for (const commonName of commonDateNames) {
-          if (databaseSchema.properties[commonName]) {
-            primaryDateProperty = commonName;
-            console.log(`Using fallback date property: ${commonName}`);
-            break;
-          }
-        }
-      }
-    }
-
-    // If still no date property found, return null (will trigger error message)
-    if (!primaryDateProperty) {
-      console.warn("No date properties found in database schema:", databaseSchema?.properties);
-      return null;
-    }
-
-    console.log(`Creating date filter using property: ${primaryDateProperty}`);
-
-    return {
-      and: [
-        {
-          property: primaryDateProperty,
-          date: {
-            on_or_after: startDate.toISOString().split("T")[0],
-          },
-        },
-        {
-          property: primaryDateProperty,
-          date: {
-            on_or_before: endDate.toISOString().split("T")[0],
-          },
-        },
-      ],
-    };
-  };
-
-  // Helper function to get date properties from database schema
-  const getDateProperties = () => {
-    if (!databaseSchema?.properties) {
-      console.warn("Database schema not loaded or has no properties");
-      return [];
-    }
-
-    const dateProps = Object.entries(databaseSchema.properties)
-      .filter(([_, prop]: [string, any]) => prop.type === "date")
-      .map(([key]) => key);
-
-    console.log("Found date properties:", dateProps);
-    console.log("All database properties:", Object.keys(databaseSchema.properties));
-
-    return dateProps;
-  };
-
-  // Load tasks/pages when database is selected or filter changes
-  useEffect(() => {
-    if (isAuthenticated && selectedDatabase) {
-      loadDatabaseSchema();
-      loadTasksOrPages();
-    }
-  }, [isAuthenticated, selectedDatabase, currentFilter]);
-
-  // Notify parent when data changes
-  useEffect(() => {
-    onDataLoaded({
-      taskList,
-      pageList,
-      isTaskDatabase,
-    });
-  }, [taskList, pageList, isTaskDatabase, onDataLoaded]);
-
-  // Close filter dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showFilters) {
-        const target = event.target as Element;
-        if (!target.closest(".filter-dropdown-container")) {
-          setShowFilters(false);
-        }
-      }
-    };
-
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, [showFilters]);
-
-  const loadDatabaseSchema = async () => {
-    if (!selectedDatabase) return;
-
-    try {
-      const response = await fetch(`/api/notion/databases/${selectedDatabase.id}`, {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        console.warn("Could not load database schema");
-        return;
-      }
-
-      const data = await response.json();
-      setDatabaseSchema(data.database);
-    } catch (err) {
-      console.error("Error loading database schema:", err);
-    }
-  };
-
-  const loadTasksOrPages = async () => {
-    if (!selectedDatabase) return;
-
-    try {
-      setIsLoading(true);
-
-      // Build query URL with filter if present
-      let queryUrl = `/api/notion/tasks?databaseId=${selectedDatabase.id}`;
-      if (currentFilter) {
-        const filterParam = encodeURIComponent(JSON.stringify(currentFilter));
-        queryUrl += `&filter=${filterParam}`;
-      }
-
-      const response = await fetch(queryUrl, {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-
-        if (errorData.needsReauth) {
-          // Check if this is a Notion token issue or a complete auth failure
-          if (errorData.error?.includes("Notion")) {
-            // This is a Notion-specific issue - don't redirect to login
-            addError(
-              "Notion connection expired. Please reconnect to Notion to access your databases."
-            );
-            setTaskList([]);
-            setPageList([]);
-            return;
-          } else if (
-            errorData.error?.includes("session") ||
-            errorData.error?.includes("authenticated")
-          ) {
-            // This is a complete session failure - redirect to login
-            onRedirectToLogin();
-            return;
-          }
-        }
-
-        // For other errors, show them without redirecting
-        throw new Error(errorData.error || "Failed to load data");
-      }
-
-      const data = await response.json();
-
-      if (data.is_task_database) {
-        setIsTaskDatabase(true);
-        setTaskList(data.tasks || []);
-        setPageList([]);
-      } else {
-        setIsTaskDatabase(false);
-        setPageList(data.pages || []);
-        setTaskList([]);
-      }
-    } catch (err) {
-      console.error("Error loading data:", err);
-      addError(`Failed to load data: ${err instanceof Error ? err.message : "Unknown error"}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Helper function to get columns from database schema
-  const getTableColumns = () => {
-    if (!databaseSchema?.properties) {
-      // Default columns if schema not available
-      return [
-        { key: "title", name: "Title", type: "title" },
-        { key: "status", name: "Status", type: "status" },
-        { key: "priority", name: "Priority", type: "select" },
-        { key: "dueDate", name: "Due Date", type: "date" },
-        { key: "assignee", name: "Assignee", type: "people" },
-        { key: "actions", name: "Actions", type: "actions" },
-      ];
-    }
-
-    const columns = [];
-
-    // Always add title column first
-    if (databaseSchema.properties.Name || databaseSchema.properties.Title) {
-      columns.push({
-        key: "title",
-        name: "Title",
-        type: "title",
-        property: databaseSchema.properties.Name || databaseSchema.properties.Title,
-      });
-    }
-
-    // Add other columns based on schema
-    Object.entries(databaseSchema.properties).forEach(([key, property]: [string, any]) => {
-      if (key === "Name" || key === "Title") return; // Already added
-
-      columns.push({
-        key: key.toLowerCase(),
-        name: key,
-        type: property.type,
-        property,
-      });
-    });
-
-    // Always add actions column last
-    columns.push({ key: "actions", name: "Actions", type: "actions" });
-
-    return columns;
-  };
-
-  // Helper function to render cell content based on property type
-  const renderCellContent = (item: any, column: any) => {
-    const value = item.properties?.[column.name] || item[column.key];
-
-    if (!value) return "";
-
-    switch (column.type) {
-      case "title":
-        return value[0]?.plain_text || item.title || "";
-      case "rich_text":
-        return Array.isArray(value) ? value.map((t: any) => t.plain_text).join("") : "";
-      case "number":
-        return value.number || "";
-      case "select":
-        return value.select?.name || "";
-      case "multi_select":
-        return value.multi_select?.map((s: any) => s.name).join(", ") || "";
-      case "date":
-        return value.date?.start ? new Date(value.date.start).toLocaleDateString() : "";
-      case "people":
-        return value.people?.map((p: any) => p.name).join(", ") || "";
-      case "checkbox":
-        return value.checkbox ? "✓" : "";
-      case "url":
-        return value.url || "";
-      case "email":
-        return value.email || "";
-      case "phone_number":
-        return value.phone_number || "";
-      case "status":
-        return value.status?.name || value.select?.name || "";
-      default:
-        return String(value) || "";
-    }
-  };
-
-  // Helper function to apply filter
-  const applyFilter = (property: string, condition: string, value: any) => {
-    const filter = {
-      property,
-      [condition]: value,
-    };
-    onFilterChange(filter);
-    setShowFilters(false);
-  };
 
   // Show loading state
   if (isLoading) {
@@ -510,9 +550,10 @@ export default function GardenTaskListContainer({
                                   const availableProps = databaseSchema?.properties
                                     ? Object.keys(databaseSchema.properties).join(", ")
                                     : "none";
-                                  addError(
-                                    `${predefinedFilter.name} filter requires a date property. Available properties: ${availableProps}`
-                                  );
+                                  addNotification({
+                                    message: `${predefinedFilter.name} filter requires a date property. Available properties: ${availableProps}`,
+                                    type: "error",
+                                  });
                                 }
                               }}
                               className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
@@ -600,7 +641,7 @@ export default function GardenTaskListContainer({
           </div>
 
           {/* Task Database Table */}
-          {isTaskDatabase && taskList.length > 0 && (
+          {taskList.length > 0 && (
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
               <div className="flex-1 overflow-auto">
                 <table className="w-full border-collapse" style={{ backgroundColor: "white" }}>
@@ -609,15 +650,15 @@ export default function GardenTaskListContainer({
                     style={{ backgroundColor: "white", borderBottom: `2px solid ${BORDERFILL}` }}
                   >
                     <tr>
-                      {getTableColumns().map((column, index) => (
+                      {tableColumns.map((column: DatabaseProperty, index: number) => (
                         <th
                           key={column.key}
-                          className="text-left p-3 font-medium text-gray-700 min-w-[100px]"
+                          className={`text-left p-3 font-medium text-gray-700${
+                            index === 0 ? " max-w-[100px]" : ""
+                          }`}
                           style={{
                             borderRight:
-                              index < getTableColumns().length - 1
-                                ? `1px solid ${BORDERFILL}`
-                                : "none",
+                              index < tableColumns.length - 1 ? `1px solid ${BORDERFILL}` : "none",
                             borderBottom: `1px solid ${BORDERFILL}`,
                           }}
                         >
@@ -626,6 +667,7 @@ export default function GardenTaskListContainer({
                       ))}
                     </tr>
                   </thead>
+
                   <tbody>
                     {taskList.map((task: Task, index: number) => (
                       <tr
@@ -637,37 +679,23 @@ export default function GardenTaskListContainer({
                         }}
                         onClick={() => onTaskClick?.(task)}
                       >
-                        {getTableColumns().map((column, colIndex) => (
+                        {tableColumns.map((column: DatabaseProperty, colIndex: number) => (
                           <td
                             key={column.key}
                             className="p-3 text-sm"
                             style={{
                               borderRight:
-                                colIndex < getTableColumns().length - 1
+                                colIndex < tableColumns.length - 1
                                   ? `1px solid ${BORDERFILL}`
                                   : "none",
                             }}
                           >
-                            {column.key === "actions" ? (
-                              task.notionUrl && (
-                                <a
-                                  href={task.notionUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-500 hover:text-blue-700 text-xs"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  Open
-                                </a>
-                              )
-                            ) : (
-                              <div
-                                className="truncate"
-                                title={String(renderCellContent(task, column))}
-                              >
-                                {renderCellContent(task, column)}
-                              </div>
-                            )}
+                            <div
+                              className="truncate"
+                              title={String(renderCellContent(task, column))}
+                            >
+                              {renderCellContent(task, column)}
+                            </div>
                           </td>
                         ))}
                       </tr>
@@ -677,86 +705,8 @@ export default function GardenTaskListContainer({
               </div>
             </div>
           )}
-
-          {/* Page Database Table */}
-          {!isTaskDatabase && pageList.length > 0 && (
-            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-              <div className="flex-1 overflow-auto">
-                <table className="w-full border-collapse" style={{ backgroundColor: "white" }}>
-                  <thead
-                    className="sticky top-0 z-5"
-                    style={{ backgroundColor: "white", borderBottom: `1px solid ${BORDERFILL}` }}
-                  >
-                    <tr>
-                      {getTableColumns().map((column, index) => (
-                        <th
-                          key={column.key}
-                          className="text-left p-3 font-medium text-gray-700 min-w-[100px]"
-                          style={{
-                            borderRight:
-                              index < getTableColumns().length - 1
-                                ? `1px solid ${BORDERFILL}`
-                                : "none",
-                          }}
-                        >
-                          {column.name}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pageList.map((page: DatabasePage, index: number) => (
-                      <tr
-                        key={page.id}
-                        className="hover:bg-gray-50 cursor-pointer"
-                        style={{
-                          backgroundColor: "white",
-                          borderBottom: `1px solid ${BORDERFILL}`,
-                        }}
-                      >
-                        {getTableColumns().map((column, colIndex) => (
-                          <td
-                            key={column.key}
-                            className="p-3 text-sm"
-                            style={{
-                              borderRight:
-                                colIndex < getTableColumns().length - 1
-                                  ? `1px solid ${BORDERFILL}`
-                                  : "none",
-                            }}
-                          >
-                            {column.key === "actions" ? (
-                              page.notionUrl && (
-                                <a
-                                  href={page.notionUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-500 hover:text-blue-700 text-xs"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  Open
-                                </a>
-                              )
-                            ) : (
-                              <div
-                                className="truncate"
-                                title={String(renderCellContent(page, column))}
-                              >
-                                {renderCellContent(page, column)}
-                              </div>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
           {/* Empty States */}
-          {isTaskDatabase && taskList.length === 0 && (
+          {taskList.length === 0 && (
             <div className="flex-1 flex flex-col justify-center items-center text-center py-12 text-gray-500 min-h-0">
               <div className="text-4xl mb-3">📝</div>
               <p className="text-sm mb-2">No tasks found in this database</p>
@@ -770,26 +720,15 @@ export default function GardenTaskListContainer({
               )}
             </div>
           )}
-
-          {!isTaskDatabase && pageList.length === 0 && (
-            <div className="flex-1 flex flex-col justify-center items-center text-center py-12 text-gray-500 min-h-0">
-              <div className="text-4xl mb-3">📄</div>
-              <p className="text-sm mb-2">No pages found in this database</p>
-              {currentFilter && (
-                <button
-                  onClick={onFilterClear}
-                  className="text-blue-500 hover:text-blue-700 text-sm"
-                >
-                  Clear filters to see all pages
-                </button>
-              )}
-            </div>
-          )}
         </>
       ) : (
         <div className="flex-1 flex flex-col justify-center items-center text-center py-12 text-gray-500 min-h-0">
           <div className="text-4xl mb-3">🗃️</div>
-          <p className="text-sm">Please select a database to view tasks and pages</p>
+          {!selectedDatabase ? (
+            <p className="text-sm">Please select a database to view tasks and pages</p>
+          ) : (
+            <p className="text-sm">Loading Database from {selectedDatabase}</p>
+          )}
         </div>
       )}
 

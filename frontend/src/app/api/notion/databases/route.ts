@@ -51,11 +51,9 @@ export async function GET(request: Request) {
   // Ensure fetchNotionDatabases completes before continuing
   const notionDatabases = await fetchNotionDatabases(userId);
   if (!notionDatabases) {
-    console.log("/api/notion/databases: Failed to fetch Notion databases");
+    console.warn("/api/notion/databases: Failed to fetch Notion databases");
     return NextResponse.json({ error: "Failed to fetch Notion databases" }, { status: 500 });
   }
-
-  console.log("/api/notion/databases: notionDatabases:", notionDatabases);
 
   return NextResponse.json({ databases: notionDatabases });
 }

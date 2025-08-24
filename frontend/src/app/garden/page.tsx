@@ -5,7 +5,7 @@ import MusicSync from "@/components/MusicSync";
 import GardenMenu from "@/components/GardenMenu";
 import GardenTasks from "@/components/GardenTasks";
 import GardenSettings from "@/components/GardenSettings";
-import { ErrorProvider, useGlobalError } from "@/components/ErrorProvider";
+import { NotificationProvider, useGlobalNotification } from "@/components/NotificationProvider";
 import * as PIXI from "pixi.js";
 
 import { FONTCOLOR, BORDERFILL, BORDERLINE, PANELFILL } from "@/components/constants";
@@ -30,14 +30,14 @@ interface NotionDatabase {
 
 export default function GardenPage() {
   return (
-    <ErrorProvider>
+    <NotificationProvider>
       <GardenPageContent />
-    </ErrorProvider>
+    </NotificationProvider>
   );
 }
 
 function GardenPageContent() {
-  const { addError } = useGlobalError();
+  const { addError } = useGlobalNotification();
 
   const [isClicking, setIsClicking] = useState(false);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
@@ -241,7 +241,7 @@ function GardenPageContent() {
   }
 
   return (
-    <ErrorProvider>
+    <NotificationProvider>
       <main
         className="flex flex-col min-h-screen w-full bg-black overflow-hidden"
         style={{
@@ -269,13 +269,13 @@ function GardenPageContent() {
                 position: "relative", // Add relative positioning here
               }}
             >
-              <GardenCanvas
+              {/* <GardenCanvas
                 onAppCreated={(app) => {
                   console.log("PIXI App created:", app);
                   setPixiApp(app);
                 }}
               />
-              <GardenMenu pixiApp={pixiApp} />
+              <GardenMenu pixiApp={pixiApp} /> */}
               <GardenSettings />
             </div>
 
@@ -283,76 +283,6 @@ function GardenPageContent() {
               className={`w-3/10 flex flex-col h-full gap-[10px]`}
               style={{ border: `5px solid ${BORDERLINE}`, backgroundColor: BORDERFILL }}
             >
-              {/* Database Selector */}
-              <div
-                style={{
-                  padding: "10px",
-                  backgroundColor: PANELFILL,
-                  borderBottom: `3px solid ${BORDERLINE}`,
-                  minHeight: "60px",
-                }}
-              >
-                <div className="flex flex-col gap-2 database-dropdown-container relative">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium" style={{ color: FONTCOLOR }}>
-                      Current Database:
-                    </span>
-                    <button
-                      onClick={() => setShowDatabaseDropdown(!showDatabaseDropdown)}
-                      className="text-xs px-2 py-1 rounded border"
-                      style={{
-                        backgroundColor: BORDERFILL,
-                        border: `1px solid ${BORDERLINE}`,
-                        color: FONTCOLOR,
-                      }}
-                      disabled={isLoadingDatabases}
-                    >
-                      {isLoadingDatabases ? "Loading..." : "Change"}
-                    </button>
-                  </div>
-
-                  <div className="text-xs" style={{ color: FONTCOLOR }}>
-                    {selectedDatabase ? selectedDatabase.title : "No database selected"}
-                  </div>
-
-                  {/* Dropdown */}
-                  {showDatabaseDropdown && (
-                    <div
-                      className="absolute z-10 mt-1 max-h-60 overflow-auto rounded border shadow-lg"
-                      style={{
-                        backgroundColor: PANELFILL,
-                        border: `2px solid ${BORDERLINE}`,
-                        width: "280px",
-                        top: "100%",
-                      }}
-                    >
-                      {databases.length > 0 ? (
-                        databases.map((db: NotionDatabase) => (
-                          <div
-                            key={db.id}
-                            onClick={() => handleSelectDatabase(db)}
-                            className="px-3 py-2 cursor-pointer border-b hover:bg-opacity-80"
-                            style={{
-                              borderBottom: `1px solid ${BORDERLINE}`,
-                              backgroundColor:
-                                selectedDatabase?.id === db.id ? BORDERFILL : "transparent",
-                              color: FONTCOLOR,
-                            }}
-                          >
-                            <div className="text-sm font-medium">{extractPlainText(db.title)}</div>
-                            <div className="text-xs opacity-70">ID: {db.id.substring(0, 8)}...</div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="px-3 py-2 text-sm" style={{ color: FONTCOLOR }}>
-                          No databases found
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
               <div
                 className="flex-1"
                 style={{
@@ -381,6 +311,6 @@ function GardenPageContent() {
           </div>
         </div>
       </main>
-    </ErrorProvider>
+    </NotificationProvider>
   );
 }
