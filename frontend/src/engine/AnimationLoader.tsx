@@ -157,7 +157,7 @@ export class AnimationLoader {
     const animation = this.getAnimation(animationName);
     if (!animation) return null;
 
-    let timeInAnimation = currentTime % animation.duration;
+    const timeInAnimation = currentTime % animation.duration;
     if (!loop && currentTime >= animation.duration) {
       // If not looping and past the end, return the last frame
       return animation.frames[animation.frames.length - 1].texture;
@@ -180,7 +180,7 @@ export class AnimationLoader {
     const animation = this.getAnimation(animationName);
     if (!animation) return 0;
 
-    let timeInAnimation = currentTime % animation.duration;
+    const timeInAnimation = currentTime % animation.duration;
     if (!loop && currentTime >= animation.duration) {
       return animation.frames.length - 1;
     }
@@ -295,7 +295,7 @@ export class AnimatedSpriteWrapper {
    * Get the current frame index
    */
   private getCurrentFrameIndex(currentTime: number): number {
-    let timeInAnimation = currentTime % this.animation.duration;
+    const timeInAnimation = currentTime % this.animation.duration;
     if (!this.loop && currentTime >= this.animation.duration) {
       return this.animation.frames.length - 1;
     }

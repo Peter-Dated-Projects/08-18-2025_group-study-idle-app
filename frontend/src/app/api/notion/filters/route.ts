@@ -26,7 +26,7 @@ export async function GET(req: Request) {
 
     // Forward the request to the specific database filters endpoint
     const url = new URL(req.url);
-    const filtersUrl = `${url.origin}/api/notion/databases/${databaseId}/filters`;
+    const filtersUrl = `${url.origin}/api/notion/storage/filters`;
 
     const response = await fetch(filtersUrl, {
       method: "GET",

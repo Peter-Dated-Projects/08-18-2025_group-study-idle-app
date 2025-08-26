@@ -301,13 +301,13 @@ export default function GardenCanvas({
         app.stage.eventMode = "static";
         app.stage.hitArea = new PIXI.Rectangle(0, 0, app.screen.width, app.screen.height);
 
-        let dragging = false;
+        const dragging = false;
         const last = { x: 0, y: 0 };
 
         // ------------------------------------------------------------------------------ //
         // create a parallax effect when mouse is inside of the game rect. else, slowly move back to 0 parallax
-        let currentParallax = { x: 0, y: 0 };
-        let goalParallax = { x: 0, y: 0 };
+        const currentParallax = { x: 0, y: 0 };
+        const goalParallax = { x: 0, y: 0 };
         let isMouseInside = false;
 
         app.stage.on("pointermove", (e) => {

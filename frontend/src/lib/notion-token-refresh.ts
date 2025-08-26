@@ -101,7 +101,7 @@ export async function fetchWithTokenRefresh(
   options: RequestInit,
   maxRetries: number = 1
 ): Promise<Response> {
-  let session = await getUserSession(userId);
+  const session = await getUserSession(userId);
   if (!session?.notionTokens?.access_token) {
     throw new Error("No Notion access token available");
   }
@@ -115,6 +115,7 @@ export async function fetchWithTokenRefresh(
       ...options.headers,
       Authorization: `Bearer ${accessToken}`,
       "Notion-Version": "2022-06-28",
+      "Content-Type": "application/json",
     };
 
     const response = await fetch(url, {

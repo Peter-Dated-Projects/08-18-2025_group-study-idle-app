@@ -40,13 +40,6 @@ export async function GET(req: Request) {
     notionAuthUrl.searchParams.set("redirect_uri", redirectUri);
     notionAuthUrl.searchParams.set("state", state);
 
-    console.log("============================");
-    console.log("Auth URL:", notionAuthUrl);
-    console.log("Redirecting to Notion OAuth:", notionAuthUrl.toString());
-    console.log("Callback URL:", redirectUri);
-    console.log("Return URL:", returnUrl);
-    console.log("============================");
-
     // Redirect to Notion OAuth
     return NextResponse.redirect(notionAuthUrl.toString());
   } catch (error) {

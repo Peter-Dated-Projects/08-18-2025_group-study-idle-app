@@ -86,7 +86,6 @@ export async function GET(req: Request) {
       sessionId,
       userId: simpleEncrypt(userInfo.email), // generate userID based off encrypted version of user email
       notionTokens: null,
-      selectedDatabase: null,
       created_at: new Date(),
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
       userAccountInformation: {

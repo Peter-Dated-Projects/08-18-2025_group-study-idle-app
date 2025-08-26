@@ -29,8 +29,7 @@ interface SelectedDatabase {
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(true);
-  const [databases, setDatabases] = useState<NotionDatabase[]>([]);
-  const [selectedDatabase, setSelectedDatabase] = useState<SelectedDatabase | null>(null);
+  const [databaseSynced, setDatabaseSynced] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Google Auth state
@@ -86,17 +85,33 @@ export default function LoginPage() {
 
   // Redirect to garden when fully authenticated
   useEffect(() => {
-    if (isGoogleSignedIn && isNotionConnected && selectedDatabase) {
+    if (isGoogleSignedIn && isNotionConnected && databaseSynced) {
       window.location.href = "/garden";
     }
-  }, [isGoogleSignedIn, isNotionConnected, selectedDatabase]);
+  }, [isGoogleSignedIn, isNotionConnected, databaseSynced]);
 
   // Load databases when Notion is connected
   useEffect(() => {
     if (isNotionConnected) {
-      loadDatabases();
+      checkSessionsDatabaseStatus();
     }
   }, [isNotionConnected]);
+
+  // Attempt to check if the session database is valid
+  useEffect(() => {
+    const attemptPause = 1000;
+    const maxAttempts = 5;
+    let attempts = 0;
+    const attemptTimeout = setTimeout(() => {
+      checkSessionsDatabaseStatus();
+      attempts++;
+      if (attempts >= maxAttempts) {
+        clearTimeout(attemptTimeout);
+      }
+    }, attemptPause);
+
+    return () => clearTimeout(attemptTimeout);
+  }, []);
 
   // Check user session from server
   const checkUserSession = async () => {
@@ -125,6 +140,27 @@ export default function LoginPage() {
     }
   };
 
+  const checkSessionsDatabaseStatus = async () => {
+    // Check if the stored session_database_id is valid but in garbage or archived
+    try {
+      const response = await fetch("/api/notion/storage/verify");
+
+      if (!response.ok) {
+        console.warn("/api/notion/storage/verify: Notion database verification failed");
+        setDatabaseSynced(false);
+        setIsNotionConnected(false);
+        setError("Failed to verify the User Sessions Database");
+        return;
+      }
+
+      setDatabaseSynced(true);
+    } catch (error) {
+      console.error("/api/notion/storage/verify: Error verifying Notion database:", error);
+      setDatabaseSynced(false);
+      return;
+    }
+  };
+
   const checkNotionStatus = useCallback(async () => {
     try {
       // Check if notion logged in
@@ -132,53 +168,35 @@ export default function LoginPage() {
         credentials: "include",
       });
 
-      //   console.log(response);
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.hasValidTokens) {
-          setIsNotionConnected(true);
-          setIsLoading(false);
-
-          console.log("/api/notion/session:", "Notion tokens found:", data.hasValidTokens);
-        } else {
-          setIsNotionConnected(false);
-        }
-      } else {
+      if (!response.ok) {
         setIsNotionConnected(false);
+        return;
       }
+
+      const data = await response.json();
+      if (!data.success || !data.hasValidTokens) {
+        console.warn("Notion is not connected or tokens are invalid.");
+        setIsNotionConnected(false);
+        return;
+      }
+
+      // Check if duplicate block value exists
+      if (!data.duplicatedBlockId) {
+        setError(
+          "You may have not used the Notion Template Provided. Please reconnect your Notion account."
+        );
+        setIsNotionConnected(false);
+        return;
+      }
+
+      // If all checks pass, set the notion connection and database sync status
+      setIsNotionConnected(true);
     } catch (error) {
       console.error("Error checking auth status:", error);
       setIsNotionConnected(false);
+      setDatabaseSynced(false);
     }
-  }, [isGoogleSignedIn]);
-
-  const loadDatabases = async () => {
-    try {
-      setError(null);
-      const response = await fetch("/api/notion/databases", {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setDatabases(data.databases || []);
-      } else {
-        const errorData = await response.json();
-
-        // Handle token expiration specifically
-        if (errorData.needsReauth) {
-          setError("Your Notion connection has expired. Please reconnect your account.");
-          setIsNotionConnected(false);
-        } else {
-          setError(errorData.error || "Failed to load databases");
-        }
-      }
-    } catch (err) {
-      console.error("Error loading databases:", err);
-      setError("Failed to load databases");
-    }
-  };
+  }, []);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -210,43 +228,6 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error("Notion sign-in error:", error);
       setError(`Failed to start Notion sign-in: ${error.message}`);
-    }
-  };
-
-  const handleSelectDatabase = async (database: NotionDatabase) => {
-    try {
-      const plainTitle = extractPlainText(database.title);
-
-      // Call the API endpoint to update the selected database
-      const response = await fetch("/api/notion/databases/select", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          id: database.id,
-          title: plainTitle,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to select database");
-      }
-
-      const data = await response.json();
-      console.log("Database selected:", data);
-
-      // Set selected database state
-      setSelectedDatabase({
-        id: database.id,
-        title: plainTitle,
-        selectedAt: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.error("Error selecting database:", err);
-      setError("Failed to select database");
     }
   };
 
@@ -310,68 +291,65 @@ export default function LoginPage() {
   } else if (!isNotionConnected) {
     // Step 2: Notion Authentication
     stepContent = (
-      <div className="text-center p-5">
+      <div className="text-center p-10 pb-15">
         <h2 className="mb-5 text-2xl text-gray-700">Step 2: Connect to Notion</h2>
         <p className="mb-2.5 text-gray-700">Welcome, {userName || userEmail}!</p>
-        <p className="mb-5 text-gray-700">Now connect your Notion workspace to sync tasks!</p>
+        <div className="flex justify-center mt-5">
+          <div className="text-left w-1/2">
+            <p className="mb-5 text-gray-700">
+              When connecting your Notion Database, please use the template provided!
+              <br />
+              <br />
+              <strong>1.</strong> Notion will provide a template page.
+              <br />
+              <strong>2.</strong> Select the template page.
+              <br />
+              <strong>3.</strong> Follow the prompts to complete the setup.
+            </p>
+          </div>
+        </div>
         <button
           onClick={() => handleNotionLogin()}
           className="inline-block bg-black text-white px-6 py-3 rounded-lg font-bold cursor-pointer transition-colors hover:bg-gray-900"
         >
           Connect to Notion
         </button>
-        <p className="mt-4 text-sm text-gray-500">
-          After connecting, you will be able to sync your tasks between Google and Notion.
-        </p>
       </div>
     );
   } else {
     // Step 3: Database Selection
     stepContent = (
       <div className="text-center p-5">
-        <h2 className="mb-5 text-2xl text-gray-700">Step 3: Select a Database</h2>
+        <h2 className="mb-5 text-2xl text-gray-700">Step 3: Sync Sessions Database with Notion</h2>
         <p className="mb-2.5 text-gray-700">Welcome, {userName || userEmail}!</p>
-        <p className="mb-5 text-gray-700">Choose a Notion database to sync your tasks with:</p>
-
-        <div className="overflow-auto pr-2 max-h-96">
-          {databases.length > 0 ? (
-            <div className="flex flex-col gap-2.5">
-              {databases.map((db: NotionDatabase) => (
-                <div
-                  key={db.id}
-                  onClick={() => handleSelectDatabase(db)}
-                  className={`p-3 border border-gray-300 rounded-md cursor-pointer transition-colors hover:bg-gray-100 ${
-                    selectedDatabase?.id === db.id ? "bg-blue-50" : "bg-gray-50"
-                  }`}
-                >
-                  <div className="font-bold mb-1 text-gray-700">{extractPlainText(db.title)}</div>
-                  <div className="text-xs text-gray-500">ID: {db.id}</div>
-                  {db.url && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      <a
-                        href={db.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-500 underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        View in Notion
-                      </a>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center text-gray-500 italic">Loading databases...</div>
-          )}
-        </div>
-
-        {selectedDatabase && (
-          <div className="mt-5 p-3 bg-green-50 rounded-md text-sm text-gray-700">
-            <strong>Selected:</strong> {selectedDatabase.title}
-            <br />
-            <small>Redirecting to garden...</small>
+        {!databaseSynced ? (
+          <div className="flex flex-col items-center justify-center min-h-[120px]">
+            <svg
+              className="animate-spin h-8 w-8 text-gray-400 mb-3"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+              ></path>
+            </svg>
+            <span className="text-gray-500 text-base">Syncing database with Notion...</span>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center">
+            <p className="mb-5 text-gray-700">Database synced successfully!</p>
+            <p className="text-gray-500 text-sm">Redirecting...</p>
           </div>
         )}
       </div>

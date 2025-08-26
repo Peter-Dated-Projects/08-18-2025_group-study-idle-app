@@ -6,7 +6,6 @@ import GardenMenu from "@/components/GardenMenu";
 import GardenTasks from "@/components/GardenTasks";
 import GardenSettings from "@/components/GardenSettings";
 import { NotificationProvider, useGlobalNotification } from "@/components/NotificationProvider";
-import * as PIXI from "pixi.js";
 
 import { FONTCOLOR, BORDERFILL, BORDERLINE, PANELFILL } from "@/components/constants";
 import { useState, useEffect } from "react";
@@ -28,6 +27,19 @@ interface NotionDatabase {
   last_edited_time?: string;
 }
 
+interface StudySessionNotionPage {
+  id: string;
+  created_time: string;
+  last_edited_time: string;
+  icon: {
+    type: string;
+    emoji: string;
+  };
+  properties: {
+    [key: string]: any;
+  };
+}
+
 export default function GardenPage() {
   return (
     <NotificationProvider>
@@ -37,20 +49,10 @@ export default function GardenPage() {
 }
 
 function GardenPageContent() {
-  const { addError } = useGlobalNotification();
+  const { addNotification } = useGlobalNotification();
 
   const [isClicking, setIsClicking] = useState(false);
-  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-  const [pixiApp, setPixiApp] = useState<PIXI.Application | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-
-  // Database selection state
-  const [databases, setDatabases] = useState<NotionDatabase[]>([]);
-  const [selectedDatabase, setSelectedDatabase] = useState<{ id: string; title: string } | null>(
-    null
-  );
-  const [isLoadingDatabases, setIsLoadingDatabases] = useState(false);
-  const [showDatabaseDropdown, setShowDatabaseDropdown] = useState(false);
 
   const router = useRouter();
 
@@ -58,125 +60,6 @@ function GardenPageContent() {
   useEffect(() => {
     checkAuthenticationStatus();
   }, []);
-
-  // Load databases after authentication is confirmed
-  useEffect(() => {
-    if (!isCheckingAuth) {
-      loadDatabases();
-      loadCurrentSelectedDatabase();
-    }
-  }, [isCheckingAuth]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showDatabaseDropdown) {
-        const target = event.target as HTMLElement;
-        if (!target.closest(".database-dropdown-container")) {
-          setShowDatabaseDropdown(false);
-        }
-      }
-    };
-
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, [showDatabaseDropdown]);
-
-  const loadDatabases = async () => {
-    try {
-      setIsLoadingDatabases(true);
-
-      const response = await fetch("/api/notion/databases/enabled", {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const databases = data.databases || [];
-        setDatabases(databases);
-
-        // Set the first enabled database as default
-        if (databases.length > 0) {
-          const firstDb = databases[0];
-          setSelectedDatabase({
-            id: firstDb.id,
-            title: extractPlainText(firstDb.title),
-          });
-        }
-      } else {
-        const errorData = await response.json();
-        if (errorData.needsReauth) {
-          addError("Your Notion connection has expired. Please reconnect your account.");
-          router.push("/login");
-        } else {
-          addError(errorData.error || "Failed to load enabled databases");
-        }
-      }
-    } catch (err) {
-      console.error("Error loading enabled databases:", err);
-      addError("Failed to load enabled databases");
-    } finally {
-      setIsLoadingDatabases(false);
-    }
-  };
-
-  const loadCurrentSelectedDatabase = async () => {
-    try {
-      const response = await fetch("/api/notion/session", {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.selectedDatabase) {
-          setSelectedDatabase(data.selectedDatabase);
-        }
-      }
-    } catch (err) {
-      console.error("Error loading current selected database:", err);
-    }
-  };
-
-  const handleSelectDatabase = async (database: NotionDatabase) => {
-    try {
-      const plainTitle = extractPlainText(database.title);
-
-      // Show immediate feedback
-      setSelectedDatabase({ id: database.id, title: plainTitle });
-      setShowDatabaseDropdown(false);
-
-      const response = await fetch("/api/notion/databases/select", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          id: database.id,
-          title: plainTitle,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to select database");
-      }
-
-      const data = await response.json();
-
-      // Emit a custom event to notify components that the database changed
-      const databaseChangeEvent = new CustomEvent("databaseChanged", {
-        detail: {
-          databaseId: database.id,
-          databaseTitle: plainTitle,
-        },
-      });
-      window.dispatchEvent(databaseChangeEvent);
-    } catch (err) {
-      console.error("Error selecting database:", err);
-      addError("Failed to select database");
-    }
-  };
 
   const checkAuthenticationStatus = async () => {
     try {
@@ -209,10 +92,6 @@ function GardenPageContent() {
         router.push("/login");
         return;
       }
-
-      // Check if database is selected (this should be checked in the session)
-      // For now, we'll assume if they have Notion tokens, they're good to go
-      // You could add an additional check here for selected database
 
       setIsCheckingAuth(false);
     } catch (error) {

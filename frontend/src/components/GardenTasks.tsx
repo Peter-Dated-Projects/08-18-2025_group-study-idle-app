@@ -1,18 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { HeaderFont } from "@/components/constants";
-import { useNotionFilters } from "@/hooks/useNotionFilters";
 import { useGlobalNotification } from "@/components/NotificationProvider";
 import GardenTaskListContainer from "./GardenTaskListContainer";
-
-export const AUTH_TOKEN_KEY = "auth_token";
-
-// Helper function to extract plain text from Notion rich text objects
-const extractPlainText = (richTextArray: any): string => {
-  if (!richTextArray || !Array.isArray(richTextArray)) {
-    return "";
-  }
-  return richTextArray.map((textObj: any) => textObj.plain_text || "").join("");
-};
+import Image from "next/image.js";
 
 interface Task {
   id: string;
@@ -21,184 +11,178 @@ interface Task {
   status?: string;
   dueDate?: string;
   priority?: string;
-  assignee?: any;
+  assignee?: unknown;
   notionUrl?: string;
   createdTime?: string;
   lastEditedTime?: string;
   archived?: boolean;
 }
 
-interface DatabasePage {
+interface StudySession {
   id: string;
   title: string;
-  properties?: Record<string, any>;
-  notionUrl?: string;
-  createdTime?: string;
-  lastEditedTime?: string;
-  archived?: boolean;
-  icon?: any;
-  cover?: any;
-}
-
-interface SelectedDatabase {
-  id: string;
-  title: string;
-  selectedAt: string;
+  createdTime: string;
+  lastEditedTime: string;
+  notionUrl: string;
+  properties?: Record<string, unknown>;
+  archived: boolean;
 }
 
 export default function GardenTasks() {
   const [isLoading, setIsLoading] = useState(true);
   const [taskList, setTaskList] = useState<Task[]>([]);
-  const [selectedDatabase, setSelectedDatabase] = useState<SelectedDatabase | null>(null);
+  const [studySessions, setStudySessions] = useState<StudySession[]>([]);
+  const [selectedSession, setSelectedSession] = useState<StudySession | null>(null);
 
-  const { addError } = useGlobalNotification();
-
-  // Filter system integration
-  const {
-    filterOptions,
-    currentFilter,
-    setFilter,
-    applyCommonFilter,
-    loadFilterOptions,
-    isLoadingFilters,
-    error: filterError,
-  } = useNotionFilters();
-
-  const [showFilterOptions, setShowFilterOptions] = useState(false);
+  const { addNotification } = useGlobalNotification();
 
   // Auth states - simplified
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
 
-  // Add filter errors to global error system
-  useEffect(() => {
-    if (filterError) {
-      addError(`Filter Error: ${filterError}`);
-    }
-  }, [filterError, addError]);
-
-  // Check if user is authenticated (both Google and Notion)
-  useEffect(() => {
-    checkAuthentication();
-  }, []);
-
-  // Load default database on startup after authentication
-  useEffect(() => {
-    if (isAuthenticated && !selectedDatabase) {
-      loadDefaultDatabase();
-    }
-  }, [isAuthenticated, selectedDatabase]);
-
-  // Listen for database change events from other components
-  useEffect(() => {
-    const handleDatabaseChange = (event: CustomEvent) => {
-      console.log("Database changed:", event.detail);
-      setSelectedDatabase({
-        id: event.detail.databaseId,
-        title: event.detail.databaseTitle,
-        selectedAt: new Date().toISOString(),
-      });
-    };
-
-    window.addEventListener("databaseChanged", handleDatabaseChange as EventListener);
-
-    return () => {
-      window.removeEventListener("databaseChanged", handleDatabaseChange as EventListener);
-    };
-  }, []);
-
-  // Load filter options when database changes
-  useEffect(() => {
-    if (selectedDatabase) {
-      loadFilterOptions(selectedDatabase.id);
-    }
-  }, [selectedDatabase, loadFilterOptions]);
-
-  const loadDefaultDatabase = async () => {
+  const checkAuthentication = useCallback(async () => {
     try {
-      // Use the enabled databases endpoint for GardenTasks (only Firestore-enabled databases)
-      const response = await fetch("/api/notion/databases/enabled", {
+      // Check Google OAuth session
+      const authResponse = await fetch("/api/auth/session", {
         credentials: "include",
       });
+      const authData = await authResponse.json();
 
-      if (!response.ok) {
-        console.error("Failed to load enabled databases for default selection");
-        addError("Failed to load available databases. Please try refreshing.");
-        return;
-      }
-
-      const data = await response.json();
-      const databases = data.databases || [];
-
-      if (databases.length > 0) {
-        // Select the first database as default
-        const defaultDb = databases[0];
-        const selectedDb = {
-          id: defaultDb.id,
-          title: defaultDb.title?.[0]?.plain_text || defaultDb.title || "Untitled Database",
-          selectedAt: new Date().toISOString(),
-        };
-
-        setSelectedDatabase(selectedDb);
-        console.log("Default enabled database selected:", selectedDb.title);
-      } else {
-        // No enabled databases available - user needs to duplicate template
-        addError(
-          data.message ||
-            "No databases found. Please duplicate a template from your Notion integration to get started."
-        );
-        console.log("No enabled databases available for user");
-      }
-    } catch (error) {
-      console.error("Error loading default database:", error);
-      addError("Error loading databases. Please try refreshing the page.");
-    }
-  };
-
-  const checkAuthentication = async () => {
-    try {
-      // Check Google auth
-      const googleResponse = await fetch("/api/auth/session", {
-        credentials: "include",
-      });
-
-      if (!googleResponse.ok) {
+      if (!authData.userId) {
         redirectToLogin();
         return;
       }
 
-      const googleData = await googleResponse.json();
-      if (!googleData.success || !googleData.userEmail) {
-        redirectToLogin();
-        return;
-      }
+      setUserEmail(authData.userEmail);
+      setUserName(authData.userName);
 
-      // Check Notion auth
+      // Check Notion OAuth session
       const notionResponse = await fetch("/api/notion/session", {
         credentials: "include",
       });
-
-      if (!notionResponse.ok) {
-        redirectToLogin();
-        return;
-      }
-
       const notionData = await notionResponse.json();
-      if (!notionData.success || !notionData.hasValidTokens) {
+
+      if (!notionData.authenticated) {
         redirectToLogin();
         return;
       }
 
-      // Both are authenticated
-      setUserEmail(googleData.userEmail);
-      setUserName(googleData.userName || null);
       setIsAuthenticated(true);
     } catch (error) {
       console.error("Authentication check failed:", error);
       redirectToLogin();
+    }
+  }, []);
+
+  const loadStudySessions = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/notion/storage/pages", {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.needsReauth) {
+          addNotification({
+            type: "error",
+            message: "Your Notion connection has expired. Please reconnect your account.",
+          });
+          redirectToLogin();
+          return;
+        }
+        throw new Error(errorData.error || "Failed to load study sessions");
+      }
+
+      const data = await response.json();
+      const sessions = (data.pages || []).map((page: unknown) => {
+        const pageObj = page as {
+          id: string;
+          title?: string;
+          createdTime: string;
+          lastEditedTime: string;
+          notionUrl: string;
+          properties?: Record<string, unknown>;
+          archived?: boolean;
+        };
+
+        return {
+          id: pageObj.id,
+          title: pageObj.title || "Untitled Session",
+          createdTime: pageObj.createdTime,
+          lastEditedTime: pageObj.lastEditedTime,
+          notionUrl: pageObj.notionUrl,
+          properties: pageObj.properties,
+          archived: pageObj.archived || false,
+        };
+      });
+
+      setStudySessions(sessions);
+
+      // Auto-select the most recent session if none selected
+      if (sessions.length > 0 && !selectedSession) {
+        setSelectedSession(sessions[0]);
+      }
+    } catch (error) {
+      console.error("Error loading study sessions:", error);
+      addNotification({
+        type: "error",
+        message: `Failed to load study sessions: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      });
     } finally {
       setIsLoading(false);
+    }
+  }, [addNotification, selectedSession]);
+
+  // Check if user is authenticated (both Google and Notion)
+  useEffect(() => {
+    checkAuthentication();
+  }, [checkAuthentication]);
+
+  // Load study sessions after authentication
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadStudySessions();
+    }
+  }, [isAuthenticated, loadStudySessions]);
+
+  const createNewStudySession = async () => {
+    try {
+      const response = await fetch("/api/notion/storage/pages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          title: `Study Session - ${new Date().toLocaleDateString()}`,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create study session");
+      }
+
+      await response.json(); // Consume the response
+      addNotification({
+        type: "info",
+        message: "New study session created successfully!",
+      });
+
+      // Reload sessions to include the new one
+      await loadStudySessions();
+    } catch (error) {
+      console.error("Error creating study session:", error);
+      addNotification({
+        type: "error",
+        message: `Failed to create study session: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      });
     }
   };
 
@@ -208,6 +192,10 @@ export default function GardenTasks() {
 
   const handleDataLoaded = (data: { taskList: Task[] }) => {
     setTaskList(data.taskList);
+  };
+
+  const handleSessionSelect = (session: StudySession) => {
+    setSelectedSession(session);
   };
 
   // Show loading screen while checking authentication
@@ -243,40 +231,80 @@ export default function GardenTasks() {
   return (
     <div className="p-1 h-full flex flex-col">
       <div className="flex items-center select-none mb-2">
-        <img src="/icon.png" alt="Icon" className="w-10 h-10 mr-3 select-none" />
+        <Image
+          src="/icon.png"
+          alt="Icon"
+          width={40}
+          height={40}
+          className="w-10 h-10 mr-3 select-none"
+          priority
+        />
         <h1 className="font-header text-3xl m-0 select-none" style={{ fontFamily: HeaderFont }}>
-          Task List
+          Study Sessions
         </h1>
       </div>
 
       <div className="flex flex-col items-center w-full flex-1 min-h-0">
         <p className="mb-2 text-center w-full">Welcome, {userName || userEmail}!</p>
 
-        {selectedDatabase && (
+        {/* Study Session Selector */}
+        <div className="mb-4 w-full max-w-6xl">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Select Study Session ({studySessions.length} available)
+            </h3>
+            <button
+              onClick={createNewStudySession}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm"
+            >
+              + New Session
+            </button>
+          </div>
+
+          {studySessions.length > 0 ? (
+            <select
+              value={selectedSession?.id || ""}
+              onChange={(e) => {
+                const session = studySessions.find((s: StudySession) => s.id === e.target.value);
+                if (session) handleSessionSelect(session);
+              }}
+              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select a study session...</option>
+              {studySessions.map((session: StudySession) => (
+                <option key={session.id} value={session.id}>
+                  {session.title} - {new Date(session.createdTime).toLocaleDateString()}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="text-center py-4 text-gray-500">
+              <p>No study sessions found. Create your first one!</p>
+            </div>
+          )}
+        </div>
+
+        {selectedSession && (
           <div className="mb-4 text-center">
-            <h3 className="text-lg font-semibold text-gray-800">{selectedDatabase.title}</h3>
+            <h3 className="text-lg font-semibold text-gray-800">{selectedSession.title}</h3>
             <p className="text-sm text-gray-500">
-              {"Database • "}
-              {taskList.length} items
+              Created {new Date(selectedSession.createdTime).toLocaleDateString()} •{" "}
+              {taskList.length} tasks
             </p>
           </div>
         )}
 
-        {/* Table Content with horizontal and vertical scrolling */}
+        {/* Task List Content */}
         <div className="flex-1 min-h-0 w-full max-w-6xl">
           <GardenTaskListContainer
-            selectedDatabase={selectedDatabase}
-            currentFilter={currentFilter}
-            onFilterClear={() => setFilter(null)}
+            selectedSession={selectedSession}
             onTaskClick={(task: Task) => {
-              // Optional: Handle task click if needed
               console.log("Task clicked:", task);
             }}
             isAuthenticated={isAuthenticated}
             onRedirectToLogin={redirectToLogin}
             onDataLoaded={handleDataLoaded}
-            filterOptions={filterOptions}
-            onFilterChange={setFilter}
+            onSessionRefresh={loadStudySessions}
           />
         </div>
       </div>

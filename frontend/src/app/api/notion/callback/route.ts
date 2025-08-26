@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { storeNotionTokens, getUserSession, NotionTokenData } from "@/lib/firestore";
+import {
+  storeNotionTokens,
+  getUserSession,
+  NotionTokenData,
+  updateUserSession,
+  updateUserNotionTokens,
+} from "@/lib/firestore";
 import { NOTION_API_VERSION } from "@/components/constants";
 
 export async function GET(req: Request) {
@@ -26,6 +32,12 @@ export async function GET(req: Request) {
     // Build dynamic redirect URI
     const requestUrl = new URL(req.url);
     const redirectUri = `${requestUrl.origin}/api/notion/callback`;
+    const cookieStore = await cookies();
+    const userId = cookieStore.get("user_id")?.value;
+    if (!userId) {
+      console.warn("/api/notion/callback: Invalid user ID");
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
 
     // Exchange authorization code for tokens
     const tokenResponse = await fetch("https://api.notion.com/v1/oauth/token", {
@@ -52,13 +64,17 @@ export async function GET(req: Request) {
       );
     }
 
-    // query notion for the token's status
+    // Query Notion for the token's status
     const tokenData = await tokenResponse.json();
     console.log("/api/notion/callback: tokenData:", tokenData);
 
-    // Generate a user ID and store tokens in Firestore
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("user_id")?.value;
+    // IMPORTANT: check if user used the template
+    if (!tokenData.duplicated_template_id) {
+      console.warn("User failed to use template Notion Page.");
+      return NextResponse.json({ error: "User did not use the template" }, { status: 400 });
+    }
+
+    console.log("/api/notion/callback: tokenData:", tokenData);
 
     // Check if valid user ID
     if (!userId) {
@@ -68,8 +84,8 @@ export async function GET(req: Request) {
     // Request to update the User Session data
     const notionTokenData: NotionTokenData = {
       access_token: tokenData.access_token,
-      workspace_id: tokenData.workspace_id,
-      workspace_name: tokenData.workspace_name || "Unknown Workspace",
+      session_database_id: null,
+      duplicated_block_id: tokenData.duplicated_template_id,
       bot_id: tokenData.bot_id,
       refresh_token: tokenData.refresh_token,
       created_at: new Date(Date.now()),
@@ -79,13 +95,6 @@ export async function GET(req: Request) {
     // Update the current user session with the new Notion tokens
     try {
       await storeNotionTokens(userId, notionTokenData);
-      console.log("Notion tokens stored successfully");
-
-      console.log("✅ OAuth completed - tokens stored, no automatic database discovery");
-      console.log("🔍 User will manually select databases to enable in the UI");
-
-      // Note: We no longer automatically discover and store databases
-      // Users will manually select which databases to enable through the UI
     } catch (error) {
       console.error("Error storing Notion tokens:", error);
       return NextResponse.json({ error: "Failed to store Notion tokens" }, { status: 500 });
@@ -96,6 +105,7 @@ export async function GET(req: Request) {
     cookieStore.delete("notion_oauth_state");
     cookieStore.delete("notion_oauth_return_url");
 
+    // If you want to redirect with extra parameters, append them to the returnUrl
     return NextResponse.redirect(returnUrl!);
   } catch (error) {
     console.error("Error in OAuth callback:", error);

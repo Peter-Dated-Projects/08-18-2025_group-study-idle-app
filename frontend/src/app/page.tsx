@@ -8,78 +8,9 @@ export default function HomePage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      // Check Google auth
-      const authResponse = await fetch("/api/auth/session", {
-        credentials: "include",
-      });
-      const authData = await authResponse.json();
-
-      if (!authResponse.ok || !authData.success || !authData.userEmail) {
-        setIsAuthenticated(false);
-        setIsCheckingAuth(false);
-        return;
-      }
-
-      // Check Notion auth
-      const notionResponse = await fetch("/api/notion/session", {
-        credentials: "include",
-      });
-
-      if (!notionResponse.ok) {
-        setIsAuthenticated(false);
-        setIsCheckingAuth(false);
-        return;
-      }
-
-      const notionData = await notionResponse.json();
-      if (!notionData.success || !notionData.hasValidTokens) {
-        setIsAuthenticated(false);
-        setIsCheckingAuth(false);
-        return;
-      }
-
-      // Fully authenticated, redirect to garden
-      setIsAuthenticated(true);
-      router.push("/garden");
-    } catch (error) {
-      console.error("Error checking authentication:", error);
-      setIsAuthenticated(false);
-    } finally {
-      setIsCheckingAuth(false);
-    }
-  };
-
   const handleLoginClick = () => {
     router.push("/login");
   };
-
-  // Show loading while checking auth
-  if (isCheckingAuth) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100vh",
-          fontSize: "2rem",
-          color: "#333",
-          backgroundColor: "#f5f5f5",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <img src="/icon.png" alt="Icon" style={{ width: 60, height: 60, marginBottom: 20 }} />
-          <div>Loading...</div>
-        </div>
-      </div>
-    );
-  }
 
   // Show welcome page with login button if not authenticated
   return (

@@ -71,8 +71,8 @@ export function simpleDecrypt(encryptedText: string): string {
 
 export interface NotionTokenData {
   access_token: string;
-  workspace_id: string;
-  workspace_name: string;
+  session_database_id: string | null;
+  duplicated_block_id: string;
   bot_id: string;
   refresh_token?: string;
   created_at: Date;
@@ -83,26 +83,6 @@ export interface NotionDatabaseData {
   id: string;
   title: string;
 }
-
-export interface UserEnabledDatabase {
-  databaseName: string;
-  databaseId: string;
-}
-
-export interface UserEnabledDatabases {
-  databases: UserEnabledDatabase[];
-  updated_at: Date;
-}
-
-export interface UserAccountInformation {
-  userId: string;
-  email: string;
-  created_at: Date;
-  updated_at: Date;
-
-  userName: string;
-}
-
 export interface UserSession {
   sessionId: string;
   userId: string;
@@ -110,6 +90,13 @@ export interface UserSession {
   created_at: Date;
   expires_at: Date;
   userAccountInformation: UserAccountInformation | null;
+}
+export interface UserAccountInformation {
+  userId: string;
+  email: string;
+  created_at: Date;
+  updated_at: Date;
+  userName: string;
 }
 
 // Generate a unique session ID
@@ -169,8 +156,8 @@ export async function getNotionTokens(sessionId: string): Promise<NotionTokenDat
   }
   const decryptedTokens: NotionTokenData = {
     access_token: simpleDecrypt(encryptedTokens.access_token),
-    workspace_id: encryptedTokens.workspace_id,
-    workspace_name: encryptedTokens.workspace_name,
+    session_database_id: encryptedTokens.session_database_id,
+    duplicated_block_id: encryptedTokens.duplicated_block_id,
     bot_id: encryptedTokens.bot_id,
     refresh_token: encryptedTokens.refresh_token
       ? simpleDecrypt(encryptedTokens.refresh_token)
@@ -223,6 +210,26 @@ export async function updateUserSession(
   });
 }
 
+// Update user Notion Tokens
+export async function updateUserNotionTokens(
+  userId: string,
+  tokenData: NotionTokenData
+): Promise<void> {
+  const db = getFirestoreDb();
+
+  // Encrypt sensitive data
+  const encryptedTokenData = {
+    ...tokenData,
+    access_token: simpleEncrypt(tokenData.access_token),
+    refresh_token: tokenData.refresh_token ? simpleEncrypt(tokenData.refresh_token) : undefined,
+  };
+
+  await db.collection(FIRESTORE_USER_SESSIONS!).doc(userId).update({
+    notionTokens: encryptedTokenData,
+    updated_at: new Date(),
+  });
+}
+
 // Clean up expired sessions (optional utility)
 export async function cleanupExpiredSessions(maxAgeInDays: number = 30): Promise<number> {
   const db = getFirestoreDb();
@@ -242,49 +249,8 @@ export async function cleanupExpiredSessions(maxAgeInDays: number = 30): Promise
   return expiredSessions.size;
 }
 
-// User-enabled databases management
-export async function storeUserEnabledDatabases(
-  userId: string,
-  databases: UserEnabledDatabase[]
-): Promise<void> {
-  const db = getFirestoreDb();
-
-  const userEnabledDbs: UserEnabledDatabases = {
-    databases,
-    updated_at: new Date(),
-  };
-
-  await db.collection("user_notion_enabled_dbs").doc(userId).set(userEnabledDbs);
-}
-
-export async function getUserEnabledDatabases(userId: string): Promise<UserEnabledDatabase[]> {
-  const db = getFirestoreDb();
-
-  const doc = await db.collection("user_notion_enabled_dbs").doc(userId).get();
-
-  if (!doc.exists) {
-    console.log("🔥 No enabled databases found for user");
-    return [];
-  }
-
-  const data = doc.data() as UserEnabledDatabases;
-  return data.databases || [];
-}
-
-export async function addUserEnabledDatabase(
-  userId: string,
-  database: UserEnabledDatabase
-): Promise<void> {
-  const existingDatabases = await getUserEnabledDatabases(userId);
-
-  // Check if database already exists
-  const exists = existingDatabases.some((db) => db.databaseId === database.databaseId);
-  if (exists) {
-    console.log("🔥 Database already exists, skipping");
-    return; // Already exists, no need to add
-  }
-
-  const updatedDatabases = [...existingDatabases, database];
-
-  await storeUserEnabledDatabases(userId, updatedDatabases);
+// Get session_database_id by user_id
+export async function getUserSessionDatabaseId(userID: string): Promise<string | null> {
+  const notionTokens = await getNotionTokens(userID);
+  return notionTokens?.session_database_id || null;
 }
