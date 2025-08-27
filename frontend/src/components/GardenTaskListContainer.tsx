@@ -87,6 +87,10 @@ export default function GardenTaskListContainer({
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState<string>("");
 
+  // Refs for auto-scroll functionality
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const editingTaskRef = useRef<HTMLTableRowElement>(null);
+
   // Delta-based sync state
   const [pendingCreates, setPendingCreates] = useState<TaskCreate[]>([]);
   const [pendingUpdates, setPendingUpdates] = useState<TaskUpdate[]>([]);
@@ -439,6 +443,17 @@ export default function GardenTaskListContainer({
     setEditingTaskId(tempTask.id);
     setEditingText(newTaskTitle);
 
+    // Auto-scroll to the new task after a brief delay to let the DOM update
+    setTimeout(() => {
+      if (editingTaskRef.current && scrollContainerRef.current) {
+        editingTaskRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest",
+        });
+      }
+    }, 100);
+
     // Mark as changed for sync
     markAsChanged();
   };
@@ -555,158 +570,165 @@ export default function GardenTaskListContainer({
     <div className="h-full w-full flex flex-col min-h-0">
       {selectedSession ? (
         <>
-          {/* New Task Button */}
-          <div
-            className="flex justify-between items-center p-3 border-b"
-            style={{ borderColor: BORDERFILL }}
-          >
-            <div className="flex items-center space-x-3">
-              <h3 className="text-sm font-medium text-gray-700">Tasks</h3>
-              {/* {isSyncing && (
-                <div className="flex items-center space-x-1 text-xs text-gray-500">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span>Syncing...</span>
-                </div>
-              )}
-              {hasPendingChanges && !isSyncing && (
-                <div className="flex items-center space-x-1 text-xs text-orange-600">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                  <span>Changes pending</span>
-                </div>
-              )} */}
-            </div>
-            <button
-              onClick={() => createNewTask()}
-              className="px-3 py-1.5 text-xs font-medium rounded transition-colors bg-blue-400 hover:bg-blue-500 text-white cursor-pointer"
-            >
-              New Task
-            </button>
-          </div>
-
           {/* Task List */}
           {taskList.length > 0 ? (
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-              <div className="overflow-auto flex-1">
-                <table className="w-full border-collapse">
-                  <thead
-                    className="sticky top-0 z-5"
-                    style={{ backgroundColor: "white", borderBottom: `2px solid ${BORDERFILL}` }}
-                  >
-                    <tr>
-                      <th
-                        className="text-left p-3 font-medium text-gray-700 w-16"
+              <div
+                className="overflow-auto flex-1"
+                style={{
+                  scrollbarWidth: "none", // Firefox
+                  msOverflowStyle: "none", // IE 10+
+                }}
+                ref={scrollContainerRef}
+              >
+                <div className="overflow-auto flex-1">
+                  <div className="hide-scrollbar">
+                    <table className="w-full border-collapse">
+                      <thead
+                        className="sticky top-0 z-5"
                         style={{
-                          borderRight: `1px solid ${BORDERFILL}`,
-                          borderBottom: `1px solid ${BORDERFILL}`,
+                          backgroundColor: "white",
+                          borderBottom: `2px solid ${BORDERFILL}`,
                         }}
                       >
-                        Status
-                      </th>
-                      <th
-                        className="text-left p-3 font-medium text-gray-700"
-                        style={{ borderBottom: `1px solid ${BORDERFILL}` }}
-                      >
-                        Task
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {taskList.map((task: Task, index: number) => (
-                      <tr
-                        key={task.id}
-                        className={`group cursor-pointer transition-colors`}
-                        style={{
-                          backgroundColor: editingTaskId === task.id ? "#f8fafc" : "white",
-                          borderBottom: `1px solid ${BORDERFILL}`,
-                        }}
-                      >
-                        <td
-                          className="p-3 text-sm text-center"
-                          style={{ borderRight: `1px solid ${BORDERFILL}` }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleTaskCompletion(task);
-                          }}
-                        >
-                          <button
-                            className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
-                              task.completed
-                                ? "bg-green-500 border-green-500 text-white"
-                                : "border-gray-300 hover:border-gray-400"
-                            }`}
+                        <tr>
+                          <th
+                            className="text-left p-3 font-medium text-gray-700 w-16"
+                            style={{
+                              borderRight: `1px solid ${BORDERFILL}`,
+                              borderBottom: `1px solid ${BORDERFILL}`,
+                            }}
                           >
-                            {task.completed && "✓"}
-                          </button>
-                        </td>
-                        <td
-                          className="p-3 text-sm relative"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            startEditing(task);
-                          }}
-                        >
-                          <div
-                            className="flex items-center"
-                            style={{ paddingLeft: `${(task.indent || 0) * 20}px` }}
+                            Status
+                          </th>
+                          <th
+                            className="text-left p-3 font-medium text-gray-700"
+                            style={{ borderBottom: `1px solid ${BORDERFILL}` }}
                           >
-                            {editingTaskId === task.id ? (
-                              <input
-                                type="text"
-                                value={editingText}
-                                onChange={(e) => setEditingText(e.target.value)}
-                                onBlur={() => {
-                                  saveTaskEdit(task.id, editingText);
-                                  cancelEditing();
-                                }}
-                                onKeyDown={(e) => handleTaskKeyDown(e, task, index)}
-                                className={`flex-1 border-none outline-none text-sm ${
-                                  task.completed ? "line-through text-gray-500" : ""
-                                }`}
-                                style={{
-                                  minHeight: "20px",
-                                  fontSize: "14px",
-                                }}
-                                autoFocus
-                                onClick={(e) => e.stopPropagation()}
-                                placeholder="Enter task name..."
-                              />
-                            ) : (
-                              <div
-                                className={`flex-1 cursor-text ${
-                                  task.completed ? "line-through text-gray-500" : ""
-                                }`}
-                                title={task.title}
-                              >
-                                {task.title}
-                              </div>
-                            )}
-
-                            {/* Delete button - only show on hover */}
-                            <button
-                              className="opacity-0 group-hover:opacity-100 absolute right-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded flex items-center justify-center transition-all duration-200"
+                            Task
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {taskList.map((task: Task, index: number) => (
+                          <tr
+                            key={task.id}
+                            className={`group cursor-pointer transition-colors`}
+                            style={{
+                              backgroundColor: editingTaskId === task.id ? "#f8fafc" : "white",
+                              borderBottom: `1px solid ${BORDERFILL}`,
+                            }}
+                            ref={task.id === editingTaskId ? editingTaskRef : null}
+                          >
+                            <td
+                              className="p-3 text-sm text-center"
+                              style={{ borderRight: `1px solid ${BORDERFILL}` }}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteTask(task);
+                                toggleTaskCompletion(task);
                               }}
-                              title="Delete task"
                             >
-                              🗑️
+                              <button
+                                className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
+                                  task.completed
+                                    ? "bg-green-500 border-green-500 text-white"
+                                    : "border-gray-300 hover:border-gray-400"
+                                }`}
+                              >
+                                {task.completed && "✓"}
+                              </button>
+                            </td>
+                            <td
+                              className="p-3 text-sm relative"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditing(task);
+                              }}
+                            >
+                              <div
+                                className="flex items-center"
+                                style={{ paddingLeft: `${(task.indent || 0) * 20}px` }}
+                              >
+                                {editingTaskId === task.id ? (
+                                  <input
+                                    type="text"
+                                    value={editingText}
+                                    onChange={(e) => setEditingText(e.target.value)}
+                                    onBlur={() => {
+                                      saveTaskEdit(task.id, editingText);
+                                      cancelEditing();
+                                    }}
+                                    onKeyDown={(e) => handleTaskKeyDown(e, task, index)}
+                                    className={`flex-1 border-none outline-none text-sm ${
+                                      task.completed ? "line-through text-gray-500" : ""
+                                    }`}
+                                    style={{
+                                      minHeight: "20px",
+                                      fontSize: "14px",
+                                    }}
+                                    autoFocus
+                                    onClick={(e) => e.stopPropagation()}
+                                    placeholder="Enter task name..."
+                                  />
+                                ) : (
+                                  <div
+                                    className={`flex-1 cursor-text ${
+                                      task.completed ? "line-through text-gray-500" : ""
+                                    }`}
+                                    title={task.title}
+                                  >
+                                    {task.title}
+                                  </div>
+                                )}
+
+                                {/* Delete button - only show on hover */}
+                                <button
+                                  className="opacity-0 group-hover:opacity-100 absolute right-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded flex items-center justify-center transition-all duration-200"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteTask(task);
+                                  }}
+                                  title="Delete task"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {/* New Task Button Row */}
+                        <tr>
+                          <td
+                            colSpan={2}
+                            className="p-0"
+                            style={{ borderTop: `1px solid ${BORDERFILL}` }}
+                          >
+                            <button
+                              onClick={() => createNewTask()}
+                              className="w-full py-3 px-3 text-sm font-medium transition-colors bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-800 border-none outline-none cursor-pointer text-left"
+                              style={{ borderBottom: `1px solid ${BORDERFILL}` }}
+                            >
+                              + Add New Task
                             </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
             <div className="flex-1 flex flex-col justify-center items-center text-center py-12 text-gray-500 min-h-0">
               <div className="text-4xl mb-3">📝</div>
               <p className="text-sm mb-2">No tasks found in this study session</p>
-              <p className="text-xs text-gray-400">
-                Add tasks to your Notion page to see them here
-              </p>
+              <p className="text-xs text-gray-400 mb-4">Click below to create your first task!</p>
+              <button
+                onClick={() => createNewTask()}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
+              >
+                + Add New Task
+              </button>
               {selectedSession.notionUrl && (
                 <a
                   href={selectedSession.notionUrl}

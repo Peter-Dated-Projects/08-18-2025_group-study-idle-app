@@ -48,6 +48,7 @@ export interface SyncDeltaResponse {
  * Processes creates, updates, and deletes in batches
  */
 export async function POST(req: Request) {
+  const attemptLimit = 3;
   const cookieStore = await cookies();
   const userId = cookieStore.get("user_id")?.value;
   if (!userId) {
@@ -113,6 +114,14 @@ export async function POST(req: Request) {
           console.log(`Deleted block: ${block.id}`);
         } else {
           console.warn(`Failed to delete block ${block.id}:`, deleteResponse.statusText);
+          if (block.attemptCount < attemptLimit) {
+            block.attemptCount++;
+            result.failed.deleted.push({
+              id: block.id,
+              error: deleteResponse.statusText,
+              attemptCount: block.attemptCount,
+            });
+          }
         }
       } catch (error) {
         console.error(`Error deleting block ${block.id}:`, error);
@@ -160,10 +169,21 @@ export async function POST(req: Request) {
         const responseData = await response.json();
         if (response.ok) {
           const newId = responseData.results[0].id;
-          result.created.push({ clientTempId: create.clientTempId, id: newId });
+          result.created.push({
+            clientTempId: create.clientTempId,
+            id: newId,
+            attemptCount: create.attemptCount,
+          });
           console.log(`Created block: ${newId}`);
         } else {
-          console.warn(`Failed to create block under ${sessionPageId}:`, responseData);
+          if (create.attemptCount < attemptLimit) {
+            create.attemptCount++;
+            result.failed.created.push({
+              clientTempId: create.clientTempId,
+              error: responseData.error,
+              attemptCount: create.attemptCount,
+            });
+          }
         }
       } catch (error) {
         console.error(`Error creating block under ${sessionPageId}:`, error);
@@ -212,6 +232,14 @@ export async function POST(req: Request) {
             console.log(`Updated block: ${update.id}`);
           } else {
             console.warn(`Failed to update block ${update.id}:`, updateResponse.statusText);
+            if (update.attemptCount < attemptLimit) {
+              update.attemptCount++;
+              result.failed.updated.push({
+                id: update.id,
+                error: updateResponse.statusText,
+                attemptCount: update.attemptCount,
+              });
+            }
           }
         }
       } catch (error) {

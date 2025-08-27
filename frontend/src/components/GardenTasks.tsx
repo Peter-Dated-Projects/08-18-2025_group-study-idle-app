@@ -43,6 +43,8 @@ export default function GardenTasks() {
   const [taskList, setTaskList] = useState<Task[]>([]);
   const [studySessions, setStudySessions] = useState<StudySession[]>([]);
   const [selectedSession, setSelectedSession] = useState<StudySession | null>(null);
+  const [isEditingSessionName, setIsEditingSessionName] = useState(false);
+  const [editingSessionName, setEditingSessionName] = useState("");
 
   const { addNotification } = useGlobalNotification();
 
@@ -147,10 +149,6 @@ export default function GardenTasks() {
 
       // Retrieve Sessions Data
       const responseData = await response.json();
-      // if first update, auto select most recent session
-      if (!selectedSession && responseData.results && responseData.results.length > 0) {
-        setSelectedSession(responseData.results[0]);
-      }
       setStudySessions(responseData.results || []);
 
       console.log(responseData.results);
@@ -225,6 +223,108 @@ export default function GardenTasks() {
     setSelectedSession(session);
   };
 
+  const startEditingSessionName = () => {
+    if (selectedSession) {
+      const currentName =
+        selectedSession.properties?.Name?.title?.[0]?.text?.content || selectedSession.title;
+      setEditingSessionName(currentName);
+      setIsEditingSessionName(true);
+    }
+  };
+
+  const saveSessionName = async () => {
+    if (!selectedSession || !editingSessionName.trim()) {
+      setIsEditingSessionName(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/notion/storage/pages/${selectedSession.id}/name`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          name: editingSessionName.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.needsReauth) {
+          redirectToLogin();
+          return;
+        }
+        throw new Error(errorData.error || "Failed to update session name");
+      }
+
+      // Update the local state
+      setSelectedSession((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          properties: {
+            ...prev.properties,
+            Name: {
+              title: [
+                {
+                  text: {
+                    content: editingSessionName.trim(),
+                  },
+                },
+              ],
+            },
+          },
+        };
+      });
+
+      // Update the sessions list as well
+      setStudySessions((prev) =>
+        prev.map((session) =>
+          session.id === selectedSession.id
+            ? {
+                ...session,
+                properties: {
+                  ...session.properties,
+                  Name: {
+                    title: [
+                      {
+                        text: {
+                          content: editingSessionName.trim(),
+                        },
+                      },
+                    ],
+                  },
+                },
+              }
+            : session
+        )
+      );
+
+      addNotification({
+        type: "info",
+        message: "Session name updated successfully!",
+      });
+
+      setIsEditingSessionName(false);
+    } catch (error) {
+      console.error("Error updating session name:", error);
+      addNotification({
+        type: "error",
+        message: `Failed to update session name: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      });
+      setIsEditingSessionName(false);
+    }
+  };
+
+  const cancelEditingSessionName = () => {
+    setIsEditingSessionName(false);
+    setEditingSessionName("");
+  };
+
   // Show loading screen while checking authentication
   if (isLoading) {
     return (
@@ -257,81 +357,142 @@ export default function GardenTasks() {
 
   return (
     <div className="p-1 h-full flex flex-col">
-      <div className="flex items-center select-none mb-2">
-        <Image
-          src="/icon.png"
-          alt="Icon"
-          width={40}
-          height={40}
-          className="w-10 h-10 mr-3 select-none"
-          priority
-        />
-        <h1 className="font-header text-3xl m-0 select-none" style={{ fontFamily: HeaderFont }}>
-          Study Sessions
-        </h1>
-      </div>
-
       <div className="flex flex-col items-center w-full flex-1 min-h-0">
-        <p className="mb-2 text-center w-full">Welcome, {userName || userEmail}!</p>
-
-        {/* Study Session Selector */}
-        <div className="mb-4 w-full max-w-6xl">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">Select Study Session</h3>
-              <p>{studySessions.length} available</p>
+        {!selectedSession ? (
+          /* No Session Selected - Show Selection UI */
+          <div className="w-full max-w-6xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">Select Study Session</h3>
+                <p>{studySessions.length} available</p>
+              </div>
+              <button
+                onClick={createNewStudySession}
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm"
+              >
+                + New Session
+              </button>
             </div>
-            <button
-              onClick={createNewStudySession}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm"
-            >
-              + New Session
-            </button>
+
+            {studySessions.length > 0 ? (
+              <>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const session = studySessions.find(
+                      (s: StudySession) => s.id === e.target.value
+                    );
+                    if (session) handleSessionSelect(session);
+                  }}
+                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Pick a Session to get started!</option>
+                  {studySessions.map((session: StudySession) => (
+                    <option key={session.id} value={session.id}>
+                      {session.properties?.Name?.title?.[0]?.text?.content || session.title}
+                    </option>
+                  ))}
+                </select>
+                <div className="text-center py-8 text-gray-500">
+                  <div className="text-4xl mb-3">📚</div>
+                  <p className="text-lg font-medium mb-1">Pick a Session to get started!</p>
+                  <p className="text-sm">
+                    Select a study session from the dropdown above to view your tasks
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <div className="text-4xl mb-3">📚</div>
+                <p className="text-lg font-medium mb-1">No study sessions found</p>
+                <p className="text-sm">Create your first session to get started!</p>
+              </div>
+            )}
           </div>
+        ) : (
+          /* Session Selected - Show Compact Header */
+          <div className="w-full max-w-6xl">
+            <div className="text-left">
+              {isEditingSessionName ? (
+                <div className="flex justify-start gap-2">
+                  <Image
+                    src="/icon.png"
+                    alt="Session Icon"
+                    width={24}
+                    height={24}
+                    className="inline-block"
+                  />
 
-          {studySessions.length > 0 ? (
-            <select
-              value={selectedSession?.id || ""}
-              onChange={(e) => {
-                const session = studySessions.find((s: StudySession) => s.id === e.target.value);
-                if (session) handleSessionSelect(session);
-              }}
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select a study session...</option>
-              {studySessions.map((session: StudySession) => (
-                <option key={session.id} value={session.id}>
-                  {session.properties?.Name?.title?.[0]?.text?.content || session.title}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <div className="text-center py-4 text-gray-500">
-              <p>No study sessions found. Create your first one!</p>
+                  <input
+                    type="text"
+                    value={editingSessionName}
+                    onChange={(e) => setEditingSessionName(e.target.value)}
+                    onBlur={saveSessionName}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        saveSessionName();
+                      } else if (e.key === "Escape") {
+                        cancelEditingSessionName();
+                      }
+                    }}
+                    className="text-lg font-semibold text-gray-800 bg-transparent border-b-2 border-blue-500 outline-none text-left"
+                    autoFocus
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Image
+                    src="/icon.png"
+                    alt="Session Icon"
+                    width={24}
+                    height={24}
+                    className="inline-block"
+                  />
+                  <h3
+                    className="text-lg font-semibold text-gray-800 cursor-pointer hover:text-blue-600 transition-colors truncate max-w-full"
+                    onClick={startEditingSessionName}
+                    title={
+                      selectedSession.properties?.Name?.title?.[0]?.text?.content ||
+                      selectedSession.title
+                    }
+                    style={{
+                      display: "block",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {selectedSession.properties?.Name?.title?.[0]?.text?.content ||
+                      selectedSession.title}
+                  </h3>
+                </div>
+              )}
+              <p className="text-sm text-gray-500">
+                Created {new Date(selectedSession.created_time).toLocaleDateString()} •{" "}
+                {taskList.length} tasks
+              </p>
+              <button
+                onClick={() => setSelectedSession(null)}
+                className="mt-2 text-sm text-blue-500 hover:text-blue-700 underline"
+              >
+                ← Change Session
+              </button>
             </div>
-          )}
-        </div>
-
-        {selectedSession && (
-          <div className="mb-4 text-center">
-            <h3 className="text-lg font-semibold text-gray-800">{selectedSession.title}</h3>
-            <p className="text-sm text-gray-500">
-              Created {new Date(selectedSession.created_time).toLocaleDateString()} •{" "}
-              {taskList.length} tasks
-            </p>
           </div>
         )}
 
-        {/* Task List Content */}
-        <div className="flex-1 min-h-0 w-full max-w-6xl">
-          <GardenTaskListContainer
-            selectedSession={selectedSession}
-            isAuthenticated={isAuthenticated}
-            onRedirectToLogin={redirectToLogin}
-            onDataLoaded={handleDataLoaded}
-            onSessionRefresh={loadStudySessions}
-          />
-        </div>
+        {/* Task List Content - Only show when session is selected */}
+        {selectedSession && (
+          <div className="flex-1 min-h-0 w-full max-w-6xl">
+            <GardenTaskListContainer
+              selectedSession={selectedSession}
+              isAuthenticated={isAuthenticated}
+              onRedirectToLogin={redirectToLogin}
+              onDataLoaded={handleDataLoaded}
+              onSessionRefresh={loadStudySessions}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
