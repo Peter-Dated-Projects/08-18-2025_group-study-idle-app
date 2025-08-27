@@ -28,7 +28,6 @@ export async function POST(request: Request) {
       const db = getFirestoreDb();
       await db.collection(FIRESTORE_USER_SESSIONS!).doc(userId).update({
         notionTokens: null,
-        selectedDatabase: null, // Also clear selected database
         updated_at: new Date(),
       });
       console.log("Notion tokens cleared successfully for user:", userId);

@@ -11,6 +11,9 @@ interface NotionProperty {
   [key: string]: any;
 }
 
+/**
+ *
+ */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const cookieStore = await cookies();
   const userId = cookieStore.get("user_id")?.value;

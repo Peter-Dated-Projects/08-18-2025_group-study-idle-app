@@ -21,15 +21,25 @@ interface Task {
 interface StudySession {
   id: string;
   title: string;
-  createdTime: string;
-  lastEditedTime: string;
-  notionUrl: string;
-  properties?: Record<string, unknown>;
-  archived: boolean;
+  created_time: string;
+  icon: {
+    type: string;
+    emoji?: string;
+    external?: { url: string };
+  } | null;
+  url: string;
+  properties?: Record<string, any>;
+}
+
+interface SessionUpdateResponse {
+  updateSessions: boolean;
+  updateTasks: boolean;
+  [any: string]: any;
 }
 
 export default function GardenTasks() {
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [taskList, setTaskList] = useState<Task[]>([]);
   const [studySessions, setStudySessions] = useState<StudySession[]>([]);
   const [selectedSession, setSelectedSession] = useState<StudySession | null>(null);
@@ -42,6 +52,7 @@ export default function GardenTasks() {
   const [userName, setUserName] = useState<string | null>(null);
 
   const checkAuthentication = useCallback(async () => {
+    setIsLoading(true);
     try {
       // Check Google OAuth session
       const authResponse = await fetch("/api/auth/session", {
@@ -73,11 +84,12 @@ export default function GardenTasks() {
       console.error("Authentication check failed:", error);
       redirectToLogin();
     }
+    setIsLoading(false);
   }, []);
 
   const loadStudySessions = useCallback(async () => {
     try {
-      setIsLoading(true);
+      setIsUpdating(true);
       const response = await fetch("/api/notion/storage/pages", {
         credentials: "include",
       });
@@ -95,35 +107,7 @@ export default function GardenTasks() {
         throw new Error(errorData.error || "Failed to load study sessions");
       }
 
-      const data = await response.json();
-      const sessions = (data.pages || []).map((page: unknown) => {
-        const pageObj = page as {
-          id: string;
-          title?: string;
-          createdTime: string;
-          lastEditedTime: string;
-          notionUrl: string;
-          properties?: Record<string, unknown>;
-          archived?: boolean;
-        };
-
-        return {
-          id: pageObj.id,
-          title: pageObj.title || "Untitled Session",
-          createdTime: pageObj.createdTime,
-          lastEditedTime: pageObj.lastEditedTime,
-          notionUrl: pageObj.notionUrl,
-          properties: pageObj.properties,
-          archived: pageObj.archived || false,
-        };
-      });
-
-      setStudySessions(sessions);
-
-      // Auto-select the most recent session if none selected
-      if (sessions.length > 0 && !selectedSession) {
-        setSelectedSession(sessions[0]);
-      }
+      await updateSessionsList();
     } catch (error) {
       console.error("Error loading study sessions:", error);
       addNotification({
@@ -133,7 +117,7 @@ export default function GardenTasks() {
         }`,
       });
     } finally {
-      setIsLoading(false);
+      setIsUpdating(false);
     }
   }, [addNotification, selectedSession]);
 
@@ -149,8 +133,41 @@ export default function GardenTasks() {
     }
   }, [isAuthenticated, loadStudySessions]);
 
+  const updateSessionsList = async () => {
+    // query notion for update sessions list
+    try {
+      const response = await fetch("/api/notion/storage/pages", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Error updating sessions list:", errorData);
+        return;
+      }
+
+      // Retrieve Sessions Data
+      const responseData = await response.json();
+      // if first update, auto select most recent session
+      if (!selectedSession && responseData.results && responseData.results.length > 0) {
+        setSelectedSession(responseData.results[0]);
+      }
+      setStudySessions(responseData.results || []);
+
+      console.log(responseData.results);
+    } catch (error) {
+      console.error("Error updating sessions list:", error);
+    }
+  };
+
   const createNewStudySession = async () => {
     try {
+      // Extract mm-dd-yyyy format for the session title
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      const yyyy = now.getFullYear();
+      const formattedDate = `${mm}-${dd}-${yyyy}`;
+
       const response = await fetch("/api/notion/storage/pages", {
         method: "POST",
         headers: {
@@ -158,20 +175,30 @@ export default function GardenTasks() {
         },
         credentials: "include",
         body: JSON.stringify({
-          title: `Study Session - ${new Date().toLocaleDateString()}`,
+          title: `${formattedDate} - Study Session`,
+          icon_emoji: null,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
+        addNotification({
+          type: "error",
+          message: `Failed to create study session: ${errorData.error || "Unknown error"}`,
+        });
         throw new Error(errorData.error || "Failed to create study session");
       }
 
-      await response.json(); // Consume the response
+      const responseData: SessionUpdateResponse = await response.json(); // Consume the response
       addNotification({
         type: "info",
         message: "New study session created successfully!",
       });
+
+      // Check if we need to update anything
+      if (responseData.updateSessions) {
+        await updateSessionsList();
+      }
 
       // Reload sessions to include the new one
       await loadStudySessions();
@@ -250,12 +277,13 @@ export default function GardenTasks() {
         {/* Study Session Selector */}
         <div className="mb-4 w-full max-w-6xl">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Select Study Session ({studySessions.length} available)
-            </h3>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">Select Study Session</h3>
+              <p>{studySessions.length} available</p>
+            </div>
             <button
               onClick={createNewStudySession}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm"
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm"
             >
               + New Session
             </button>
@@ -273,7 +301,7 @@ export default function GardenTasks() {
               <option value="">Select a study session...</option>
               {studySessions.map((session: StudySession) => (
                 <option key={session.id} value={session.id}>
-                  {session.title} - {new Date(session.createdTime).toLocaleDateString()}
+                  {session.properties?.Name?.title?.[0]?.text?.content || session.title}
                 </option>
               ))}
             </select>
@@ -288,7 +316,7 @@ export default function GardenTasks() {
           <div className="mb-4 text-center">
             <h3 className="text-lg font-semibold text-gray-800">{selectedSession.title}</h3>
             <p className="text-sm text-gray-500">
-              Created {new Date(selectedSession.createdTime).toLocaleDateString()} •{" "}
+              Created {new Date(selectedSession.created_time).toLocaleDateString()} •{" "}
               {taskList.length} tasks
             </p>
           </div>
@@ -298,9 +326,6 @@ export default function GardenTasks() {
         <div className="flex-1 min-h-0 w-full max-w-6xl">
           <GardenTaskListContainer
             selectedSession={selectedSession}
-            onTaskClick={(task: Task) => {
-              console.log("Task clicked:", task);
-            }}
             isAuthenticated={isAuthenticated}
             onRedirectToLogin={redirectToLogin}
             onDataLoaded={handleDataLoaded}

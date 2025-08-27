@@ -72,13 +72,86 @@ export async function GET(req: Request) {
   );
 
   const responseData = await response.json();
-  console.log(responseData);
-  console.log("Targeted DATABASE: ", databaseId);
   if (!response.ok) {
+    console.warn("/api/notion/storage/pages: Error fetching pages:", responseData);
     return NextResponse.json(
       { error: "Failed to fetch pages", needsReauth: true },
       { status: 500 }
     );
   }
+
+  // console.log("Fetched pages:", responseData.results);
   return NextResponse.json(responseData);
+}
+
+export interface NewPageDetails {
+  title: string;
+  icon_emoji: string;
+}
+
+/**
+ * POST function for creating new pages
+ * @param: req
+ */
+export async function POST(req: Request) {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get("user_id")?.value;
+  if (!userId) {
+    console.warn("/api/notion/storage/pages: User ID not found in cookies");
+    return NextResponse.json({ error: "Unauthorized", needsReauth: true }, { status: 401 });
+  }
+
+  // Retrieve database ID from firestore
+  const databaseId = await getUserSessionDatabaseId(userId);
+  if (!databaseId) {
+    console.warn("/api/notion/storage/pages: No database found for user");
+    return NextResponse.json(
+      { error: "No database found for user", needsReauth: true },
+      { status: 404 }
+    );
+  }
+
+  // Check for certain attributes in request body
+  const requestBody: NewPageDetails = await req.json();
+  if (!requestBody.title) {
+    console.warn("/api/notion/storage/pages: Missing required fields in request body");
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  const newPage: any = {
+    parent: { database_id: databaseId },
+    properties: {
+      Name: {
+        title: [
+          {
+            text: {
+              content: requestBody.title,
+            },
+          },
+        ],
+      },
+    },
+  };
+  if (requestBody.icon_emoji) {
+    newPage.icon = {
+      emoji: requestBody.icon_emoji,
+    };
+  }
+
+  const response = await fetchWithTokenRefresh(userId, "https://api.notion.com/v1/pages", {
+    method: "POST",
+    body: JSON.stringify(newPage),
+  });
+
+  if (!response.ok) {
+    console.error("/api/notion/storage/pages: Error creating page:", response.statusText);
+    return NextResponse.json(
+      { error: "Failed to create page", needsReauth: true },
+      { status: 500 }
+    );
+  }
+
+  // Notify app to update sesions
+  const responseData = await response.json();
+  return NextResponse.json({ ...responseData, updateSessions: true, updateTasks: false });
 }

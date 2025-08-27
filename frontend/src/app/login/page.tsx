@@ -13,20 +13,6 @@ const extractPlainText = (richTextArray: any): string => {
   return richTextArray.map((textObj: any) => textObj.plain_text || "").join("");
 };
 
-interface NotionDatabase {
-  id: string;
-  title: any[]; // Rich text array from Notion API
-  url?: string;
-  created_time?: string;
-  last_edited_time?: string;
-}
-
-interface SelectedDatabase {
-  id: string;
-  title: string;
-  selectedAt: string;
-}
-
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [databaseSynced, setDatabaseSynced] = useState(false);
@@ -39,6 +25,7 @@ export default function LoginPage() {
   const [previousEmail, setPreviousEmail] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [hasProcessedRedirect, setHasProcessedRedirect] = useState(false);
+  const [justAuth, setJustAuth] = useState(false);
 
   // Notion Database states
   const [isNotionConnected, setIsNotionConnected] = useState(false);
@@ -61,6 +48,7 @@ export default function LoginPage() {
 
     if (authSuccess === "success") {
       setHasProcessedRedirect(true);
+      setJustAuth(true);
 
       // Clear URL parameters immediately to prevent multiple processing
       const url = new URL(window.location.href);
@@ -99,6 +87,9 @@ export default function LoginPage() {
 
   // Attempt to check if the session database is valid
   useEffect(() => {
+    if (justAuth) {
+      return;
+    }
     const attemptPause = 1000;
     const maxAttempts = 5;
     let attempts = 0;

@@ -44,7 +44,7 @@ export async function GET(req: Request) {
     );
 
     const blockData = await blockResponse.json();
-    console.log(`/api/notion/storage/verify: Fetched block data: ${JSON.stringify(blockData)}`);
+    // console.log(`/api/notion/storage/verify: Fetched block data: ${JSON.stringify(blockData)}`);
     if (!blockResponse.ok) {
       console.warn("/api/notion/storage/verify: No Study Sessions Database found in");
 

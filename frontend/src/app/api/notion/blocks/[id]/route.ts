@@ -56,29 +56,29 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       },
     });
 
+    const responseData = await response.json();
     if (!response.ok) {
-      const error = await response.json();
       console.warn(
         `/api/notion/blocks/${blockId}: Failed to fetch ${
           getChildren ? "block children" : "block details"
         }:`,
-        error
+        responseData
       );
       return NextResponse.json(
         {
           error: `Failed to fetch Notion ${getChildren ? "block children" : "block"}`,
-          details: error,
+          details: responseData,
         },
         { status: response.status }
       );
     }
 
-    const result = await response.json();
-    if (!result) {
+    if (!responseData) {
+      console.warn(`/api/notion/blocks/${blockId}: Block not found`);
       return NextResponse.json({ error: "Notion block not found" }, { status: 404 });
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error("Error fetching Notion block:", error);
     return NextResponse.json({ error: "Failed to fetch Notion block" }, { status: 500 });
