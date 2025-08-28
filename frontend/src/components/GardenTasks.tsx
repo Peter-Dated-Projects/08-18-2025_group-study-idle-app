@@ -1,5 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { HeaderFont } from "@/components/constants";
+import {
+  HeaderFont,
+  BodyFont,
+  FONTCOLOR,
+  SECONDARY_TEXT,
+  SUCCESS_COLOR,
+  ACCENT_COLOR,
+  BORDERFILL,
+  BORDERFILLLIGHT,
+} from "@/components/constants";
 import { useGlobalNotification } from "@/components/NotificationProvider";
 import GardenTaskListContainer from "./GardenTaskListContainer";
 import Image from "next/image.js";
@@ -46,12 +55,42 @@ export default function GardenTasks() {
   const [isEditingSessionName, setIsEditingSessionName] = useState(false);
   const [editingSessionName, setEditingSessionName] = useState("");
 
+  // Caching state
+  const [sessionsCache, setSessionsCache] = useState<StudySession[]>([]);
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+  const [sessionsHash, setSessionsHash] = useState<string>("");
+
   const { addNotification } = useGlobalNotification();
 
   // Auth states - simplified
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+
+  // Cache expiration time (5 minutes)
+  const CACHE_EXPIRATION_TIME = 5 * 60 * 1000;
+
+  // Generate a simple hash from sessions data for change detection
+  const generateSessionsHash = (sessions: StudySession[]): string => {
+    const dataString = sessions
+      .map(
+        (session) =>
+          `${session.id}-${session.created_time}-${
+            session.properties?.Name?.title?.[0]?.text?.content || session.title
+          }`
+      )
+      .sort()
+      .join("|");
+
+    // Simple hash function
+    let hash = 0;
+    for (let i = 0; i < dataString.length; i++) {
+      const char = dataString.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return hash.toString();
+  };
 
   const checkAuthentication = useCallback(async () => {
     setIsLoading(true);
@@ -89,39 +128,85 @@ export default function GardenTasks() {
     setIsLoading(false);
   }, []);
 
-  const loadStudySessions = useCallback(async () => {
-    try {
-      setIsUpdating(true);
-      const response = await fetch("/api/notion/storage/pages", {
-        credentials: "include",
-      });
+  const loadStudySessions = useCallback(
+    async (forceRefresh: boolean = false) => {
+      try {
+        setIsUpdating(true);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (errorData.needsReauth) {
-          addNotification({
-            type: "error",
-            message: "Your Notion connection has expired. Please reconnect your account.",
-          });
-          redirectToLogin();
+        // Check if we can use cached data
+        const now = Date.now();
+        const isCacheValid =
+          !forceRefresh && sessionsCache.length > 0 && now - lastFetchTime < CACHE_EXPIRATION_TIME;
+
+        if (isCacheValid) {
+          console.log("Using cached study sessions");
+          setStudySessions(sessionsCache);
+          setIsUpdating(false);
           return;
         }
-        throw new Error(errorData.error || "Failed to load study sessions");
-      }
 
-      await updateSessionsList();
-    } catch (error) {
-      console.error("Error loading study sessions:", error);
-      addNotification({
-        type: "error",
-        message: `Failed to load study sessions: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      });
-    } finally {
-      setIsUpdating(false);
-    }
-  }, [addNotification, selectedSession]);
+        console.log("Fetching fresh study sessions data");
+        const response = await fetch("/api/notion/storage/pages", {
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          if (errorData.needsReauth) {
+            addNotification({
+              type: "error",
+              message: "Your Notion connection has expired. Please reconnect your account.",
+            });
+            redirectToLogin();
+            return;
+          }
+          throw new Error(errorData.error || "Failed to load study sessions");
+        }
+
+        const responseData = await response.json();
+        const fetchedSessions = responseData.results || [];
+
+        // Generate hash for change detection
+        const newHash = generateSessionsHash(fetchedSessions);
+
+        // Only update if data has changed or it's the first load
+        if (newHash !== sessionsHash || sessionsCache.length === 0) {
+          console.log("Sessions data changed, updating cache");
+          setStudySessions(fetchedSessions);
+          setSessionsCache(fetchedSessions);
+          setSessionsHash(newHash);
+          setLastFetchTime(now);
+        } else {
+          console.log("No changes detected, using existing data");
+          setStudySessions(sessionsCache);
+        }
+      } catch (error) {
+        console.error("Error loading study sessions:", error);
+        addNotification({
+          type: "error",
+          message: `Failed to load study sessions: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
+        });
+
+        // Fall back to cache if available
+        if (sessionsCache.length > 0) {
+          console.log("Using cached data as fallback");
+          setStudySessions(sessionsCache);
+        }
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [
+      addNotification,
+      sessionsCache,
+      lastFetchTime,
+      sessionsHash,
+      CACHE_EXPIRATION_TIME,
+      generateSessionsHash,
+    ]
+  );
 
   // Check if user is authenticated (both Google and Notion)
   useEffect(() => {
@@ -136,25 +221,8 @@ export default function GardenTasks() {
   }, [isAuthenticated, loadStudySessions]);
 
   const updateSessionsList = async () => {
-    // query notion for update sessions list
-    try {
-      const response = await fetch("/api/notion/storage/pages", {
-        credentials: "include",
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Error updating sessions list:", errorData);
-        return;
-      }
-
-      // Retrieve Sessions Data
-      const responseData = await response.json();
-      setStudySessions(responseData.results || []);
-
-      console.log(responseData.results);
-    } catch (error) {
-      console.error("Error updating sessions list:", error);
-    }
+    // This function is now simplified and delegates to loadStudySessions
+    await loadStudySessions(true); // Force refresh to get latest data
   };
 
   const createNewStudySession = async () => {
@@ -196,10 +264,10 @@ export default function GardenTasks() {
       // Check if we need to update anything
       if (responseData.updateSessions) {
         await updateSessionsList();
+      } else {
+        // Force refresh to include the new session
+        await loadStudySessions(true);
       }
-
-      // Reload sessions to include the new one
-      await loadStudySessions();
     } catch (error) {
       console.error("Error creating study session:", error);
       addNotification({
@@ -213,6 +281,11 @@ export default function GardenTasks() {
 
   const redirectToLogin = () => {
     window.location.href = "/login";
+  };
+
+  const refreshSessionsCache = async () => {
+    console.log("Manually refreshing sessions cache");
+    await loadStudySessions(true);
   };
 
   const handleDataLoaded = (data: { taskList: Task[] }) => {
@@ -260,7 +333,7 @@ export default function GardenTasks() {
       }
 
       // Update the local state
-      setSelectedSession((prev) => {
+      setSelectedSession((prev: StudySession | null) => {
         if (!prev) return null;
         return {
           ...prev,
@@ -280,8 +353,31 @@ export default function GardenTasks() {
       });
 
       // Update the sessions list as well
-      setStudySessions((prev) =>
-        prev.map((session) =>
+      setStudySessions((prev: StudySession[]) =>
+        prev.map((session: StudySession) =>
+          session.id === selectedSession.id
+            ? {
+                ...session,
+                properties: {
+                  ...session.properties,
+                  Name: {
+                    title: [
+                      {
+                        text: {
+                          content: editingSessionName.trim(),
+                        },
+                      },
+                    ],
+                  },
+                },
+              }
+            : session
+        )
+      );
+
+      // Also update the cache
+      setSessionsCache((prev: StudySession[]) =>
+        prev.map((session: StudySession) =>
           session.id === selectedSession.id
             ? {
                 ...session,
@@ -326,22 +422,21 @@ export default function GardenTasks() {
   };
 
   // Show loading screen while checking authentication
-  if (isLoading) {
+  if (isLoading || (!selectedSession && isUpdating)) {
     return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "60vh",
-          fontFamily: HeaderFont,
-          fontSize: "2rem",
-          color: "#333",
-          letterSpacing: "1px",
-        }}
-      >
-        Loading...
+      <div className="h-full flex flex-col justify-center items-center text-center py-16">
+        <div className="flex justify-center mb-6">
+          <i className="fi fi-rr-loading text-6xl animate-spin" style={{ color: ACCENT_COLOR }}></i>
+        </div>
+        <h2
+          className="text-2xl font-semibold mb-3"
+          style={{ fontFamily: HeaderFont, color: FONTCOLOR }}
+        >
+          Loading Your Study Garden
+        </h2>
+        <p className="text-base max-w-md" style={{ color: SECONDARY_TEXT, fontFamily: BodyFont }}>
+          Setting up your personalized study environment and checking your connections...
+        </p>
       </div>
     );
   }
@@ -361,122 +456,238 @@ export default function GardenTasks() {
         {!selectedSession ? (
           /* No Session Selected - Show Selection UI */
           <div className="w-full max-w-6xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800">Select Study Session</h3>
-                <p>{studySessions.length} available</p>
-              </div>
-              <button
-                onClick={createNewStudySession}
-                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm"
-              >
-                + New Session
-              </button>
-            </div>
-
-            {studySessions.length > 0 ? (
-              <>
-                <select
-                  value=""
-                  onChange={(e) => {
-                    const session = studySessions.find(
-                      (s: StudySession) => s.id === e.target.value
-                    );
-                    if (session) handleSessionSelect(session);
-                  }}
-                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Pick a Session to get started!</option>
-                  {studySessions.map((session: StudySession) => (
-                    <option key={session.id} value={session.id}>
-                      {session.properties?.Name?.title?.[0]?.text?.content || session.title}
-                    </option>
-                  ))}
-                </select>
-                <div className="text-center py-8 text-gray-500">
-                  <div className="text-4xl mb-3">📚</div>
-                  <p className="text-lg font-medium mb-1">Pick a Session to get started!</p>
-                  <p className="text-sm">
-                    Select a study session from the dropdown above to view your tasks
-                  </p>
+            {isUpdating ? (
+              /* Show loading animation while updating sessions */
+              <div className="min-h-96 flex flex-col justify-center items-center text-center">
+                <div className="flex justify-center mb-6">
+                  <i
+                    className="fi fi-rr-loading text-6xl animate-spin"
+                    style={{ color: ACCENT_COLOR }}
+                  ></i>
                 </div>
-              </>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <div className="text-4xl mb-3">📚</div>
-                <p className="text-lg font-medium mb-1">No study sessions found</p>
-                <p className="text-sm">Create your first session to get started!</p>
+                <h2
+                  className="text-2xl font-semibold mb-3"
+                  style={{ fontFamily: HeaderFont, color: FONTCOLOR }}
+                >
+                  Loading Study Sessions
+                </h2>
+                <p
+                  className="text-base max-w-md"
+                  style={{ color: SECONDARY_TEXT, fontFamily: BodyFont }}
+                >
+                  Fetching your available study sessions from Notion...
+                </p>
               </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <i className="fi fi-rr-book text-2xl" style={{ color: ACCENT_COLOR }}></i>
+                    <div>
+                      <h3
+                        className="text-xl font-semibold"
+                        style={{ fontFamily: HeaderFont, color: FONTCOLOR }}
+                      >
+                        Select Study Session
+                      </h3>
+                      <p
+                        className="text-sm"
+                        style={{ color: SECONDARY_TEXT, fontFamily: BodyFont }}
+                      >
+                        {studySessions.length} available sessions
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={createNewStudySession}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg hover:shadow-md transition-all duration-200"
+                    style={{
+                      backgroundColor: SUCCESS_COLOR,
+                      color: "white",
+                      fontFamily: HeaderFont,
+                      fontSize: "1rem",
+                    }}
+                  >
+                    <i className="fi fi-rr-plus text-sm"></i>
+                    New Session
+                  </button>
+                </div>
+
+                {studySessions.length > 0 ? (
+                  <>
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        const session = studySessions.find(
+                          (s: StudySession) => s.id === e.target.value
+                        );
+                        if (session) handleSessionSelect(session);
+                      }}
+                      className="w-full p-4 rounded-lg border-2 transition-all duration-200"
+                      style={{
+                        borderColor: ACCENT_COLOR,
+                        backgroundColor: "white",
+                        color: FONTCOLOR,
+                        fontFamily: BodyFont,
+                        fontSize: "1rem",
+                      }}
+                    >
+                      <option value="" style={{ color: SECONDARY_TEXT }}>
+                        Choose a session to begin your study journey...
+                      </option>
+                      {studySessions.map((session: StudySession) => (
+                        <option key={session.id} value={session.id}>
+                          {session.properties?.Name?.title?.[0]?.text?.content || session.title}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="text-center py-12">
+                      <div className="flex justify-center mb-4">
+                        <i
+                          className="fi fi-rr-graduation-cap text-6xl"
+                          style={{ color: ACCENT_COLOR }}
+                        ></i>
+                      </div>
+                      <h4
+                        className="text-lg font-medium mb-2"
+                        style={{ fontFamily: HeaderFont, color: FONTCOLOR }}
+                      >
+                        Choose your session to continue
+                      </h4>
+                      <p
+                        className="text-sm"
+                        style={{ color: SECONDARY_TEXT, fontFamily: BodyFont }}
+                      >
+                        Select a study session from the dropdown above to view and manage your tasks
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="flex justify-center mb-4">
+                      <i
+                        className="fi fi-rr-book-open text-6xl"
+                        style={{ color: ACCENT_COLOR }}
+                      ></i>
+                    </div>
+                    <h4
+                      className="text-lg font-medium mb-2"
+                      style={{ fontFamily: HeaderFont, color: FONTCOLOR }}
+                    >
+                      No study sessions found
+                    </h4>
+                    <p className="text-sm" style={{ color: SECONDARY_TEXT, fontFamily: BodyFont }}>
+                      Create your first session to begin your learning journey!
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         ) : (
           /* Session Selected - Show Compact Header */
           <div className="w-full max-w-6xl">
-            <div className="text-left">
-              {isEditingSessionName ? (
-                <div className="flex justify-start gap-2">
-                  <Image
-                    src="/icon.png"
-                    alt="Session Icon"
-                    width={24}
-                    height={24}
-                    className="inline-block"
-                  />
-
-                  <input
-                    type="text"
-                    value={editingSessionName}
-                    onChange={(e) => setEditingSessionName(e.target.value)}
-                    onBlur={saveSessionName}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        saveSessionName();
-                      } else if (e.key === "Escape") {
-                        cancelEditingSessionName();
-                      }
-                    }}
-                    className="text-lg font-semibold text-gray-800 bg-transparent border-b-2 border-blue-500 outline-none text-left"
-                    autoFocus
-                  />
+            <div
+              className="mb-6 p-5 rounded-lg"
+              style={{ backgroundColor: "white", border: `2px solid ${ACCENT_COLOR}` }}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <i className="fi fi-rr-document text-xl" style={{ color: ACCENT_COLOR }}></i>
+                    {isEditingSessionName ? (
+                      <input
+                        type="text"
+                        value={editingSessionName}
+                        onChange={(e) => setEditingSessionName(e.target.value)}
+                        onBlur={saveSessionName}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            saveSessionName();
+                          } else if (e.key === "Escape") {
+                            cancelEditingSessionName();
+                          }
+                        }}
+                        className="text-lg font-semibold bg-transparent border-b-2 outline-none"
+                        style={{
+                          color: FONTCOLOR,
+                          borderColor: ACCENT_COLOR,
+                          fontFamily: HeaderFont,
+                          width: "100%",
+                          maxWidth: "600px",
+                          boxSizing: "border-box",
+                        }}
+                        autoFocus
+                      />
+                    ) : (
+                      <h3
+                        className="text-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity truncate"
+                        onClick={startEditingSessionName}
+                        title={
+                          selectedSession.properties?.Name?.title?.[0]?.text?.content ||
+                          selectedSession.title
+                        }
+                        style={{
+                          color: FONTCOLOR,
+                          fontFamily: HeaderFont,
+                          width: "100%",
+                          maxWidth: "600px",
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        {selectedSession.properties?.Name?.title?.[0]?.text?.content ||
+                          selectedSession.title}
+                      </h3>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-6 ml-0">
+                    <div className="flex items-center gap-2">
+                      <i
+                        className="fi fi-rr-calendar text-sm"
+                        style={{ color: SECONDARY_TEXT }}
+                      ></i>
+                      <span
+                        className="text-sm"
+                        style={{ color: SECONDARY_TEXT, fontFamily: BodyFont }}
+                      >
+                        {new Date(selectedSession.created_time).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <i className="fi fi-rr-list text-sm" style={{ color: SECONDARY_TEXT }}></i>
+                      <span
+                        className="text-sm"
+                        style={{ color: SECONDARY_TEXT, fontFamily: BodyFont }}
+                      >
+                        {taskList.length} tasks
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Image
-                    src="/icon.png"
-                    alt="Session Icon"
-                    width={24}
-                    height={24}
-                    className="inline-block"
-                  />
-                  <h3
-                    className="text-lg font-semibold text-gray-800 cursor-pointer hover:text-blue-600 transition-colors truncate max-w-full"
-                    onClick={startEditingSessionName}
-                    title={
-                      selectedSession.properties?.Name?.title?.[0]?.text?.content ||
-                      selectedSession.title
-                    }
-                    style={{
-                      display: "block",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {selectedSession.properties?.Name?.title?.[0]?.text?.content ||
-                      selectedSession.title}
-                  </h3>
-                </div>
-              )}
-              <p className="text-sm text-gray-500">
-                Created {new Date(selectedSession.created_time).toLocaleDateString()} •{" "}
-                {taskList.length} tasks
-              </p>
-              <button
-                onClick={() => setSelectedSession(null)}
-                className="mt-2 text-sm text-blue-500 hover:text-blue-700 underline"
-              >
-                ← Change Session
-              </button>
+                <button
+                  onClick={() => setSelectedSession(null)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ml-4 hover:bg-accent hover:text-white text-bold"
+                  style={{
+                    color: ACCENT_COLOR,
+                    fontFamily: BodyFont,
+                    border: `1px solid ${ACCENT_COLOR}`,
+                    fontSize: "0.875rem",
+                    backgroundColor: "transparent",
+                    maxWidth: "120px",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = BORDERFILLLIGHT;
+                    e.currentTarget.style.color = "white";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.color = ACCENT_COLOR;
+                  }}
+                >
+                  <i className="fi fi-rr-arrow-small-left text-sm"></i>
+                  Change Session
+                </button>
+              </div>
             </div>
           </div>
         )}

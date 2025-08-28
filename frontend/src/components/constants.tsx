@@ -22,11 +22,19 @@ export const googleSVG = (
   </svg>
 );
 
+// Vibrant wood and plant-inspired color palette
 export const BORDERWIDTH = "8px";
-export const BORDERFILL = "#c49a6c";
-export const BORDERLINE = "#9b6542ff";
-export const PANELFILL = "#e8cfa6";
-export const FONTCOLOR = "#813706ff";
+export const BORDERFILLLIGHT = "rgba(234, 210, 182, 1)";
+export const BORDERFILL = "#e4be93ff"; // Rich warm orange oak
+export const BORDERLINE = "#a0622d"; // Rich mahogany border
+export const PANELFILL = "#fdf4e8"; // Warm orange-cream background
+export const FONTCOLOR = "#2c1810"; // Deep espresso brown text
+export const ACCENT_COLOR = "#d4944a"; // Vibrant orange-amber wood accent
+export const SUCCESS_COLOR = "#5cb370"; // Bright emerald green like fresh leaves
+export const WARNING_COLOR = "#d4a017"; // Brilliant golden yellow
+export const ERROR_COLOR = "#c85a54"; // Vibrant terracotta red
+export const SECONDARY_TEXT = "#7a6b57"; // Rich taupe for secondary text
+export const HOVER_COLOR = "#f5d9b8"; // Warm orange-cream for hover states
 
 // sprite paths
 export const SETTINGS_ICON = "/ui/settings.png";
@@ -36,6 +44,7 @@ export const AVATAR_BOX = "/ui/avatar-box.png";
 // env variables
 export const NOTION_API_VERSION = process.env.NOTION_API_VERSION!;
 
-// fonts
-export const HeaderFont = "Rubik Bubbles";
-export const BodyFont = "Geist Sans";
+// Typography system
+export const HeaderFont = "FallingSky"; // Updated to use custom font
+export const BodyFont = "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
+export const AccentFont = "Rubik Bubbles"; // Keep for special decorative text

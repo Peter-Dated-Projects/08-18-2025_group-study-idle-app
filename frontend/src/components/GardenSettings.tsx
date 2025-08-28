@@ -2,11 +2,17 @@ import { useState, useRef, useEffect } from "react";
 import {
   SETTINGS_ICON,
   HeaderFont,
+  BodyFont,
   BORDERFILL,
   SETTINGS_HEADER,
   PANELFILL,
   BORDERLINE,
   FONTCOLOR,
+  SECONDARY_TEXT,
+  SUCCESS_COLOR,
+  ERROR_COLOR,
+  ACCENT_COLOR,
+  HOVER_COLOR,
 } from "@/components/constants";
 
 export default function GardenSettings() {
@@ -99,71 +105,83 @@ export default function GardenSettings() {
             style={{ imageRendering: "pixelated" }}
           />
 
-          <div className="px-5 w-full flex flex-col justify-center gap-1">
+          <div className="px-6 w-full flex flex-col justify-center gap-3">
             <button
-              className="flex items-center justify-center py-4 px-5 rounded transition-transform duration-150 mb-2 w-full text-black"
+              className="flex items-center justify-center py-4 px-5 rounded-lg transition-all duration-200 mb-2 w-full shadow-sm hover:shadow-md"
               style={{
                 backgroundColor: "white",
                 fontFamily: HeaderFont,
-                color: "black",
+                color: FONTCOLOR,
                 border: `2px solid ${BORDERLINE}`,
+                fontSize: "1rem",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "white";
-                e.currentTarget.style.color = "black";
+                e.currentTarget.style.backgroundColor = HOVER_COLOR;
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = "white";
-                e.currentTarget.style.color = "black";
               }}
               onClick={handleLogout}
             >
-              <img
-                src="https://www.svgrepo.com/show/475656/google-color.svg"
-                alt="Google"
-                className="w-5 h-5 mr-2"
-                style={{ imageRendering: "pixelated" }}
-              />
-              Log out
+              <i className="fi fi-brands-google mr-3 text-lg" style={{ color: "#4285F4" }}></i>
+              Sign out of Google
             </button>
             <button
-              className="flex items-center justify-center py-4 px-5 rounded transition-transform duration-150 mb-4 w-full text-black"
+              className="flex items-center justify-center py-4 px-5 rounded-lg transition-all duration-200 mb-4 w-full shadow-sm hover:shadow-md"
               style={{
                 backgroundColor: "white",
                 fontFamily: HeaderFont,
-                color: "black",
+                color: FONTCOLOR,
                 border: `2px solid ${BORDERLINE}`,
+                fontSize: "1rem",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "white";
-                e.currentTarget.style.color = "black";
+                e.currentTarget.style.backgroundColor = HOVER_COLOR;
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = "white";
-                e.currentTarget.style.color = "black";
               }}
               onClick={() => handleNotionLogout()}
             >
-              <img
-                src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"
-                alt="Notion"
-                className="w-5 h-5 mr-2"
-                style={{ imageRendering: "pixelated" }}
-              />
-              Log out of Notion
+              <i className="fi fi-rr-link-alt mr-3 text-lg" style={{ color: "#000000" }}></i>
+              Disconnect from Notion
             </button>
           </div>
 
-          <div className="px-5 w-full flex justify-center">
+          <div className="px-6 w-full flex justify-center">
             <button
-              className="text-white py-3 px-5 rounded w-full transition-transform duration-150"
-              style={{ backgroundColor: BORDERLINE, fontFamily: HeaderFont }}
+              className="flex items-center gap-2 text-white py-3 px-6 rounded-lg w-full transition-all duration-200 justify-center shadow-sm hover:shadow-md"
+              style={{
+                backgroundColor: BORDERLINE,
+                fontFamily: HeaderFont,
+                fontSize: "1rem",
+              }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = FONTCOLOR)}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BORDERLINE)}
               onClick={() => setSettingsActive(false)}
             >
-              Exit Settings
+              <i className="fi fi-rr-cross-small text-sm"></i>
+              Close Settings
             </button>
+          </div>
+
+          <div className="absolute bottom-4 left-0 w-full flex justify-center text-xs opacity-60">
+            <div
+              className="flex items-center gap-1"
+              style={{ color: SECONDARY_TEXT, fontFamily: BodyFont }}
+            >
+              <i className="fi fi-rr-heart text-xs"></i>
+              <span>Icons by</span>
+              <a
+                href="https://www.flaticon.com/uicons"
+                className="underline hover:no-underline transition-all"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: ACCENT_COLOR }}
+              >
+                Flaticon
+              </a>
+            </div>
           </div>
         </div>
       </div>

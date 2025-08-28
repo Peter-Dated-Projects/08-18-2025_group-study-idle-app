@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@flaticon/flaticon-uicons/css/all/all.css";
 
 :root {
   --background: #ffffff;
@@ -17,6 +18,20 @@
     --background: #0a0a0a;
     --foreground: #ededed;
   }
+}
+
+@font-face {
+  font-family: "FallingSky";
+  src: url("/fonts/FallingSky-JKwK.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "FallingSky";
+  src: url("/fonts/FallingSkyBold-zemL.otf") format("opentype");
+  font-weight: bold;
+  font-style: normal;
 }
 
 body {
@@ -88,4 +103,38 @@ input:disabled,
     transform: translateX(-50%) translateY(0);
     opacity: 1;
   }
+}
+
+/* Hide scrollbars while maintaining scroll functionality */
+.hide-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
+
+/* Smooth transitions for interactive elements */
+.transition-warm {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Focus styles for accessibility */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #c8956d;
+  outline-offset: 2px;
+}
+
+/* Custom animations */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
