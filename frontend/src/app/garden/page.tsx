@@ -1,5 +1,6 @@
 "use client";
 
+import * as PIXI from "pixi.js";
 import GardenCanvas from "@/components/GardenCanvas";
 import MusicSync from "@/components/MusicSync";
 import GardenMenu from "@/components/GardenMenu";
@@ -53,6 +54,7 @@ function GardenPageContent() {
 
   const [isClicking, setIsClicking] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [pixiApp, setPixiApp] = useState<PIXI.Application | null>(null); // PIXI.js Application state
 
   const router = useRouter();
 
@@ -148,13 +150,13 @@ function GardenPageContent() {
                 position: "relative", // Add relative positioning here
               }}
             >
-              {/* <GardenCanvas
+              <GardenCanvas
                 onAppCreated={(app) => {
                   console.log("PIXI App created:", app);
                   setPixiApp(app);
                 }}
               />
-              <GardenMenu pixiApp={pixiApp} /> */}
+              <GardenMenu pixiApp={pixiApp} />
               <GardenSettings />
             </div>
 
