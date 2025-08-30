@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import * as PIXI from "pixi.js";
 import { AnimatedTile, loadLevel, updateAnimatedTiles } from "@/engine/Tilemap";
-import { Filter, GlProgram } from "pixi.js";
+// Removed: import { Filter, GlProgram } from "pixi.js";
 import { loadTextFile } from "@/engine/utils";
+
+export const FRAMERATE = 12;
 
 export default function GardenCanvas({
   onAppCreated,
@@ -176,9 +178,9 @@ export default function GardenCanvas({
 
         console.log(`Loaded ${tilemap.layers.length} layers:`);
         tilemap.layers.forEach((layer, index) => {
-          console.log(
-            `Layer ${index}: ${layer.name}, tiles: ${layer.tiles.length}, zIndex: ${layer.container.zIndex}`
-          );
+          // console.log(
+          //   `Layer ${index}: ${layer.name}, tiles: ${layer.tiles.length}, zIndex: ${layer.container.zIndex}`
+          // );
 
           // Manually set zIndex if it's not set properly
           layer.container.zIndex = tilemap.layers.length - index - 1; // First layer gets highest zIndex
@@ -221,35 +223,37 @@ export default function GardenCanvas({
 
         // ------------------------------------------------------------------------------ //
         // Day/Night Cycle Filter + Lighting System
+        // ------------------------------------------------------------------------------ //
+        // Add a full-screen PIXI.Graphics overlay above the scene, tinting for day/night
+        const dayNightOverlay = new PIXI.Graphics();
+        dayNightOverlay.zIndex = 9999; // Ensure it's above everything
+        let overlayAlpha = 0;
+        let overlayColor = 0x000000;
 
-        // day/night system
-        console.log("[GardenCanvas] Loading shaders...");
-        const vert = await loadTextFile("/shaders/global-vertex-shader.glsl");
-        const frag = await loadTextFile("/shaders/global-fragment-shader.glsl");
-        const dayNightFilter = new Filter({
-          glProgram: new GlProgram({
-            fragment: frag,
-            vertex: vert,
-          }),
-          resources: {
-            timeUniforms: {
-              uCycle: { value: DAY_DURATION / 2, type: "f32" },
-              dayTint: { value: new Float32Array([1.0, 1.0, 1.0]), type: "vec3<f32>" },
-              nightTint: { value: new Float32Array([0.7, 0.8, 1.05]), type: "vec3<f32>" },
-              nightStrength: { value: 0.45, type: "f32" },
-              desaturate: { value: 0.25, type: "f32" },
-            },
-          },
-        });
-
-        // Apply day/night filter to world
-        world.filters = [dayNightFilter];
-
-        app.ticker.add(() => {
-          const seconds = app.ticker.lastTime / 1000;
-          const cycleValue = seconds / DAY_DURATION;
-          dayNightFilter.resources.timeUniforms.uniforms.uCycle = cycleValue;
-        });
+        const drawOverlay = () => {
+          dayNightOverlay.clear();
+          dayNightOverlay.rect(0, 0, app.screen.width, app.screen.height);
+          dayNightOverlay.fill(overlayColor, overlayAlpha);
+        };
+        // Place overlay on stage
+        app.stage.addChild(dayNightOverlay);
+        // [NEW] Overlay update function based on DAY_DURATION
+        let lastOverlayUpdate = 0;
+        const updateOverlay = () => {
+          // Calculate cycle (0 = sunrise, 0.5 = sunset, 1 = next sunrise)
+          const seconds = performance.now() / 1000;
+          const cycle = (seconds / DAY_DURATION) % 1.0;
+          // Use a simple cosine to fade night in/out
+          // Night: alpha peaks at midnight (cycle=0.5), 0 at noon (cycle=0)
+          // Color: blueish at night, transparent at day
+          // You can tweak these values for style
+          const nightStrength = 0.45;
+          const t = Math.cos(cycle * 2 * Math.PI) * 0.5 + 0.5; // t=1 at noon, 0 at midnight
+          overlayAlpha = nightStrength * (1 - t); // 0 at day, max at night
+          // Slight blue tint at night
+          overlayColor = t > 0.1 ? 0x000000 : 0x203355;
+          drawOverlay();
+        };
 
         // ------------------------------------------------------------------------------ //
         // Add test circle at world origin (with high zIndex to ensure it's visible)
@@ -290,6 +294,8 @@ export default function GardenCanvas({
           renderSprite.scale.set(scale);
 
           app.stage.hitArea = new PIXI.Rectangle(0, 0, app.screen.width, app.screen.height);
+          // [NEW] Redraw overlay to fill new screen size
+          drawOverlay();
         };
         app.renderer.on("resize", onResize);
 
@@ -301,12 +307,8 @@ export default function GardenCanvas({
         app.stage.eventMode = "static";
         app.stage.hitArea = new PIXI.Rectangle(0, 0, app.screen.width, app.screen.height);
 
-        const dragging = false;
-        const last = { x: 0, y: 0 };
-
         // ------------------------------------------------------------------------------ //
         // create a parallax effect when mouse is inside of the game rect. else, slowly move back to 0 parallax
-        const currentParallax = { x: 0, y: 0 };
         const goalParallax = { x: 0, y: 0 };
         let isMouseInside = false;
 
@@ -345,38 +347,77 @@ export default function GardenCanvas({
         });
 
         // ------------------------------------------------------------------------------ //
-        // Render loop
-        const gameLoop = () => {
-          if (disposed) return;
+        // [NEW] Game loop with tab-visibility and idle throttle
+        let running = false;
+        let loopTimeout: ReturnType<typeof setTimeout> | null = null;
+        let lastFrameTime = performance.now();
+        let lastOverlayTick = 0;
 
+        // Helper: decide current FPS
+        const getCurrentFps = () => (isMouseInside ? FRAMERATE : 2);
+        // Main loop
+        const gameLoop = () => {
+          if (disposed || !running) return;
           // Update animated tiles BEFORE rendering
           updateAnimatedTiles(tilemap);
-
           renderWorld();
-
           // If mouse is not inside, slowly return to center
           if (!isMouseInside) {
-            goalParallax.x *= 0.95; // Decay toward 0
+            goalParallax.x *= 0.95;
             goalParallax.y *= 0.95;
           }
-
           // Smoothly interpolate current position toward goal (velocity-based)
-          const lerpFactor = 0.08; // Adjust for smoother/snappier movement
+          const lerpFactor = 0.08;
           worldOffsetX += (goalParallax.x - worldOffsetX) * lerpFactor;
           worldOffsetY += (goalParallax.y - worldOffsetY) * lerpFactor;
-
-          // Apply the offset to world container with hardcoded base offset
           if (worldContainerRef.current) {
             worldContainerRef.current.x = Math.round(-WORLD_OFFSET.x - worldOffsetX);
             worldContainerRef.current.y = Math.round(-WORLD_OFFSET.y - worldOffsetY);
           }
-
-          requestAnimationFrame(gameLoop);
+          // [NEW] Update overlay ~1 Hz
+          const now = performance.now();
+          if (now - lastOverlayTick > 1000) {
+            updateOverlay();
+            lastOverlayTick = now;
+          }
+          // Schedule next frame with current FPS
+          const fps = getCurrentFps();
+          loopTimeout = setTimeout(gameLoop, 1000 / fps);
         };
 
-        // ------------------------------------------------------------------------------ //
-        console.log("[GardenCanvas] Starting game loop...");
-        gameLoop();
+        // Start/stop helpers
+        const startLoop = () => {
+          if (!running) {
+            running = true;
+            lastOverlayTick = 0;
+            gameLoop();
+          }
+        };
+        const stopLoop = () => {
+          running = false;
+          if (loopTimeout) {
+            clearTimeout(loopTimeout);
+            loopTimeout = null;
+          }
+        };
+        // [NEW] Tab visibility handler
+        const handleVisibility = () => {
+          if (document.hidden) {
+            stopLoop();
+          } else {
+            startLoop();
+          }
+        };
+        document.addEventListener("visibilitychange", handleVisibility);
+        // [NEW] Mouse enter/leave for idle throttle
+        app.stage.on("pointerenter", () => {
+          isMouseInside = true;
+        });
+        app.stage.on("pointerleave", () => {
+          isMouseInside = false;
+        });
+        // Start loop initially
+        startLoop();
 
         console.log("[GardenCanvas] Initialization completed successfully!");
       } catch (error) {

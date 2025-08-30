@@ -152,10 +152,10 @@ export default function GardenTasks() {
         if (!response.ok) {
           const errorData = await response.json();
           if (errorData.needsReauth) {
-            addNotification({
-              type: "error",
-              message: "Your Notion connection has expired. Please reconnect your account.",
-            });
+            addNotification(
+              "error",
+              "Your Notion connection has expired. Please reconnect your account."
+            );
             redirectToLogin();
             return;
           }
@@ -215,9 +215,10 @@ export default function GardenTasks() {
   // Load study sessions after authentication
   useEffect(() => {
     if (isAuthenticated) {
+      console.log("being spammed");
       loadStudySessions();
     }
-  }, [isAuthenticated, loadStudySessions]);
+  }, [isAuthenticated]);
 
   const updateSessionsList = async () => {
     // This function is now simplified and delegates to loadStudySessions
