@@ -139,7 +139,6 @@ export default function GardenTasks() {
           !forceRefresh && sessionsCache.length > 0 && now - lastFetchTime < CACHE_EXPIRATION_TIME;
 
         if (isCacheValid) {
-          console.log("Using cached study sessions");
           setStudySessions(sessionsCache);
           setIsUpdating(false);
           return;
@@ -595,50 +594,60 @@ export default function GardenTasks() {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-3">
                     <i className="fi fi-rr-document text-xl" style={{ color: ACCENT_COLOR }}></i>
-                    {isEditingSessionName ? (
-                      <input
-                        type="text"
-                        value={editingSessionName}
-                        onChange={(e) => setEditingSessionName(e.target.value)}
-                        onBlur={saveSessionName}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            saveSessionName();
-                          } else if (e.key === "Escape") {
-                            cancelEditingSessionName();
+                    <div className="w-full max-w-[600px]">
+                      {isEditingSessionName ? (
+                        <input
+                          type="text"
+                          value={editingSessionName}
+                          onChange={(e) => setEditingSessionName(e.target.value)}
+                          onBlur={saveSessionName}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              saveSessionName();
+                            } else if (e.key === "Escape") {
+                              cancelEditingSessionName();
+                            }
+                          }}
+                          className="text-lg font-semibold bg-transparent border-b-2 outline-none"
+                          style={{
+                            color: FONTCOLOR,
+                            borderColor: ACCENT_COLOR,
+                            fontFamily: HeaderFont,
+                            width: "100%",
+                            maxWidth: "600px",
+                            boxSizing: "border-box",
+                          }}
+                          autoFocus
+                        />
+                      ) : (
+                        <h3
+                          className="text-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={startEditingSessionName}
+                          title={
+                            selectedSession.properties?.Name?.title?.[0]?.text?.content ||
+                            selectedSession.title
                           }
-                        }}
-                        className="text-lg font-semibold bg-transparent border-b-2 outline-none"
-                        style={{
-                          color: FONTCOLOR,
-                          borderColor: ACCENT_COLOR,
-                          fontFamily: HeaderFont,
-                          width: "100%",
-                          maxWidth: "600px",
-                          boxSizing: "border-box",
-                        }}
-                        autoFocus
-                      />
-                    ) : (
-                      <h3
-                        className="text-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity truncate"
-                        onClick={startEditingSessionName}
-                        title={
-                          selectedSession.properties?.Name?.title?.[0]?.text?.content ||
-                          selectedSession.title
-                        }
-                        style={{
-                          color: FONTCOLOR,
-                          fontFamily: HeaderFont,
-                          width: "100%",
-                          maxWidth: "600px",
-                          boxSizing: "border-box",
-                        }}
-                      >
-                        {selectedSession.properties?.Name?.title?.[0]?.text?.content ||
-                          selectedSession.title}
-                      </h3>
-                    )}
+                          style={{
+                            color: FONTCOLOR,
+                            fontFamily: HeaderFont,
+                            width: "100%",
+                            maxWidth: "600px",
+                            boxSizing: "border-box",
+                          }}
+                        >
+                          {(
+                            selectedSession.properties?.Name?.title?.[0]?.text?.content ||
+                            selectedSession.title
+                          )?.length > 50
+                            ? (
+                                selectedSession.properties?.Name?.title?.[0]?.text?.content ||
+                                selectedSession.title
+                              ).slice(0, 50) + "..."
+                            : selectedSession.properties?.Name?.title?.[0]?.text?.content ||
+                              selectedSession.title}
+                        </h3>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-6 ml-0">
                     <div className="flex items-center gap-2">

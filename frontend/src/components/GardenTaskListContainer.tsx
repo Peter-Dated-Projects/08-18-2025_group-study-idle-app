@@ -106,6 +106,13 @@ export default function GardenTaskListContainer({
   >("custom");
   const [originalTaskOrder, setOriginalTaskOrder] = useState<Task[]>([]);
 
+  // Task caching state
+  const [taskCache, setTaskCache] = useState<{ [sessionId: string]: Task[] }>({});
+  const [taskCacheTimestamps, setTaskCacheTimestamps] = useState<{ [sessionId: string]: number }>(
+    {}
+  );
+  const [taskCacheHashes, setTaskCacheHashes] = useState<{ [sessionId: string]: string }>({});
+
   // Refs for auto-scroll functionality
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const editingTaskRef = useRef<HTMLTableRowElement>(null);
@@ -120,6 +127,26 @@ export default function GardenTaskListContainer({
   // Sync timer for debounced sync
   const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
   const syncFunctionRef = useRef<(() => Promise<void>) | null>(null);
+
+  // Task cache constants and utilities
+  const TASK_CACHE_EXPIRATION_TIME = 3 * 60 * 1000; // 3 minutes for tasks (shorter than sessions)
+
+  // Generate a simple hash from task data for change detection
+  const generateTasksHash = (tasks: Task[]): string => {
+    const dataString = tasks
+      .map((task) => `${task.id}-${task.title}-${task.completed}-${task.lastEditedTime}`)
+      .sort()
+      .join("|");
+
+    // Simple hash function
+    let hash = 0;
+    for (let i = 0; i < dataString.length; i++) {
+      const char = dataString.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return hash.toString();
+  };
 
   // Notify parent when data changes
   useEffect(() => {
@@ -422,83 +449,153 @@ export default function GardenTaskListContainer({
     setPendingDeletes((prev: string[]) => prev.filter((d: string) => d !== taskId));
   }, []);
 
-  const loadTasksFromSession = useCallback(async () => {
-    if (!selectedSession) return;
+  const loadTasksFromSession = useCallback(
+    async (forceRefresh: boolean = false) => {
+      if (!selectedSession) return;
 
-    try {
-      // Get blocks from the selected study session page
-      const response = await fetch(`/api/notion/blocks/${selectedSession.id}?children=true`, {
-        credentials: "include",
-      });
+      const sessionId = selectedSession.id;
+      const now = Date.now();
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (errorData.needsReauth) {
-          addNotification({
-            type: "error",
-            message: "Your Notion connection has expired. Please reconnect your account.",
-          });
-          onRedirectToLogin();
+      try {
+        // Check if we can use cached data
+        const cachedTasks = taskCache[sessionId];
+        const cacheTimestamp = taskCacheTimestamps[sessionId] || 0;
+        const isCacheValid =
+          !forceRefresh &&
+          cachedTasks &&
+          cachedTasks.length >= 0 && // Allow empty arrays to be cached
+          now - cacheTimestamp < TASK_CACHE_EXPIRATION_TIME;
+
+        if (isCacheValid) {
+          console.log(`Using cached tasks for session: ${selectedSession.title}`);
+          setTaskList([...cachedTasks]);
+          setOriginalTaskOrder([...cachedTasks]);
+          setTaskDetailsSortMode("custom");
+          setCompletionSortMode("custom");
+          setIsStartup(false);
           return;
         }
-        throw new Error(errorData.error || "Failed to load tasks from session");
-      }
 
-      const data = await response.json();
-      console.log("Session blocks data:", data);
+        console.log(`Fetching fresh task data for session: ${selectedSession.title}`);
 
-      // Convert blocks to tasks - focusing on to_do blocks
-      const tasks: Task[] = [];
-
-      if (data.results && Array.isArray(data.results)) {
-        data.results.forEach((block: unknown) => {
-          const blockObj = block as {
-            type: string;
-            id: string;
-            to_do?: {
-              rich_text?: Array<{ plain_text: string }>;
-              checked?: boolean;
-            };
-            created_time: string;
-            last_edited_time: string;
-          };
-
-          if (blockObj.type === "to_do") {
-            const text =
-              blockObj.to_do?.rich_text?.map((t) => t.plain_text).join("") || "Untitled Task";
-            tasks.push({
-              id: blockObj.id,
-              title: text,
-              completed: blockObj.to_do?.checked || false,
-              notionUrl: `https://notion.so/${blockObj.id.replace(/-/g, "")}`,
-              createdTime: blockObj.created_time,
-              lastEditedTime: blockObj.last_edited_time,
-              archived: false,
-              indent: 0, // Default to main task level
-              syncInstance: {
-                isSyncing: false,
-                prevSyncCall: null,
-              },
-            });
-          }
+        // Get blocks from the selected study session page
+        const response = await fetch(`/api/notion/blocks/${selectedSession.id}?children=true`, {
+          credentials: "include",
         });
-      }
 
-      setTaskList(tasks);
-      setOriginalTaskOrder([...tasks]); // Store original order
-      setTaskDetailsSortMode("custom"); // Reset sorting modes
-      setCompletionSortMode("custom");
-      console.log(`Loaded ${tasks.length} tasks from session: ${selectedSession.title}`);
-    } catch (err) {
-      console.error("Error loading tasks from session:", err);
-      addNotification({
-        type: "error",
-        message: `Failed to load tasks: ${err instanceof Error ? err.message : "Unknown error"}`,
-      });
-    } finally {
-      setIsStartup(false);
-    }
-  }, [selectedSession, addNotification, onRedirectToLogin]);
+        if (!response.ok) {
+          const errorData = await response.json();
+          if (errorData.needsReauth) {
+            addNotification({
+              type: "error",
+              message: "Your Notion connection has expired. Please reconnect your account.",
+            });
+            onRedirectToLogin();
+            return;
+          }
+          throw new Error(errorData.error || "Failed to load tasks from session");
+        }
+
+        const data = await response.json();
+        console.log("Session blocks data:", data);
+
+        // Convert blocks to tasks - focusing on to_do blocks
+        const tasks: Task[] = [];
+
+        if (data.results && Array.isArray(data.results)) {
+          data.results.forEach((block: unknown) => {
+            const blockObj = block as {
+              type: string;
+              id: string;
+              to_do?: {
+                rich_text?: Array<{ plain_text: string }>;
+                checked?: boolean;
+              };
+              created_time: string;
+              last_edited_time: string;
+            };
+
+            if (blockObj.type === "to_do") {
+              const text =
+                blockObj.to_do?.rich_text?.map((t) => t.plain_text).join("") || "Untitled Task";
+              tasks.push({
+                id: blockObj.id,
+                title: text,
+                completed: blockObj.to_do?.checked || false,
+                notionUrl: `https://notion.so/${blockObj.id.replace(/-/g, "")}`,
+                createdTime: blockObj.created_time,
+                lastEditedTime: blockObj.last_edited_time,
+                archived: false,
+                indent: 0, // Default to main task level
+                syncInstance: {
+                  isSyncing: false,
+                  prevSyncCall: null,
+                },
+              });
+            }
+          });
+        }
+
+        // Generate hash for change detection
+        const newHash = generateTasksHash(tasks);
+        const existingHash = taskCacheHashes[sessionId];
+
+        // Only update if data has changed or it's the first load
+        if (newHash !== existingHash || !cachedTasks) {
+          console.log("Task data changed, updating cache");
+
+          // Update cache
+          setTaskCache((prev: Record<string, Task[]>) => ({ ...prev, [sessionId]: [...tasks] }));
+          setTaskCacheTimestamps((prev: Record<string, number>) => ({ ...prev, [sessionId]: now }));
+          setTaskCacheHashes((prev: Record<string, string>) => ({ ...prev, [sessionId]: newHash }));
+
+          // Update UI
+          setTaskList(tasks);
+          setOriginalTaskOrder([...tasks]);
+          setTaskDetailsSortMode("custom");
+          setCompletionSortMode("custom");
+
+          console.log(
+            `Loaded and cached ${tasks.length} tasks from session: ${selectedSession.title}`
+          );
+        } else {
+          console.log("No task changes detected, using existing cache");
+          setTaskList([...cachedTasks]);
+          setOriginalTaskOrder([...cachedTasks]);
+          setTaskDetailsSortMode("custom");
+          setCompletionSortMode("custom");
+        }
+      } catch (err) {
+        console.error("Error loading tasks from session:", err);
+        addNotification({
+          type: "error",
+          message: `Failed to load tasks: ${err instanceof Error ? err.message : "Unknown error"}`,
+        });
+
+        // Fall back to cache if available
+        const cachedTasks = taskCache[sessionId];
+        if (cachedTasks) {
+          console.log("Using cached tasks as fallback");
+          setTaskList([...cachedTasks]);
+          setOriginalTaskOrder([...cachedTasks]);
+          setTaskDetailsSortMode("custom");
+          setCompletionSortMode("custom");
+        }
+      } finally {
+        setIsStartup(false);
+      }
+    },
+    [
+      selectedSession,
+      addNotification,
+      onRedirectToLogin,
+      taskCache,
+      taskCacheTimestamps,
+      taskCacheHashes,
+      TASK_CACHE_EXPIRATION_TIME,
+      generateTasksHash,
+    ]
+  );
 
   const createNewTask = (insertAfterTaskId?: string, indentLevel: number = 0) => {
     if (!selectedSession) return;
@@ -545,6 +642,26 @@ export default function GardenTaskListContainer({
       newList.splice(insertionIndex, 0, tempTask);
       return newList;
     });
+
+    // Invalidate task cache for current session
+    if (selectedSession) {
+      const sessionId = selectedSession.id;
+      setTaskCache((prev: Record<string, Task[]>) => {
+        const updated = { ...prev };
+        delete updated[sessionId];
+        return updated;
+      });
+      setTaskCacheTimestamps((prev: Record<string, number>) => {
+        const updated = { ...prev };
+        delete updated[sessionId];
+        return updated;
+      });
+      setTaskCacheHashes((prev: Record<string, string>) => {
+        const updated = { ...prev };
+        delete updated[sessionId];
+        return updated;
+      });
+    }
 
     // Queue for creation
     enqueuePendingCreate({
@@ -594,6 +711,26 @@ export default function GardenTaskListContainer({
     setOriginalTaskOrder((prev: Task[]) =>
       prev.map((t: Task) => (t.id === taskId ? { ...t, title: trimmedTitle } : t))
     );
+
+    // Invalidate task cache for current session
+    if (selectedSession) {
+      const sessionId = selectedSession.id;
+      setTaskCache((prev: Record<string, Task[]>) => {
+        const updated = { ...prev };
+        delete updated[sessionId];
+        return updated;
+      });
+      setTaskCacheTimestamps((prev: Record<string, number>) => {
+        const updated = { ...prev };
+        delete updated[sessionId];
+        return updated;
+      });
+      setTaskCacheHashes((prev: Record<string, string>) => {
+        const updated = { ...prev };
+        delete updated[sessionId];
+        return updated;
+      });
+    }
 
     // Queue for sync (only if not a temp task - temp tasks are already in pendingCreates)
     if (!taskId.startsWith("temp-")) {
@@ -651,6 +788,26 @@ export default function GardenTaskListContainer({
       prev.map((t: Task) => (t.id === task.id ? { ...t, completed: newTaskStatus } : t))
     );
 
+    // Invalidate task cache for current session
+    if (selectedSession) {
+      const sessionId = selectedSession.id;
+      setTaskCache((prev: Record<string, Task[]>) => {
+        const updated = { ...prev };
+        delete updated[sessionId];
+        return updated;
+      });
+      setTaskCacheTimestamps((prev: Record<string, number>) => {
+        const updated = { ...prev };
+        delete updated[sessionId];
+        return updated;
+      });
+      setTaskCacheHashes((prev: Record<string, string>) => {
+        const updated = { ...prev };
+        delete updated[sessionId];
+        return updated;
+      });
+    }
+
     // Queue for sync
     if (!task.id.startsWith("temp-")) {
       upsertPendingUpdate(task.id, { completed: newTaskStatus, attemptCount: 0 });
@@ -681,6 +838,26 @@ export default function GardenTaskListContainer({
 
     // Also remove from originalTaskOrder to keep it synchronized
     setOriginalTaskOrder((prev: Task[]) => prev.filter((t) => t.id !== task.id));
+
+    // Invalidate task cache for current session
+    if (selectedSession) {
+      const sessionId = selectedSession.id;
+      setTaskCache((prev: Record<string, Task[]>) => {
+        const updated = { ...prev };
+        delete updated[sessionId];
+        return updated;
+      });
+      setTaskCacheTimestamps((prev: Record<string, number>) => {
+        const updated = { ...prev };
+        delete updated[sessionId];
+        return updated;
+      });
+      setTaskCacheHashes((prev: Record<string, string>) => {
+        const updated = { ...prev };
+        delete updated[sessionId];
+        return updated;
+      });
+    }
 
     // Mark as changed for sync
     markAsChanged();
