@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as PIXI from "pixi.js";
-import { AnimatedTile, loadLevel, updateAnimatedTiles } from "@/engine/Tilemap";
-// Removed: import { Filter, GlProgram } from "pixi.js";
 import { loadTextFile } from "@/engine/utils";
+import { Assets } from "pixi.js";
 
 export const FRAMERATE = 12;
 
@@ -16,7 +15,6 @@ export default function GardenCanvas({
   const parentRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const worldContainerRef = useRef<PIXI.Container | null>(null);
-  const renderTextureRef = useRef<PIXI.RenderTexture | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -94,7 +92,8 @@ export default function GardenCanvas({
         }
 
         await app.init({
-          backgroundAlpha: 0,
+          // backgroundAlpha: 0,
+          backgroundColor: 0x1099bb,
           antialias: false, // Disable for pixel-perfect scaling
           preference: "webgl",
           width: elementCheck.clientWidth,
@@ -149,243 +148,62 @@ export default function GardenCanvas({
         finalElementCheck.appendChild(app.canvas);
 
         // ------------------------------------------------------------------------------ //
-        // Create render texture (our "framebuffer")
-        console.log("[GardenCanvas] Creating render texture...");
-        const renderTexture = PIXI.RenderTexture.create({
-          width: WORLD_WIDTH,
-          height: WORLD_HEIGHT,
-        });
-        renderTextureRef.current = renderTexture;
+        // Removed framebuffer and updated to draw tilemapSprite directly to the app world
+        const tilemapTexture = await Assets.load("/level/map.png");
+        const tilemapSprite = new PIXI.Sprite(tilemapTexture);
 
-        // Create sprite to display the render texture, scaled up
-        const renderSprite = new PIXI.Sprite(renderTexture);
+        // Center the tilemapSprite in the app world
+        tilemapSprite.anchor.set(0.5);
+        tilemapSprite.position.set(app.screen.width / 2, app.screen.height / 2);
+        app.stage.addChild(tilemapSprite);
 
-        // Center the scaled sprite on screen
-        renderSprite.anchor.set(0.5);
-        renderSprite.x = app.screen.width / 2;
-        renderSprite.y = app.screen.height / 2;
-        app.stage.addChild(renderSprite);
-
-        // Create world container (this renders to the render texture)
-        const world = new PIXI.Container();
-        world.sortableChildren = true; // Enable zIndex sorting
-        worldContainerRef.current = world;
-
-        // ------------------------------------------------------------------------------ //
-        // Load tilemap
-        console.log("[GardenCanvas] Loading tilemap...");
-        const tilemap = await loadLevel("/level/island.json");
-
-        console.log(`Loaded ${tilemap.layers.length} layers:`);
-        tilemap.layers.forEach((layer, index) => {
-          // console.log(
-          //   `Layer ${index}: ${layer.name}, tiles: ${layer.tiles.length}, zIndex: ${layer.container.zIndex}`
-          // );
-
-          // Manually set zIndex if it's not set properly
-          layer.container.zIndex = tilemap.layers.length - index - 1; // First layer gets highest zIndex
-
-          world.addChild(layer.container);
-          console.log(`Added layer ${layer.name} with zIndex ${layer.container.zIndex}`);
-
-          // Debug: Check if container has children
-          console.log(`Layer ${layer.name} container children: ${layer.container.children.length}`);
-
-          // do a manual sweep to find all water tiles and turn them into animated water tiles
-          layer.tiles.forEach((tile, tileIndex) => {
-            if (tile.id.startsWith(WATER_TILE_ID)) {
-              // Find the corresponding sprite in the layer container
-              const sprite = layer.container.children[tileIndex] as PIXI.Sprite;
-
-              if (sprite && sprite instanceof PIXI.Sprite) {
-                const animatedTile: AnimatedTile = {
-                  ...tile,
-                  animationFrames: ["13", "21", "22", "23"],
-                  frameDuration: 500, // Increased duration to make animation more visible
-                  currentFrame: 0,
-                  lastFrameTime: performance.now(),
-                  sprite: sprite, // Link to the actual sprite!
-                };
-                tilemap.animatedTiles.push(animatedTile);
-              } else {
-                console.warn(`Could not find sprite for animated tile at index ${tileIndex}`);
-              }
-            }
-          });
-
-          console.log(
-            `Layer ${layer.name} has ${tilemap.animatedTiles.length} animated tiles total`
-          );
-        });
-
-        // Force a sort after adding all layers
-        world.sortChildren();
-
-        // ------------------------------------------------------------------------------ //
-        // Day/Night Cycle Filter + Lighting System
-        // ------------------------------------------------------------------------------ //
-        // Add a full-screen PIXI.Graphics overlay above the scene, tinting for day/night
-        const dayNightOverlay = new PIXI.Graphics();
-        dayNightOverlay.zIndex = 9999; // Ensure it's above everything
-        let overlayAlpha = 0;
-        let overlayColor = 0x000000;
-
-        const drawOverlay = () => {
-          dayNightOverlay.clear();
-          dayNightOverlay.rect(0, 0, app.screen.width, app.screen.height);
-          dayNightOverlay.fill(overlayColor, overlayAlpha);
-        };
-        // Place overlay on stage
-        app.stage.addChild(dayNightOverlay);
-        // [NEW] Overlay update function based on DAY_DURATION
-        let lastOverlayUpdate = 0;
-        const updateOverlay = () => {
-          // Calculate cycle (0 = sunrise, 0.5 = sunset, 1 = next sunrise)
-          const seconds = performance.now() / 1000;
-          const cycle = (seconds / DAY_DURATION) % 1.0;
-          // Use a simple cosine to fade night in/out
-          // Night: alpha peaks at midnight (cycle=0.5), 0 at noon (cycle=0)
-          // Color: blueish at night, transparent at day
-          // You can tweak these values for style
-          const nightStrength = 0.45;
-          const t = Math.cos(cycle * 2 * Math.PI) * 0.5 + 0.5; // t=1 at noon, 0 at midnight
-          overlayAlpha = nightStrength * (1 - t); // 0 at day, max at night
-          // Slight blue tint at night
-          overlayColor = t > 0.1 ? 0x000000 : 0x203355;
-          drawOverlay();
-        };
-
-        // ------------------------------------------------------------------------------ //
-        // Add test circle at world origin (with high zIndex to ensure it's visible)
-        const circle = new PIXI.Graphics();
-        circle.circle(0, 0, 50);
-        circle.fill(0xff0000);
-        circle.zIndex = 1000; // Ensure it's on top
-        world.addChild(circle);
-
-        // ------------------------------------------------------------------------------ //
-        // Center world initially with hardcoded offset
-        world.x = -WORLD_OFFSET.x;
-        world.y = -WORLD_OFFSET.y;
-
-        // ------------------------------------------------------------------------------ //
-        // Render function
-        const renderWorld = () => {
-          app.renderer.render({
-            container: world,
-            target: renderTexture,
-            clear: true,
-          });
-        };
-
-        // ------------------------------------------------------------------------------ //
-        // Resize handler - scale based on render texture dimensions
+        // Update resize handler to center tilemapSprite directly
         const onResize = () => {
-          renderSprite.x = app.screen.width / 2;
-          renderSprite.y = app.screen.height / 2;
-
-          // Calculate scale to fit the render texture to the canvas
-          // This will scale the render texture (your map) to fill the canvas
-          const scaleX = app.screen.width / WORLD_WIDTH;
-          const scaleY = app.screen.height / WORLD_HEIGHT;
-
-          // Use the smaller scale to maintain aspect ratio
-          const scale = Math.max(scaleX, scaleY);
-          renderSprite.scale.set(scale);
-
+          tilemapSprite.position.set(app.screen.width / 2, app.screen.height / 2);
           app.stage.hitArea = new PIXI.Rectangle(0, 0, app.screen.width, app.screen.height);
-          // [NEW] Redraw overlay to fill new screen size
-          drawOverlay();
+
+          // new scale
+          const spriteScale = (app.screen.width * 0.9) / tilemapTexture.width;
+          tilemapSprite.scale.set(spriteScale);
         };
         app.renderer.on("resize", onResize);
 
         // Call resize initially to set proper scale
         onResize();
 
-        // ------------------------------------------------------------------------------ //
-        // Input handling
-        app.stage.eventMode = "static";
-        app.stage.hitArea = new PIXI.Rectangle(0, 0, app.screen.width, app.screen.height);
-
-        // ------------------------------------------------------------------------------ //
-        // create a parallax effect when mouse is inside of the game rect. else, slowly move back to 0 parallax
+        // Reintroduce missing variables and logic
+        let running = false;
+        let loopTimeout: ReturnType<typeof setTimeout> | null = null;
+        let lastOverlayTick = 0;
         const goalParallax = { x: 0, y: 0 };
         let isMouseInside = false;
 
-        app.stage.on("pointermove", (e) => {
-          if (app.stage.hitArea?.contains(e.global.x, e.global.y)) {
-            isMouseInside = true;
-
-            // Calculate mouse position relative to screen center
-            const screenCenterX = app.screen.width / 2;
-            const screenCenterY = app.screen.height / 2;
-            const mouseX = e.global.x - screenCenterX;
-            const mouseY = e.global.y - screenCenterY;
-
-            // Calculate distance from center as a normalized value (0 at center, 1 at edges)
-            const maxDistance = Math.sqrt(
-              screenCenterX * screenCenterX + screenCenterY * screenCenterY
-            );
-            const distance = Math.sqrt(mouseX * mouseX + mouseY * mouseY);
-            const normalizedDistance = Math.min(distance / maxDistance, 1.0);
-
-            // Apply decay based on distance from center (stronger effect at center, weaker at edges)
-            const decayFactor = 1.0 - normalizedDistance * 0.7; // 0.7 reduces effect at edges
-
-            // Calculate parallax offset based on mouse position relative to center
-            const parallaxStrength = 20; // Max pixels of parallax offset
-            goalParallax.x = (mouseX / screenCenterX) * parallaxStrength * decayFactor;
-            goalParallax.y = (mouseY / screenCenterY) * parallaxStrength * decayFactor;
-          } else {
-            isMouseInside = false;
-          }
-        });
-
-        // Handle mouse leaving the game area
-        app.stage.on("pointerleave", () => {
-          isMouseInside = false;
-        });
-
-        // ------------------------------------------------------------------------------ //
-        // [NEW] Game loop with tab-visibility and idle throttle
-        let running = false;
-        let loopTimeout: ReturnType<typeof setTimeout> | null = null;
-        let lastFrameTime = performance.now();
-        let lastOverlayTick = 0;
-
-        // Helper: decide current FPS
         const getCurrentFps = () => (isMouseInside ? FRAMERATE : 2);
-        // Main loop
+
+        // Update game loop to include reintroduced variables
         const gameLoop = () => {
           if (disposed || !running) return;
-          // Update animated tiles BEFORE rendering
-          updateAnimatedTiles(tilemap);
-          renderWorld();
+
           // If mouse is not inside, slowly return to center
           if (!isMouseInside) {
             goalParallax.x *= 0.95;
             goalParallax.y *= 0.95;
           }
+
           // Smoothly interpolate current position toward goal (velocity-based)
           const lerpFactor = 0.08;
           worldOffsetX += (goalParallax.x - worldOffsetX) * lerpFactor;
           worldOffsetY += (goalParallax.y - worldOffsetY) * lerpFactor;
-          if (worldContainerRef.current) {
-            worldContainerRef.current.x = Math.round(-WORLD_OFFSET.x - worldOffsetX);
-            worldContainerRef.current.y = Math.round(-WORLD_OFFSET.y - worldOffsetY);
-          }
-          // [NEW] Update overlay ~1 Hz
-          const now = performance.now();
-          if (now - lastOverlayTick > 1000) {
-            updateOverlay();
-            lastOverlayTick = now;
-          }
+
+          // Update tilemapSprite position for parallax effect
+          tilemapSprite.x = Math.round(app.screen.width / 2 + worldOffsetX);
+          tilemapSprite.y = Math.round(app.screen.height / 2 + worldOffsetY);
+
           // Schedule next frame with current FPS
           const fps = getCurrentFps();
           loopTimeout = setTimeout(gameLoop, 1000 / fps);
         };
 
-        // Start/stop helpers
         const startLoop = () => {
           if (!running) {
             running = true;
@@ -393,6 +211,7 @@ export default function GardenCanvas({
             gameLoop();
           }
         };
+
         const stopLoop = () => {
           running = false;
           if (loopTimeout) {
@@ -400,23 +219,15 @@ export default function GardenCanvas({
             loopTimeout = null;
           }
         };
-        // [NEW] Tab visibility handler
-        const handleVisibility = () => {
-          if (document.hidden) {
-            stopLoop();
-          } else {
-            startLoop();
-          }
-        };
-        document.addEventListener("visibilitychange", handleVisibility);
-        // [NEW] Mouse enter/leave for idle throttle
+
         app.stage.on("pointerenter", () => {
           isMouseInside = true;
         });
+
         app.stage.on("pointerleave", () => {
           isMouseInside = false;
         });
-        // Start loop initially
+
         startLoop();
 
         console.log("[GardenCanvas] Initialization completed successfully!");
@@ -437,7 +248,6 @@ export default function GardenCanvas({
 
         // Reset all refs
         worldContainerRef.current = null;
-        renderTextureRef.current = null;
 
         // Don't re-throw to prevent cascading errors
         console.log("[GardenCanvas] Initialization failed, but cleanup completed");
@@ -484,7 +294,6 @@ export default function GardenCanvas({
 
       // Set refs to null
       worldContainerRef.current = null;
-      renderTextureRef.current = null;
 
       console.log("[GardenCanvas] Cleanup completed");
     };

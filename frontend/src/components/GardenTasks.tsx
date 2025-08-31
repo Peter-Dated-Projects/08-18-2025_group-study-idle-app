@@ -181,12 +181,12 @@ export default function GardenTasks() {
         }
       } catch (error) {
         console.error("Error loading study sessions:", error);
-        addNotification({
-          type: "error",
-          message: `Failed to load study sessions: ${
+        addNotification(
+          "error",
+          `Failed to load study sessions: ${
             error instanceof Error ? error.message : "Unknown error"
-          }`,
-        });
+          }`
+        );
 
         // Fall back to cache if available
         if (sessionsCache.length > 0) {
@@ -248,18 +248,15 @@ export default function GardenTasks() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        addNotification({
-          type: "error",
-          message: `Failed to create study session: ${errorData.error || "Unknown error"}`,
-        });
+        addNotification(
+          "error",
+          `Failed to create study session: ${errorData.error || "Unknown error"}`
+        );
         throw new Error(errorData.error || "Failed to create study session");
       }
 
       const responseData: SessionUpdateResponse = await response.json(); // Consume the response
-      addNotification({
-        type: "info",
-        message: "New study session created successfully!",
-      });
+      addNotification("info", "New study session created successfully!", true);
 
       // Check if we need to update anything
       if (responseData.updateSessions) {
@@ -270,12 +267,12 @@ export default function GardenTasks() {
       }
     } catch (error) {
       console.error("Error creating study session:", error);
-      addNotification({
-        type: "error",
-        message: `Failed to create study session: ${
+      addNotification(
+        "error",
+        `Failed to create study session: ${
           error instanceof Error ? error.message : "Unknown error"
-        }`,
-      });
+        }`
+      );
     }
   };
 
@@ -398,20 +395,15 @@ export default function GardenTasks() {
         )
       );
 
-      addNotification({
-        type: "info",
-        message: "Session name updated successfully!",
-      });
+      addNotification("info", "Session name updated successfully!");
 
       setIsEditingSessionName(false);
     } catch (error) {
       console.error("Error updating session name:", error);
-      addNotification({
-        type: "error",
-        message: `Failed to update session name: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      });
+      addNotification(
+        "error",
+        `Failed to update session name: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
       setIsEditingSessionName(false);
     }
   };

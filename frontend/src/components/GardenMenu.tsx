@@ -13,6 +13,7 @@ import { AvatarSignalHandler } from "@/scripts/AvatarSignalHandler";
 import "@/utils/AvatarSignals"; // Import for console testing functions
 
 import { AVATAR_BOX } from "./constants";
+import { FRAMERATE } from "./GardenCanvas";
 
 interface MenuTextures {
   avatar: PIXI.RenderTexture | null;
@@ -218,7 +219,7 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
 
       renderMenuTextures(pixiApp, menuContainers.current!, menuTextures);
       updateAllCanvases(menuTextures, pixiApp.renderer);
-    }, 1000 / 16); // 16 FPS for UI updates
+    }, 1000 / FRAMERATE); // 12 FPS for UI updates
 
     return () => {
       clearInterval(updateInterval);
