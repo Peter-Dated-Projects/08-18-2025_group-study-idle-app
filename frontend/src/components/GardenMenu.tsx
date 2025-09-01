@@ -18,7 +18,6 @@ import { FRAMERATE } from "./GardenCanvas";
 interface MenuTextures {
   avatar: PIXI.RenderTexture | null;
   inventory: PIXI.RenderTexture | null;
-  stats: PIXI.RenderTexture | null;
 }
 
 interface GardenMenuProps {
@@ -36,7 +35,6 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
   const [menuTextures, setMenuTextures] = useState<MenuTextures>({
     avatar: null,
     inventory: null,
-    stats: null,
   });
 
   const [avatarBackgroundTexture, setAvatarBackgroundTexture] = useState<PIXI.Texture | null>(null);
@@ -153,11 +151,6 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
           height: 150,
           scaleMode: "nearest",
         }),
-        stats: PIXI.RenderTexture.create({
-          width: 150,
-          height: 150,
-          scaleMode: "nearest",
-        }),
       };
 
       setMenuTextures(newTextures);
@@ -178,6 +171,19 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
           resolve(undefined);
         })
       );
+
+      // Enable caching for menu containers
+      Object.values(menuContainers.current).forEach((container) => {
+        container.cacheAsTexture(true);
+      });
+
+      // Function to update cache textures for all containers
+      const updateCacheTextures = () => {
+        Object.values(menuContainers.current!).forEach((container) => {
+          container.updateCacheTexture();
+        });
+      };
+      updateCacheTextures();
     };
 
     initMenus();
@@ -277,20 +283,13 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
             maxHeight: "150px",
             objectFit: "contain",
             border: "1px solid #333", // Debug border
-            imageRendering: "pixelated" as any, // Disable antialiasing for crisp pixels
+            imageRendering: "pixelated" as const, // Disable antialiasing for crisp pixels
           }}
         />
       </div>
-
-      {/* Empty top center */}
-      <div style={{ gridArea: "topcenter" }}></div>
-
-      {/* Empty top right */}
-      <div style={{ gridArea: "topright" }}></div>
-
       {/* Inventory */}
-      <div style={{ gridArea: "middleleft", pointerEvents: "auto" }}>
-        <canvas
+      <div style={{ gridArea: "bottomleft", pointerEvents: "auto" }}>
+        {/* <canvas
           ref={canvasRefs.inventory}
           width={150}
           height={150}
@@ -302,33 +301,8 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
             objectFit: "contain",
             border: "1px solid #333",
           }}
-        />
+        /> */}
       </div>
-
-      {/* Center area - transparent for gameplay */}
-      <div style={{ gridArea: "middlecenter" }}></div>
-
-      {/* Stats */}
-      <div style={{ gridArea: "middleright", pointerEvents: "auto" }}>
-        <canvas
-          ref={canvasRefs.stats}
-          width={150}
-          height={150}
-          style={{
-            width: "100%",
-            height: "100%",
-            maxWidth: "150px",
-            maxHeight: "150px",
-            objectFit: "contain",
-            border: "1px solid #333",
-          }}
-        />
-      </div>
-
-      {/* Empty bottom areas */}
-      <div style={{ gridArea: "bottomleft" }}></div>
-      <div style={{ gridArea: "bottomcenter" }}></div>
-      <div style={{ gridArea: "bottomright" }}></div>
     </div>
   );
 }
@@ -364,7 +338,11 @@ function setupMenuContainer(container: PIXI.Container, text: string, color: numb
 }
 
 // Helper function to render all menu containers to their respective textures
-function renderMenuTextures(app: PIXI.Application, containers: any, textures: MenuTextures) {
+function renderMenuTextures(
+  app: PIXI.Application,
+  containers: Record<string, PIXI.Container>,
+  textures: MenuTextures
+) {
   Object.entries(containers).forEach(([key, container]) => {
     const texture = textures[key as keyof MenuTextures];
     if (texture && container) {
@@ -396,10 +374,11 @@ function updateCanvasFromTexture(
   renderer: PIXI.Renderer
 ) {
   // Disable image smoothing for pixel-perfect rendering
-  (ctx as any).imageSmoothingEnabled = false;
-  (ctx as any).webkitImageSmoothingEnabled = false;
-  (ctx as any).mozImageSmoothingEnabled = false;
-  (ctx as any).msImageSmoothingEnabled = false;
+  const context = ctx as CanvasRenderingContext2D;
+  context.imageSmoothingEnabled = false;
+  (context as unknown as Record<string, boolean>).webkitImageSmoothingEnabled = false;
+  (context as unknown as Record<string, boolean>).mozImageSmoothingEnabled = false;
+  (context as unknown as Record<string, boolean>).msImageSmoothingEnabled = false;
 
   try {
     // First check if texture has valid dimensions
@@ -413,8 +392,8 @@ function updateCanvasFromTexture(
     // Check if we got a valid canvas-like object
     if (extractResult && extractResult.width > 0 && extractResult.height > 0) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // Cast to any to avoid type issues with PIXI's ICanvas vs HTMLCanvasElement
-      ctx.drawImage(extractResult as any, 0, 0);
+      // Cast to HTMLCanvasElement for proper typing
+      ctx.drawImage(extractResult as HTMLCanvasElement, 0, 0);
       return;
     }
   } catch (error) {
@@ -423,7 +402,10 @@ function updateCanvasFromTexture(
       const pixels = renderer.extract.pixels(texture);
 
       // Convert to proper array format for newer PIXI versions
-      const pixelArray = pixels instanceof Uint8Array ? pixels : new Uint8Array(pixels as any);
+      const pixelArray =
+        pixels instanceof Uint8Array
+          ? pixels
+          : new Uint8Array(pixels as unknown as ArrayBufferLike);
 
       if (pixelArray.length === 0) {
         return;

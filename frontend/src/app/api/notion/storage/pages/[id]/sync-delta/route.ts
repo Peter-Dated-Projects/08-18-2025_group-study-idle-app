@@ -132,7 +132,7 @@ export async function POST(req: Request) {
     for (const create of requestBody.creates) {
       // Separate request for each new block
       try {
-        const createBody: { children: any[]; after?: string | null } = {
+        const createBody: { children: Array<Record<string, unknown>>; after?: string | null } = {
           children: [
             {
               object: "block",
@@ -194,7 +194,18 @@ export async function POST(req: Request) {
     // 3. Process updates
     for (const update of requestBody.updates) {
       try {
-        const updatePayload: any = {};
+        const updatePayload: {
+          to_do?: {
+            rich_text?: Array<{
+              type: string;
+              text: {
+                content: string;
+                link?: null;
+              };
+            }>;
+            checked?: boolean;
+          };
+        } = {};
 
         // Build the update payload based on what fields changed
         if (update.title !== undefined) {

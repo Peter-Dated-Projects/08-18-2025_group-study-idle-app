@@ -5,7 +5,7 @@ import {
 } from "../engine/CharacterAnimation";
 import { AnimatedTile } from "../engine/Tilemap";
 import { AnimationLoader } from "@/engine/AnimationLoader";
-import { onSignal, emitSignal } from "@/engine/GlobalSignalHandler";
+import { onSignal } from "@/engine/GlobalSignalHandler";
 import * as PIXI from "pixi.js";
 
 /**
@@ -211,7 +211,7 @@ export class HeartActivateAnimationState extends AnimationState {
     this.animatedTile.lastFrameTime = Date.now();
   }
 
-  onUpdate(deltaTime: number): string | null {
+  onUpdate(_deltaTime: number): string | null {
     return null;
   }
 
@@ -231,7 +231,7 @@ export class HeartIdleAnimationState extends AnimationState {
     this.animatedTile.lastFrameTime = Date.now();
   }
 
-  onUpdate(deltaTime: number): string | null {
+  onUpdate(_deltaTime: number): string | null {
     return null;
   }
 
@@ -251,7 +251,7 @@ export class HeartIdleEmote1AnimationState extends AnimationState {
     this.animatedTile.lastFrameTime = Date.now();
   }
 
-  onUpdate(deltaTime: number): string | null {
+  onUpdate(_deltaTime: number): string | null {
     return null;
   }
 
@@ -271,7 +271,7 @@ export class HeartDeactivateToUWUAnimationState extends AnimationState {
     this.animatedTile.lastFrameTime = Date.now();
   }
 
-  onUpdate(deltaTime: number): string | null {
+  onUpdate(_deltaTime: number): string | null {
     return null;
   }
 
@@ -291,7 +291,7 @@ export class UWUIdleAnimationState extends AnimationState {
     this.animatedTile.lastFrameTime = Date.now();
   }
 
-  onUpdate(deltaTime: number): string | null {
+  onUpdate(_deltaTime: number): string | null {
     return null;
   }
 
@@ -311,7 +311,7 @@ export class UWUIdleEmote1AnimationState extends AnimationState {
     this.animatedTile.lastFrameTime = Date.now();
   }
 
-  onUpdate(deltaTime: number): string | null {
+  onUpdate(_deltaTime: number): string | null {
     return null;
   }
 
@@ -331,7 +331,7 @@ export class UWUIdleEmote2AnimationState extends AnimationState {
     this.animatedTile.lastFrameTime = Date.now();
   }
 
-  onUpdate(deltaTime: number): string | null {
+  onUpdate(_deltaTime: number): string | null {
     return null;
   }
 
@@ -351,7 +351,7 @@ export class UWUIdleEmote3AnimationState extends AnimationState {
     this.animatedTile.lastFrameTime = Date.now();
   }
 
-  onUpdate(deltaTime: number): string | null {
+  onUpdate(_deltaTime: number): string | null {
     return null;
   }
 
@@ -371,7 +371,7 @@ export class CheerActivateAnimationState extends AnimationState {
     this.animatedTile.lastFrameTime = Date.now();
   }
 
-  onUpdate(deltaTime: number): string | null {
+  onUpdate(_deltaTime: number): string | null {
     return null;
   }
 
@@ -392,7 +392,7 @@ export class CheerIdleAnimationState extends AnimationState {
     this.animatedTile.lastFrameTime = Date.now();
   }
 
-  onUpdate(deltaTime: number): string | null {
+  onUpdate(_deltaTime: number): string | null {
     // The AnimatedTile will handle automatic frame progression
     // This state just loops forever - no transitions
     return null;
@@ -421,7 +421,7 @@ export class CheerIdle2AnimationState extends AnimationState {
     this.animatedTile.lastFrameTime = Date.now();
   }
 
-  onUpdate(deltaTime: number): string | null {
+  onUpdate(_deltaTime: number): string | null {
     return null;
   }
 
@@ -441,7 +441,7 @@ export class CheerDeactivateAnimationState extends AnimationState {
     this.animatedTile.lastFrameTime = Date.now();
   }
 
-  onUpdate(deltaTime: number): string | null {
+  onUpdate(_deltaTime: number): string | null {
     return null;
   }
 

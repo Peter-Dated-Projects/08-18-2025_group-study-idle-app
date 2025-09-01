@@ -4,14 +4,14 @@
  * Each handler manages specific objects and responds to signals independently
  */
 
-export type SignalCallback<T = any> = (data?: T) => void;
+export type SignalCallback<T = unknown> = (data?: T) => void;
 
-interface SignalSubscription<T = any> {
+interface SignalSubscription<T = unknown> {
   id: string;
   callback: SignalCallback<T>;
 }
 
-interface PendingSignal<T = any> {
+interface PendingSignal<T = unknown> {
   name: string;
   data?: T;
   timestamp: number;
@@ -42,7 +42,7 @@ export abstract class SignalHandler {
   /**
    * Helper method to subscribe to signals and track unsubscribe functions
    */
-  protected subscribeToSignal<T = any>(signalName: string, callback: SignalCallback<T>): void {
+  protected subscribeToSignal<T = unknown>(signalName: string, callback: SignalCallback<T>): void {
     const unsubscribe = globalSignalHandler.subscribe(signalName, callback);
     this.unsubscribeFunctions.push(unsubscribe);
   }
@@ -81,7 +81,7 @@ class GlobalSignalHandler {
    * @param callback - Function to call when signal is emitted
    * @returns Unsubscribe function
    */
-  public subscribe<T = any>(signalName: string, callback: SignalCallback<T>): () => void {
+  public subscribe<T = unknown>(signalName: string, callback: SignalCallback<T>): () => void {
     const subscriptionId = `sub_${this.subscriptionCounter++}`;
 
     if (!this.subscribers.has(signalName)) {
@@ -126,7 +126,7 @@ class GlobalSignalHandler {
    * @param signalName - The name of the signal to emit
    * @param data - Optional data to send with the signal
    */
-  public emit<T = any>(signalName: string, data?: T): void {
+  public emit<T = unknown>(signalName: string, data?: T): void {
     this.pendingSignals.push({
       name: signalName,
       data,
@@ -224,7 +224,7 @@ export const unregisterSignalHandler = (handler: SignalHandler) => {
  * @param callback - Function to call when signal is received
  * @returns Unsubscribe function
  */
-export const onSignal = <T = any,>(signalName: string, callback: SignalCallback<T>) => {
+export const onSignal = <T = unknown,>(signalName: string, callback: SignalCallback<T>) => {
   return globalSignalHandler.subscribe(signalName, callback);
 };
 
@@ -233,7 +233,7 @@ export const onSignal = <T = any,>(signalName: string, callback: SignalCallback<
  * @param signalName - Signal to emit
  * @param data - Optional data to send
  */
-export const emitSignal = <T = any,>(signalName: string, data?: T) => {
+export const emitSignal = <T = unknown,>(signalName: string, data?: T) => {
   globalSignalHandler.emit(signalName, data);
 };
 
@@ -243,56 +243,3 @@ export const emitSignal = <T = any,>(signalName: string, data?: T) => {
 export const updateSignals = () => {
   globalSignalHandler.update();
 };
-
-/**
- * USAGE EXAMPLES:
- *
- * // Creating a custom signal handler:
- * class MyGameHandler extends SignalHandler {
- *   private player: Player;
- *   private ui: UIManager;
- *
- *   constructor(player: Player, ui: UIManager) {
- *     super();
- *     this.player = player;
- *     this.ui = ui;
- *   }
- *
- *   initialize(): void {
- *     this.subscribeToSignal('player.gotItem', this.handleItemGet.bind(this));
- *     this.subscribeToSignal('player.tookDamage', this.handleDamage.bind(this));
- *   }
- *
- *   private handleItemGet(data: {item: Item, value: number}): void {
- *     this.player.addToInventory(data.item);
- *     this.ui.showItemNotification(data.item);
- *   }
- *
- *   private handleDamage(data: {damage: number}): void {
- *     this.player.takeDamage(data.damage);
- *     this.ui.shakeScreen();
- *   }
- * }
- *
- * // Using the handler:
- * const gameHandler = new MyGameHandler(player, ui);
- * registerSignalHandler(gameHandler);
- *
- * // In any file - emit a signal:
- * import { emitSignal } from '@/engine/GlobalSignalHandler';
- *
- * function playerGotItem(item: Item) {
- *   emitSignal('player.gotItem', { item, value: item.value });
- * }
- *
- * // In your main game loop:
- * import { updateSignals } from '@/engine/GlobalSignalHandler';
- *
- * function gameLoop() {
- *   updateSignals(); // Process all pending signals
- *   // ... rest of your game logic
- * }
- *
- * // Clean up when done:
- * unregisterSignalHandler(gameHandler);
- */

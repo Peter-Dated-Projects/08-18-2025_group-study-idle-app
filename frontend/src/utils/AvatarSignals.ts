@@ -111,7 +111,19 @@ export function ExampleGameUI() {
  * Add these functions to window for easy browser console testing
  */
 if (typeof window !== "undefined") {
-  (window as any).testAvatarSignals = {
+  (
+    window as unknown as {
+      testAvatarSignals?: {
+        cheer: typeof cheerAvatar;
+        love: typeof loveAvatar;
+        click: typeof clickAvatar;
+        setState: typeof setAvatarState;
+        gotItem: typeof playerGotItem;
+        tookDamage: typeof playerTookDamage;
+        levelUp: typeof playerLeveledUp;
+      };
+    }
+  ).testAvatarSignals = {
     cheer: cheerAvatar,
     love: loveAvatar,
     click: clickAvatar,

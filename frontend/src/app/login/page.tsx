@@ -6,11 +6,11 @@ import { HeaderFont, googleSVG } from "@/components/constants";
 export const AUTH_TOKEN_KEY = "auth_token";
 
 // Helper function to extract plain text from Notion rich text objects
-const extractPlainText = (richTextArray: any): string => {
+const extractPlainText = (richTextArray: Array<{ plain_text?: string }>): string => {
   if (!richTextArray || !Array.isArray(richTextArray)) {
     return "";
   }
-  return richTextArray.map((textObj: any) => textObj.plain_text || "").join("");
+  return richTextArray.map((textObj) => textObj.plain_text || "").join("");
 };
 
 export default function LoginPage() {
@@ -199,9 +199,10 @@ export default function LoginPage() {
       window.location.href = `/api/gauth/start?returnUrl=${returnUrl}`;
 
       // Note: The page will redirect, so this code won't continue
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Google sign-in error:", error);
-      setError(`Failed to start Google sign-in: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      setError(`Failed to start Google sign-in: ${errorMessage}`);
       setIsSigningIn(false);
     }
   };
@@ -216,9 +217,10 @@ export default function LoginPage() {
       window.location.href = `/api/notion/start?returnUrl=${returnUrl}`;
 
       // Note: The page will redirect, so this code won't continue
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Notion sign-in error:", error);
-      setError(`Failed to start Notion sign-in: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      setError(`Failed to start Notion sign-in: ${errorMessage}`);
     }
   };
 

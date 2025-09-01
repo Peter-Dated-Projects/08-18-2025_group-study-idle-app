@@ -1,6 +1,13 @@
 import * as PIXI from "pixi.js";
 import { AnimatedTile } from "./Tilemap";
 
+// Interface for animation frame data
+interface AnimationFrameData {
+  frameIndex?: number;
+  texture?: PIXI.Texture;
+  [key: string]: unknown;
+}
+
 /**
  * Base AnimationState class that acts as a template for specific animation states
  * Users should extend this class to create custom animation behaviors
@@ -162,11 +169,9 @@ export class CharacterAnimation {
         // );
       }
     } else {
-      const newAnimatedTile = this.currentState.getAnimatedTile();
-      const globalFrameId =
-        (newAnimatedTile as any).animationFrameData?.[0]?.frameIndex || "unknown";
+      // Reset frame to 0 for new state
       // console.log(
-      //   `🔄 State Transition: "${this.previousState?.id}" → "${stateId}" | Frame Reset to 0 | GlobalFrame: ${globalFrameId}`
+      //   `🔄 State Transition: "${this.previousState?.id}" → "${stateId}" | Frame Reset to 0`
       // );
     }
 
@@ -236,10 +241,13 @@ export class CharacterAnimation {
     if (!this.sprite || !this.currentState) return;
 
     const animatedTile = this.currentState.getAnimatedTile();
-    const animationTextures = (animatedTile as any).animationTextures;
-    const animationFrameData = (animatedTile as any).animationFrameData; // Store original frame data
+    const animationTextures = (animatedTile as unknown as Record<string, unknown>)
+      .animationTextures;
+    const animationFrameData = (animatedTile as unknown as Record<string, unknown>)
+      .animationFrameData; // Store original frame data
 
-    if (!animationTextures || animationTextures.length === 0) return;
+    if (!animationTextures || !Array.isArray(animationTextures) || animationTextures.length === 0)
+      return;
 
     // Calculate frame progression
     const currentTime = Date.now();
@@ -254,10 +262,10 @@ export class CharacterAnimation {
         : (prevFrameIndex + 1) % animationTextures.length;
 
       // Get global frame IDs for logging
-      const currentGlobalFrameId = animationFrameData
+      const currentGlobalFrameId = Array.isArray(animationFrameData)
         ? animationFrameData[prevFrameIndex]?.frameIndex
         : "unknown";
-      const nextGlobalFrameId = animationFrameData
+      const nextGlobalFrameId = Array.isArray(animationFrameData)
         ? animationFrameData[nextFrameIndex]?.frameIndex
         : "unknown";
 
@@ -319,7 +327,9 @@ export class CharacterAnimation {
     if (!this.sprite || !this.currentState) return;
 
     const animatedTile = this.currentState.getAnimatedTile();
-    const animationTextures = (animatedTile as any).animationTextures;
+    const animationTextures = (
+      animatedTile as unknown as AnimatedTile & { animationTextures?: PIXI.Texture[] }
+    ).animationTextures;
 
     if (!animationTextures || animationTextures.length === 0) return;
 
@@ -413,7 +423,7 @@ export class CharacterAnimation {
  */
 export function createAnimatedTileForState(
   stateId: string,
-  animationFrames: any[],
+  animationFrames: AnimationFrameData[],
   sprite: PIXI.Sprite,
   frameDuration: number = 150
 ): AnimatedTile {
@@ -429,10 +439,12 @@ export function createAnimatedTileForState(
   };
 
   // Add the textures array as a custom property
-  (tile as any).animationTextures = animationFrames.map((f) => f.texture);
+  (tile as unknown as Record<string, unknown>).animationTextures = animationFrames.map(
+    (f) => f.texture
+  );
 
   // Store original frame data for logging global frame IDs
-  (tile as any).animationFrameData = animationFrames;
+  (tile as unknown as Record<string, unknown>).animationFrameData = animationFrames;
 
   return tile;
 }
@@ -443,7 +455,7 @@ export function createAnimatedTileForState(
 export function createStateWithAnimatedTile<T extends AnimationState>(
   stateId: string,
   StateClass: new (tile: AnimatedTile) => T,
-  animationFrames: any[],
+  animationFrames: AnimationFrameData[],
   sprite: PIXI.Sprite,
   frameDuration: number = 150
 ): T {
@@ -467,7 +479,7 @@ export class CharacterAnimationBuilder {
   public addState<T extends AnimationState>(
     stateId: string,
     StateClass: new (tile: AnimatedTile) => T,
-    animationFrames: any[],
+    animationFrames: AnimationFrameData[],
     frameDuration: number = 150
   ): CharacterAnimationBuilder {
     if (animationFrames && animationFrames.length > 0) {

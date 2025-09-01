@@ -2,10 +2,32 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as PIXI from "pixi.js";
-import { loadTextFile } from "@/engine/utils";
 import { Assets } from "pixi.js";
+import { Entity } from "@/engine/Entity";
+import { Rect } from "@/engine/Rect";
+import { RectangleCollider, createRectangleCollider } from "@/engine/Collider";
+import { loadPixelTexture, createAndAddEntity } from "@/engine/EntityUtils";
+import { AnimationLoader } from "@/engine/AnimationLoader";
+import { CowBaby, createCowBaby } from "@/scripts/CowBabyStateMachine";
 
-export const FRAMERATE = 12;
+export const FRAMERATE = 6;
+export const DAYLIGHT_FRAMERATE = 0.1;
+export const DAY_CYCLE_TIME = 180;
+
+export const DEFAULT_LAMP_COLOR = 0xffffff;
+export const SECONDARY_LAMP_COLOR = 0xffffff;
+
+// Design constants for consistent scaling
+export const DESIGN_WIDTH = 1920;
+export const DESIGN_HEIGHT = 1080;
+
+export interface LightingObject {
+  active: boolean;
+  color: number;
+  intensity: number;
+  radius: number;
+  position: { x: number; y: number };
+}
 
 export default function GardenCanvas({
   onAppCreated,
@@ -17,15 +39,6 @@ export default function GardenCanvas({
   const worldContainerRef = useRef<PIXI.Container | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-
-  // World/camera settings
-  const WORLD_WIDTH = 32 * 16; // Your tilemap size
-  const WORLD_HEIGHT = 32 * 16;
-  const WORLD_OFFSET = { x: 128 - 16 * 2, y: 128 };
-  const SCALE = 2.3; // How much to scale up the render texture
-  const DAY_DURATION = 60.0 * 2.0; // 2 minutes
-
-  const WATER_TILE_ID = "13";
 
   // Ensure component is mounted and stable before initializing PIXI
   useEffect(() => {
@@ -40,8 +53,6 @@ export default function GardenCanvas({
 
     let disposed = false;
     let initializationInProgress = false;
-    let worldOffsetX = 0;
-    let worldOffsetY = 0;
 
     async function init() {
       // Prevent multiple initializations from running simultaneously
@@ -72,6 +83,7 @@ export default function GardenCanvas({
 
         // ------------------------------------------------------------------------------ //
         const app = new PIXI.Application();
+        app.stage.interactive = true; // Enable interactivity on the stage
         console.log("[GardenCanvas] PIXI Application created:", app);
 
         if (!app) {
@@ -99,6 +111,7 @@ export default function GardenCanvas({
           width: elementCheck.clientWidth,
           height: elementCheck.clientHeight,
         });
+        app.ticker.stop();
 
         console.log("[GardenCanvas] PIXI app initialized successfully");
         console.log("[GardenCanvas] Canvas element:", app.canvas);
@@ -138,6 +151,9 @@ export default function GardenCanvas({
           if (disposed || !parentRef.current) return;
           const parent = parentRef.current;
           app.renderer.resize(parent.clientWidth, parent.clientHeight);
+
+          // Trigger the onResize to update renderSprite scaling
+          onResize();
         };
 
         // Set up resize observer for responsive behavior
@@ -148,87 +164,214 @@ export default function GardenCanvas({
         finalElementCheck.appendChild(app.canvas);
 
         // ------------------------------------------------------------------------------ //
-        // Removed framebuffer and updated to draw tilemapSprite directly to the app world
-        const tilemapTexture = await Assets.load("/level/map.png");
+        // Create entities and colliders arrays
+        const entities: Entity[] = [];
+        const colliders: RectangleCollider[] = [];
+
+        // Create render sprite as framebuffer with fixed design resolution
+        const renderTexture = PIXI.RenderTexture.create({
+          width: DESIGN_WIDTH,
+          height: DESIGN_HEIGHT,
+        });
+        const renderSprite = new PIXI.Sprite(renderTexture);
+        renderSprite.position.set(0, 0);
+        app.stage.addChild(renderSprite);
+
+        // Create world container for scene objects
+        const worldContainer = new PIXI.Container();
+
+        // base map - calculate scale once based on design width
+        const tilemapTexture = await loadPixelTexture("/level/map.png");
         const tilemapSprite = new PIXI.Sprite(tilemapTexture);
 
-        // Center the tilemapSprite in the app world
-        tilemapSprite.anchor.set(0.5);
-        tilemapSprite.position.set(app.screen.width / 2, app.screen.height / 2);
-        app.stage.addChild(tilemapSprite);
+        // Set initial scale based on design width
+        const initialScale = (DESIGN_WIDTH / tilemapTexture.width) * 0.9; // 0.9 for some padding
 
-        // Update resize handler to center tilemapSprite directly
+        tilemapSprite.anchor.set(0.5);
+        tilemapSprite.position.set(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2);
+        tilemapSprite.scale.set(initialScale);
+        tilemapSprite.zIndex = -100;
+        worldContainer.addChild(tilemapSprite);
+
+        // Create entities using helper function with consistent scaling
+        const chickenCoop = await createAndAddEntity(
+          worldContainer,
+          entities,
+          "/entities/house_chicken.png",
+          DESIGN_WIDTH / 2 - 300,
+          DESIGN_HEIGHT / 2 + 20,
+          5
+        );
+        const waterBasin = await createAndAddEntity(
+          worldContainer,
+          entities,
+          "/entities/water_basin.png",
+          DESIGN_WIDTH / 2 - 250,
+          DESIGN_HEIGHT / 2 + 250,
+          4
+        );
+        const waterWell = await createAndAddEntity(
+          worldContainer,
+          entities,
+          "/entities/water_well.png",
+          DESIGN_WIDTH / 2 - 100,
+          DESIGN_HEIGHT / 2 + 25,
+          5
+        );
+        const mailbox = await createAndAddEntity(
+          worldContainer,
+          entities,
+          "/entities/mailbox.png",
+          DESIGN_WIDTH / 2 + 400,
+          DESIGN_HEIGHT / 2 + 50,
+          5
+        );
+
+        // Create colliders for static entities
+        colliders.push(
+          createRectangleCollider(
+            chickenCoop.rect.position.x,
+            chickenCoop.rect.position.y,
+            chickenCoop.rect.area.width,
+            chickenCoop.rect.area.height
+          )
+        );
+        colliders.push(
+          createRectangleCollider(
+            waterBasin.rect.position.x,
+            waterBasin.rect.position.y,
+            waterBasin.rect.area.width,
+            waterBasin.rect.area.height
+          )
+        );
+        colliders.push(
+          createRectangleCollider(
+            waterWell.rect.position.x,
+            waterWell.rect.position.y,
+            waterWell.rect.area.width,
+            waterWell.rect.area.height
+          )
+        );
+        colliders.push(
+          createRectangleCollider(
+            mailbox.rect.position.x,
+            mailbox.rect.position.y,
+            mailbox.rect.area.width,
+            mailbox.rect.area.height
+          )
+        );
+
+        // Create animated entities (cow babies)
+        const animatedEntities: CowBaby[] = [];
+        const animationLoader = new AnimationLoader();
+
+        // Create a few cow babies at different positions
+        const cowBaby1 = await createCowBaby(
+          app,
+          animationLoader,
+          DESIGN_WIDTH / 2 + 100,
+          DESIGN_HEIGHT / 2 + 100,
+          worldContainer
+        );
+        animatedEntities.push(cowBaby1);
+
+        const cowBaby2 = await createCowBaby(
+          app,
+          animationLoader,
+          DESIGN_WIDTH / 2 - 50,
+          DESIGN_HEIGHT / 2 + 150,
+          worldContainer
+        );
+        animatedEntities.push(cowBaby2);
+
+        // Replace the manual game loop with PIXI.Ticker
+        const ticker = new PIXI.Ticker(); // Use the app's built-in ticker
+        ticker.minFPS = FRAMERATE / 2;
+        ticker.maxFPS = FRAMERATE;
+
+        // Array to store lights
+        let isDirty = true;
+        let isActiveTab = true;
+
+        // game update loop
+        ticker.add((ticker) => {
+          if (disposed) return;
+
+          // game logic -- every frame
+          // Update static entities
+          entities.forEach((entity) => {
+            entity.update(ticker.deltaTime);
+
+            // Check if entity changed and set dirty flag
+            if (entity.isChanged) {
+              isDirty = true;
+              entity.resetChanged();
+            }
+          });
+
+          // Update animated entities (cow babies)
+          animatedEntities.forEach((cowBaby) => {
+            cowBaby.update(ticker.deltaTime, colliders);
+
+            // Check if cow baby changed and set dirty flag
+            if (cowBaby.rigidbody.isChanged) {
+              isDirty = true;
+              cowBaby.rigidbody.resetChanged();
+            }
+          });
+        });
+
+        // game render loop
+        ticker.add((ticker) => {
+          if (disposed) return;
+          if (!isActiveTab) return;
+          if (!isDirty) return;
+
+          // Render world container to the render texture (framebuffer)
+          app.renderer.render(worldContainer, { renderTexture });
+
+          // Render the final result to screen
+          app.renderer.render(app.stage);
+          isDirty = false;
+        });
+
+        // Start the ticker
+        ticker.start();
+
+        // Update resize handler to scale the framebuffer display, not individual objects
         const onResize = () => {
-          tilemapSprite.position.set(app.screen.width / 2, app.screen.height / 2);
+          // Update hit area
           app.stage.hitArea = new PIXI.Rectangle(0, 0, app.screen.width, app.screen.height);
 
-          // new scale
-          const spriteScale = (app.screen.width * 0.9) / tilemapTexture.width;
-          tilemapSprite.scale.set(spriteScale);
+          // Calculate scale to maintain aspect ratio based on width
+          const scaleX = app.screen.width / renderTexture.width;
+          const scaleY = app.screen.height / renderTexture.height;
+
+          // Use the bigger scale to maintain aspect ratio without stretching
+          const uniformScale = Math.max(scaleX, scaleY);
+
+          renderSprite.scale.set(uniformScale);
+
+          // Center the render sprite
+          renderSprite.position.set(
+            (app.screen.width - renderTexture.width * uniformScale) / 2,
+            (app.screen.height - renderTexture.height * uniformScale) / 2
+          );
+
+          isDirty = true;
         };
         app.renderer.on("resize", onResize);
-
-        // Call resize initially to set proper scale
         onResize();
 
-        // Reintroduce missing variables and logic
-        let running = false;
-        let loopTimeout: ReturnType<typeof setTimeout> | null = null;
-        let lastOverlayTick = 0;
-        const goalParallax = { x: 0, y: 0 };
-        let isMouseInside = false;
-
-        const getCurrentFps = () => (isMouseInside ? FRAMERATE : 2);
-
-        // Update game loop to include reintroduced variables
-        const gameLoop = () => {
-          if (disposed || !running) return;
-
-          // If mouse is not inside, slowly return to center
-          if (!isMouseInside) {
-            goalParallax.x *= 0.95;
-            goalParallax.y *= 0.95;
+        // Handle tab visibility changes
+        window.addEventListener("visibilitychange", () => {
+          isActiveTab = document.visibilityState === "visible";
+          if (!isActiveTab) {
+            ticker.stop(); // Pause the ticker when the tab is inactive
+          } else {
+            ticker.start(); // Resume the ticker when the tab becomes active
           }
-
-          // Smoothly interpolate current position toward goal (velocity-based)
-          const lerpFactor = 0.08;
-          worldOffsetX += (goalParallax.x - worldOffsetX) * lerpFactor;
-          worldOffsetY += (goalParallax.y - worldOffsetY) * lerpFactor;
-
-          // Update tilemapSprite position for parallax effect
-          tilemapSprite.x = Math.round(app.screen.width / 2 + worldOffsetX);
-          tilemapSprite.y = Math.round(app.screen.height / 2 + worldOffsetY);
-
-          // Schedule next frame with current FPS
-          const fps = getCurrentFps();
-          loopTimeout = setTimeout(gameLoop, 1000 / fps);
-        };
-
-        const startLoop = () => {
-          if (!running) {
-            running = true;
-            lastOverlayTick = 0;
-            gameLoop();
-          }
-        };
-
-        const stopLoop = () => {
-          running = false;
-          if (loopTimeout) {
-            clearTimeout(loopTimeout);
-            loopTimeout = null;
-          }
-        };
-
-        app.stage.on("pointerenter", () => {
-          isMouseInside = true;
         });
-
-        app.stage.on("pointerleave", () => {
-          isMouseInside = false;
-        });
-
-        startLoop();
 
         console.log("[GardenCanvas] Initialization completed successfully!");
       } catch (error) {

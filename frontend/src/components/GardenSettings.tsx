@@ -82,7 +82,8 @@ export default function GardenSettings() {
   // Settings UI Display
   const settingsUIDisplay = (
     <div
-      className="absolute top-0 left-0 p-4 bg-black bg-opacity-20 rounded w-full h-full flex items-center justify-center"
+      className="absolute top-0 left-0 p-4 rounded w-full h-full flex items-center justify-center"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Escape") setSettingsActive(false);

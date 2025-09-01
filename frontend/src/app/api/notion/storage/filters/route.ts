@@ -15,7 +15,16 @@ interface NotionProperty {
   id: string;
   name: string;
   type: string;
-  [key: string]: any;
+  select?: {
+    options?: Array<{ id: string; name: string; color: string }>;
+  };
+  multi_select?: {
+    options?: Array<{ id: string; name: string; color: string }>;
+  };
+  relation?: {
+    database_id?: string;
+  };
+  [key: string]: unknown;
 }
 
 interface NotionDatabase {
@@ -198,7 +207,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
         // Add specific options for select and multi_select properties
         if (property.type === "select" && property.select?.options) {
-          baseFilter.options = property.select.options.map((option: any) => ({
+          baseFilter.options = property.select.options.map((option) => ({
             id: option.id,
             name: option.name,
             color: option.color,
@@ -206,7 +215,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         }
 
         if (property.type === "multi_select" && property.multi_select?.options) {
-          baseFilter.options = property.multi_select.options.map((option: any) => ({
+          baseFilter.options = property.multi_select.options.map((option) => ({
             id: option.id,
             name: option.name,
             color: option.color,

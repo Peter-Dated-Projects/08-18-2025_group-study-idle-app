@@ -70,7 +70,7 @@ export async function GET(_req: Request) {
       );
     }
 
-    let database: NotionDatabaseDetails = await response.json();
+    const database: NotionDatabaseDetails = await response.json();
 
     if (!database) {
       return NextResponse.json({ error: "Failed to fetch database details" }, { status: 500 });

@@ -16,7 +16,7 @@ interface TokenRefreshResponse {
       name?: string;
       avatar_url?: string;
       type?: string;
-      person?: any;
+      person?: Record<string, unknown>; // Replace 'any' with a more specific type
     };
   };
   duplicated_template_id?: string;

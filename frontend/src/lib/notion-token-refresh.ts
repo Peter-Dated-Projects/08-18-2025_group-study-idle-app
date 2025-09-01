@@ -8,15 +8,7 @@ interface TokenRefreshResponse {
   workspace_icon?: string;
   workspace_id: string;
   owner: {
-    type: string;
-    user?: {
-      object: string;
-      id: string;
-      name?: string;
-      avatar_url?: string;
-      type?: string;
-      person?: any;
-    };
+    workspace: boolean;
   };
   duplicated_template_id?: string;
   request_id: string;

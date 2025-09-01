@@ -1,0 +1,47 @@
+{
+  "frame_width": 32,
+  "frame_height": 32,
+  "animations": [
+    {
+      "name": "idle_blink",
+      "frames": [0, 1]
+    },
+    {
+      "name": "idle",
+      "frames": [8, 9, 10, 11]
+    },
+    {
+      "name": "walk",
+      "frames": [16, 17, 18, 19]
+    },
+    {
+      "name": "hop",
+      "frames": [24, 25, 26]
+    },
+    {
+      "name": "stand",
+      "frames": [32, 33, 34, 35]
+    },
+    {
+      "name": "sit",
+      "frames": [35, 34, 33, 32]
+    },
+    {
+      "name": "fall_asleep",
+      "frames": [40, 41]
+    },
+    {
+      "name": "sniff_ground",
+      "frames": [48, 49, 50, 51, 52, 53, 54, 55]
+    },
+    {
+      "name": "eat_grass_idle",
+      "frames": [56, 57, 58, 59]
+    },
+    {
+      "name": "idle_heart",
+      "frames": [64, 65, 66, 67, 68, 69, 68, 67, 66, 65, 64]
+    }
+  ],
+  "info": "there are 8 frames per row"
+}

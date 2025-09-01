@@ -37,13 +37,18 @@ interface StudySession {
     external?: { url: string };
   } | null;
   url: string;
-  properties?: Record<string, any>;
+  properties?: {
+    Name?: {
+      title?: Array<{ text?: { content?: string } }>;
+    };
+    [key: string]: unknown;
+  };
 }
 
 interface SessionUpdateResponse {
   updateSessions: boolean;
   updateTasks: boolean;
-  [any: string]: any;
+  [key: string]: unknown;
 }
 
 export default function GardenTasks() {
@@ -472,7 +477,7 @@ export default function GardenTasks() {
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-6" style={{ gap: "5px" }}>
                   <div className="flex items-center gap-3">
                     <i className="fi fi-rr-book text-2xl" style={{ color: ACCENT_COLOR }}></i>
                     <div>
@@ -498,6 +503,7 @@ export default function GardenTasks() {
                       color: "white",
                       fontFamily: HeaderFont,
                       fontSize: "1rem",
+                      maxWidth: "200px",
                     }}
                   >
                     <i className="fi fi-rr-plus text-sm"></i>

@@ -4,32 +4,98 @@ import { NOTION_API_VERSION } from "@/components/constants";
 import { getUserSession, simpleDecrypt } from "@/lib/firestore";
 import { fetchWithTokenRefresh } from "@/lib/notion-token-refresh";
 
+interface NotionRichText {
+  plain_text?: string;
+  [key: string]: unknown;
+}
+
+interface NotionProperty {
+  type: string;
+  name: string;
+}
+
+interface NotionPage {
+  properties: Record<string, unknown>;
+  id?: string;
+  url?: string;
+  created_time?: string;
+  last_edited_time?: string;
+  archived?: boolean;
+  icon?: unknown;
+  cover?: unknown;
+}
+
+interface NotionDatabase {
+  properties: Record<string, NotionProperty>;
+  id?: string;
+}
+
+interface NotionQueryBody {
+  page_size: number;
+  filter?: unknown;
+  sorts?: unknown[];
+  start_cursor?: string;
+}
+
+interface NotionPagesResponse {
+  results: NotionPage[];
+  has_more?: boolean;
+  next_cursor?: string;
+}
+
+interface NotionTitleProperty {
+  title: NotionRichText[];
+}
+
+interface NotionCheckboxProperty {
+  checkbox: boolean;
+}
+
+interface NotionSelectProperty {
+  select: {
+    name: string;
+  } | null;
+}
+
+interface NotionDateProperty {
+  date: {
+    start: string;
+  } | null;
+}
+
+interface NotionPeopleProperty {
+  people: Array<{
+    id: string;
+    name?: string;
+  }>;
+}
+
 // Helper function to extract plain text from Notion rich text objects
-const extractPlainText = (richTextArray: any): string => {
+const extractPlainText = (richTextArray: NotionRichText[]): string => {
   if (!richTextArray || !Array.isArray(richTextArray)) {
     return "";
   }
-  return richTextArray.map((textObj: any) => textObj.plain_text || "").join("");
+  return richTextArray.map((textObj) => textObj.plain_text || "").join("");
 };
 
 // Helper function to determine if a page represents a "task"
-function isTaskPage(page: any, database: any): boolean {
+function isTaskPage(page: NotionPage, database: NotionDatabase): boolean {
   // Check if database has typical task properties
   const hasCheckbox = Object.values(database.properties).some(
-    (prop: any) =>
+    (prop) =>
       prop.type === "checkbox" &&
-      (prop.name.toLowerCase().includes("completed") ||
-        prop.name.toLowerCase().includes("done") ||
-        prop.name.toLowerCase().includes("finished"))
+      (prop.name?.toLowerCase().includes("completed") ||
+        prop.name?.toLowerCase().includes("done") ||
+        prop.name?.toLowerCase().includes("finished"))
   );
 
-  const hasTitle = Object.values(database.properties).some((prop: any) => prop.type === "title");
+  const hasTitle = Object.values(database.properties).some((prop) => prop.type === "title");
 
   return hasCheckbox && hasTitle;
 }
 
 // Helper function to extract task-like properties from a page
-function extractTaskProperties(page: any, database: any) {
+function extractTaskProperties(page: NotionPage, database: NotionDatabase) {
   const properties = page.properties;
   const dbProperties = database.properties;
 
@@ -42,62 +108,62 @@ function extractTaskProperties(page: any, database: any) {
 
   // Find title property
   const titleProp = Object.entries(dbProperties).find(
-    ([key, prop]: [string, any]) => prop.type === "title"
+    ([key, prop]: [string, NotionProperty]) => prop.type === "title"
   );
   if (titleProp && properties[titleProp[0]]) {
-    title = extractPlainText(properties[titleProp[0]].title);
+    title = extractPlainText((properties[titleProp[0]] as NotionTitleProperty).title);
   }
 
   // Find completion checkbox
   const completedProp = Object.entries(dbProperties).find(
-    ([key, prop]: [string, any]) =>
+    ([key, prop]: [string, NotionProperty]) =>
       prop.type === "checkbox" &&
       (prop.name.toLowerCase().includes("completed") ||
         prop.name.toLowerCase().includes("done") ||
         prop.name.toLowerCase().includes("finished"))
   );
   if (completedProp && properties[completedProp[0]]) {
-    completed = properties[completedProp[0]].checkbox || false;
+    completed = (properties[completedProp[0]] as NotionCheckboxProperty).checkbox || false;
   }
 
   // Find status property
   const statusProp = Object.entries(dbProperties).find(
-    ([key, prop]: [string, any]) =>
+    ([key, prop]: [string, NotionProperty]) =>
       prop.type === "select" && prop.name.toLowerCase().includes("status")
   );
   if (statusProp && properties[statusProp[0]]) {
-    status = properties[statusProp[0]].select?.name || null;
+    status = (properties[statusProp[0]] as NotionSelectProperty).select?.name || null;
   }
 
   // Find due date property
   const dueProp = Object.entries(dbProperties).find(
-    ([key, prop]: [string, any]) =>
+    ([key, prop]: [string, NotionProperty]) =>
       prop.type === "date" &&
       (prop.name.toLowerCase().includes("due") || prop.name.toLowerCase().includes("deadline"))
   );
   if (dueProp && properties[dueProp[0]]) {
-    dueDate = properties[dueProp[0]].date?.start || null;
+    dueDate = (properties[dueProp[0]] as NotionDateProperty).date?.start || null;
   }
 
   // Find priority property
   const priorityProp = Object.entries(dbProperties).find(
-    ([key, prop]: [string, any]) =>
+    ([key, prop]: [string, NotionProperty]) =>
       prop.type === "select" && prop.name.toLowerCase().includes("priority")
   );
   if (priorityProp && properties[priorityProp[0]]) {
-    priority = properties[priorityProp[0]].select?.name || null;
+    priority = (properties[priorityProp[0]] as NotionSelectProperty).select?.name || null;
   }
 
   // Find assignee property
   const assigneeProp = Object.entries(dbProperties).find(
-    ([key, prop]: [string, any]) =>
+    ([key, prop]: [string, NotionProperty]) =>
       prop.type === "people" &&
       (prop.name.toLowerCase().includes("assignee") ||
         prop.name.toLowerCase().includes("assigned") ||
         prop.name.toLowerCase().includes("owner"))
   );
   if (assigneeProp && properties[assigneeProp[0]]) {
-    assignee = properties[assigneeProp[0]].people?.[0] || null;
+    assignee = (properties[assigneeProp[0]] as NotionPeopleProperty).people?.[0] || null;
   }
 
   return {
@@ -191,7 +257,7 @@ export async function GET(req: Request) {
     const database = await databaseResponse.json();
 
     // Query database pages
-    const queryBody: any = {
+    const queryBody: NotionQueryBody = {
       page_size: 100,
     };
 
@@ -237,11 +303,11 @@ export async function GET(req: Request) {
 
     // Check if this looks like a task database
     // console.log("/api/notion/tasks received pages from database: ", pagesData);
-    const isTaskDatabase = isTaskPage({}, database);
+    const isTaskDatabase = isTaskPage({ properties: {} }, database);
 
     if (isTaskDatabase) {
       // Format as tasks
-      const tasks = pagesData.results.map((page: any) => {
+      const tasks = pagesData.results.map((page: NotionPage) => {
         const taskProps = extractTaskProperties(page, database);
 
         return {
@@ -268,15 +334,17 @@ export async function GET(req: Request) {
       });
     } else {
       // Format as generic pages
-      const pages = pagesData.results.map((page: any) => {
+      const pages = pagesData.results.map((page: NotionPage) => {
         // Extract title from any title property
         const titleProp = Object.entries(database.properties).find(
-          ([key, prop]: [string, any]) => prop.type === "title"
+          ([key, prop]: [string, unknown]) => (prop as NotionProperty).type === "title"
         );
 
         let title = "Untitled";
         if (titleProp && page.properties[titleProp[0]]) {
-          title = extractPlainText(page.properties[titleProp[0]].title) || "Untitled";
+          title =
+            extractPlainText((page.properties[titleProp[0]] as NotionTitleProperty).title) ||
+            "Untitled";
         }
 
         return {
@@ -380,7 +448,7 @@ export async function POST(request: Request) {
     const database = await databaseResponse.json();
 
     // Build query body
-    const queryBody: any = {
+    const queryBody: NotionQueryBody = {
       page_size: Math.min(page_size, 100),
     };
 
@@ -432,11 +500,11 @@ export async function POST(request: Request) {
     const pagesData = await pagesResponse.json();
 
     // Check if this looks like a task database
-    const isTaskDatabase = isTaskPage({}, database);
+    const isTaskDatabase = isTaskPage({ properties: {} }, database);
 
     if (isTaskDatabase) {
       // Format as tasks
-      const tasks = pagesData.results.map((page: any) => {
+      const tasks = pagesData.results.map((page: NotionPage) => {
         const taskProps = extractTaskProperties(page, database);
 
         return {
@@ -466,15 +534,17 @@ export async function POST(request: Request) {
       });
     } else {
       // Format as generic pages
-      const pages = pagesData.results.map((page: any) => {
+      const pages = pagesData.results.map((page: NotionPage) => {
         // Extract title from any title property
         const titleProp = Object.entries(database.properties).find(
-          ([key, prop]: [string, any]) => prop.type === "title"
+          ([key, prop]: [string, unknown]) => (prop as NotionProperty).type === "title"
         );
 
         let title = "Untitled";
         if (titleProp && page.properties[titleProp[0]]) {
-          title = extractPlainText(page.properties[titleProp[0]].title) || "Untitled";
+          title =
+            extractPlainText((page.properties[titleProp[0]] as NotionTitleProperty).title) ||
+            "Untitled";
         }
 
         return {

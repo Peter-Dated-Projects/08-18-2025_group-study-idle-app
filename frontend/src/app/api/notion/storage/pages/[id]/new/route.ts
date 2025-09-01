@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   }
 
   const sessionPageId = requestBody.sessionPageId;
-  const newTask: any = {
+  const newTask: Record<string, unknown> = {
     children: [
       {
         object: "block",

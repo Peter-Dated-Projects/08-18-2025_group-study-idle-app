@@ -2,7 +2,7 @@
 
 import * as PIXI from "pixi.js";
 import GardenCanvas from "@/components/GardenCanvas";
-import MusicSync from "@/components/MusicSync";
+import MinimizableToolsPanel from "@/components/MinimizableToolsPanel";
 import GardenMenu from "@/components/GardenMenu";
 import GardenTasks from "@/components/GardenTasks";
 import GardenSettings from "@/components/GardenSettings";
@@ -13,16 +13,16 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 // Helper function to extract plain text from Notion rich text objects
-const extractPlainText = (richTextArray: any): string => {
+const extractPlainText = (richTextArray: Array<{ plain_text?: string }>): string => {
   if (!richTextArray || !Array.isArray(richTextArray)) {
     return "";
   }
-  return richTextArray.map((textObj: any) => textObj.plain_text || "").join("");
+  return richTextArray.map((textObj) => textObj.plain_text || "").join("");
 };
 
 interface NotionDatabase {
   id: string;
-  title: any[]; // Rich text array from Notion API
+  title: Array<{ plain_text?: string }>; // Rich text array from Notion API
   url?: string;
   created_time?: string;
   last_edited_time?: string;
@@ -37,7 +37,7 @@ interface StudySessionNotionPage {
     emoji: string;
   };
   properties: {
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -53,6 +53,7 @@ function GardenPageContent() {
   const { addNotification } = useGlobalNotification();
 
   const [isClicking, setIsClicking] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [pixiApp, setPixiApp] = useState<PIXI.Application | null>(null); // PIXI.js Application state
 
@@ -176,18 +177,32 @@ function GardenPageContent() {
               >
                 <GardenTasks />
               </div>
-              <div
-                className="flex-1"
-                style={{
-                  flexBasis: "30%",
-                  minHeight: 100,
-                  padding: "10px",
-                  backgroundColor: PANELFILL,
-                  borderTop: `5px solid ${BORDERLINE}`,
-                }}
-              >
-                <MusicSync />
-              </div>
+              {!isMinimized ? (
+                <div
+                  className="flex-1 p-2.5 bg-panelfill border-t-[5px] border-t-[color:var(--borderline)]"
+                  style={{
+                    // flexBasis: "30%",
+                    height: isMinimized ? "min-content" : "100%",
+                    backgroundColor: PANELFILL,
+                    borderTop: `5px solid ${BORDERLINE}`,
+                  }}
+                >
+                  <MinimizableToolsPanel
+                    isMinimized={isMinimized}
+                    setIsMinimized={setIsMinimized}
+                  />
+                </div>
+              ) : (
+                <div
+                  className="p-2.5 border-t-[5px]"
+                  style={{ backgroundColor: PANELFILL, borderTop: `5px solid ${BORDERLINE}` }}
+                >
+                  <MinimizableToolsPanel
+                    isMinimized={isMinimized}
+                    setIsMinimized={setIsMinimized}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

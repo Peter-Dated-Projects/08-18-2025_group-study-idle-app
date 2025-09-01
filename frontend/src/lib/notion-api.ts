@@ -4,13 +4,13 @@ import { getUserSession, NotionTokenData } from "@/lib/firestore";
 
 interface NotionApiOptions {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
-  body?: any;
+  body?: Record<string, unknown>;
   endpoint: string;
 }
 
 interface NotionApiResult {
   success: boolean;
-  data?: any;
+  data?: Record<string, unknown>;
   error?: string;
   status?: number;
   needsReauth?: boolean;
