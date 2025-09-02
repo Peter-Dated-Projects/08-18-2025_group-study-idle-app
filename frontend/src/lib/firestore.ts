@@ -117,12 +117,36 @@ export interface UserSession {
   expires_at: Date;
   userAccountInformation: UserAccountInformation | null;
 }
+
 export interface UserAccountInformation {
   userId: string;
   email: string;
   created_at: Date;
   updated_at: Date;
   userName: string;
+}
+
+// Session API response type
+export interface SessionApiResponse {
+  success: boolean;
+  userId: string;
+  userEmail: string;
+  userName: string | null; // Can be null if userAccountInformation is null
+  sessionId: string;
+  hasNotionTokens: boolean;
+  error?: string;
+}
+
+// Cached session state type for frontend components
+export interface CachedSessionState {
+  userId: string;
+  userEmail: string;
+  userName: string | null;
+  sessionId: string;
+  hasNotionTokens: boolean;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  lastChecked: number; // Timestamp of last session check
 }
 
 // Generate a unique session ID

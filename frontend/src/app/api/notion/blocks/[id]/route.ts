@@ -146,3 +146,68 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "Failed to update Notion block" }, { status: 500 });
   }
 }
+
+/**
+ * Deletes a Notion block by its ID.
+ * @param req The incoming request object.
+ * @param params The route parameters, including the block ID.
+ * @returns A NextResponse object containing success confirmation or an error message.
+ */
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get("user_id")?.value;
+
+  if (!userId) {
+    return NextResponse.json({ error: "User not authenticated" }, { status: 401 });
+  }
+
+  // Fetch user session from Firestore
+  const session = await getUserSession(userId);
+  if (!session) {
+    return NextResponse.json({ error: "User session not found" }, { status: 404 });
+  }
+
+  // Check if user has Notion tokens
+  if (!session.notionTokens) {
+    return NextResponse.json({ error: "Notion tokens not found" }, { status: 401 });
+  }
+
+  const { id: blockId } = await params;
+
+  // Delete block in Notion API
+  try {
+    const response = await fetchWithTokenRefresh(
+      userId,
+      `https://api.notion.com/v1/blocks/${blockId}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.warn(`/api/notion/blocks/${blockId}: Failed to delete block:`, error);
+      return NextResponse.json(
+        {
+          error: "Failed to delete Notion block",
+          details: error,
+        },
+        { status: response.status }
+      );
+    }
+
+    // Notion API returns the deleted block data on successful deletion
+    const deletedBlock = await response.json();
+    return NextResponse.json({
+      success: true,
+      deletedBlockId: blockId,
+      deletedBlock,
+    });
+  } catch (error) {
+    console.error("Error deleting Notion block:", error);
+    return NextResponse.json({ error: "Failed to delete Notion block" }, { status: 500 });
+  }
+}

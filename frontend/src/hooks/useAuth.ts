@@ -49,6 +49,12 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionData, setSessionData] = useState<{
+    userId: string;
+    userEmail: string;
+    userName: string | null;
+    hasNotionTokens: boolean;
+  } | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -63,12 +69,22 @@ export function useAuth() {
           await storeUserSessionAPI(user.email, newSessionId);
           setSessionId(newSessionId);
 
+          // Set session data with proper types
+          setSessionData({
+            userId: user.email,
+            userEmail: user.email,
+            userName: user.displayName || null,
+            hasNotionTokens: false, // Will be updated when Notion is connected
+          });
+
           console.log(`User authenticated: ${user.email} with session: ${newSessionId}`);
         } catch (error) {
           console.error("Error storing user session:", error);
+          setSessionData(null);
         }
       } else {
         setSessionId(null);
+        setSessionData(null);
       }
     });
 
@@ -90,6 +106,7 @@ export function useAuth() {
     try {
       await firebaseSignOut(auth);
       setSessionId(null);
+      setSessionData(null);
     } catch (error) {
       console.error("Error signing out:", error);
     }
@@ -99,6 +116,7 @@ export function useAuth() {
     user,
     email: user?.email || null,
     sessionId,
+    sessionData,
     isLoading: loading,
     isAuthenticated: !!user,
     isUnauthenticated: !user && !loading,

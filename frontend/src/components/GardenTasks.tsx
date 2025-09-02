@@ -77,8 +77,12 @@ export default function GardenTasks() {
   // Cache expiration time (5 minutes)
   const CACHE_EXPIRATION_TIME = 5 * 60 * 1000;
 
+  const redirectToLogin = useCallback(() => {
+    window.location.href = "/login";
+  }, []);
+
   // Generate a simple hash from sessions data for change detection
-  const generateSessionsHash = (sessions: StudySession[]): string => {
+  const generateSessionsHash = useCallback((sessions: StudySession[]): string => {
     const dataString = sessions
       .map(
         (session) =>
@@ -97,7 +101,7 @@ export default function GardenTasks() {
       hash = hash & hash; // Convert to 32-bit integer
     }
     return hash.toString();
-  };
+  }, []);
 
   const checkAuthentication = useCallback(async () => {
     setIsLoading(true);
@@ -133,7 +137,7 @@ export default function GardenTasks() {
       redirectToLogin();
     }
     setIsLoading(false);
-  }, []);
+  }, [redirectToLogin]);
 
   const loadStudySessions = useCallback(
     async (forceRefresh: boolean = false) => {
@@ -211,6 +215,7 @@ export default function GardenTasks() {
       sessionsHash,
       CACHE_EXPIRATION_TIME,
       generateSessionsHash,
+      redirectToLogin,
     ]
   );
 
@@ -225,7 +230,7 @@ export default function GardenTasks() {
       console.log("being spammed");
       loadStudySessions();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadStudySessions]);
 
   const updateSessionsList = async () => {
     // This function is now simplified and delegates to loadStudySessions
@@ -283,22 +288,18 @@ export default function GardenTasks() {
     }
   };
 
-  const redirectToLogin = () => {
-    window.location.href = "/login";
-  };
-
   const refreshSessionsCache = async () => {
     console.log("Manually refreshing sessions cache");
     await loadStudySessions(true);
   };
 
-  const handleDataLoaded = (data: { taskList: Task[] }) => {
+  const handleDataLoaded = useCallback((data: { taskList: Task[] }) => {
     setTaskList(data.taskList);
-  };
+  }, []);
 
-  const handleSessionSelect = (session: StudySession) => {
+  const handleSessionSelect = useCallback((session: StudySession) => {
     setSelectedSession(session);
-  };
+  }, []);
 
   // Transform session data to match GardenTaskListContainer interface
   const transformSessionForTaskList = (session: StudySession) => {

@@ -64,7 +64,7 @@ interface SyncRequest {
 interface SyncResponse {
   created: Array<{ clientTempId: string; id: string }>;
   updated: string[];
-  deleted: string[];
+  deleted: Array<{ id: string; attemptCount: number }>;
 }
 
 interface StudySession {
@@ -116,6 +116,9 @@ export default function GardenTaskListContainer({
   // Refs for auto-scroll functionality
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const editingTaskRef = useRef<HTMLTableRowElement>(null);
+
+  // Ref to track the last loaded session to prevent unnecessary reloads
+  const lastLoadedSessionRef = useRef<string | null>(null);
 
   // Delta-based sync state
   const [pendingCreates, setPendingCreates] = useState<TaskCreate[]>([]);
@@ -245,22 +248,70 @@ export default function GardenTaskListContainer({
 
   // Load tasks when session changes
   useEffect(() => {
+    // Reset the session tracking when session changes
+    if (selectedSession?.id !== lastLoadedSessionRef.current) {
+      lastLoadedSessionRef.current = null;
+    }
+
     if (isAuthenticated && selectedSession) {
       loadTasksFromSession();
     } else {
       setTaskList([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, selectedSession]);
 
   const syncTasksToServer = useCallback(async () => {
     if (!selectedSession) return;
 
     try {
+      // If a task is being edited, save the current edit before syncing
+      if (editingTaskId && editingText.trim()) {
+        const trimmedTitle = editingText.trim();
+
+        // Update task locally
+        setTaskList((prev: Task[]) =>
+          prev.map((t: Task) => (t.id === editingTaskId ? { ...t, title: trimmedTitle } : t))
+        );
+
+        // Update the pending create with new title if it's a temp task
+        if (editingTaskId.startsWith("temp-")) {
+          setPendingCreates((prev: TaskCreate[]) =>
+            prev.map((c) => (c.clientTempId === editingTaskId ? { ...c, title: trimmedTitle } : c))
+          );
+        } else {
+          // Update existing task - inline the upsertPendingUpdate logic
+          setPendingUpdates((prev: TaskUpdate[]) => {
+            const existing = prev.find((u) => u.id === editingTaskId);
+            if (existing) {
+              // Merge with existing update
+              return prev.map((u) => (u.id === editingTaskId ? { ...u, title: trimmedTitle } : u));
+            } else {
+              // Add new update
+              return [...prev, { id: editingTaskId, title: trimmedTitle, attemptCount: 0 }];
+            }
+          });
+        }
+      }
+
+      // Filter out temporary task IDs from deletes - they never existed on the server
+      const realDeletes = pendingDeletes
+        .filter((deleteItem) => !deleteItem.id.startsWith("temp-"))
+        .filter((deleteItem) => deleteItem.id && deleteItem.id.trim() !== "") // Filter out undefined/null/empty
+        .map((deleteItem) => deleteItem.id); // Debug logging to identify any problematic IDs
+      if (realDeletes.some((id) => id === undefined || id === null || id === "")) {
+        console.error("Found undefined/null/empty IDs in deletes:", realDeletes);
+        console.error("Original pending deletes:", pendingDeletes);
+      }
+
+      // Additional safety: log what we're about to send
+      console.log("Deletes being sent to server:", realDeletes);
+
       const syncRequest: SyncRequest = {
         sessionPageId: selectedSession.id,
         creates: [...pendingCreates],
         updates: [...pendingUpdates],
-        deletes: pendingDeletes.map((deleteItem) => deleteItem.id),
+        deletes: realDeletes.filter((id) => id && id !== ""), // Extra safety filter
       };
 
       console.log("Sending sync request:", syncRequest);
@@ -299,16 +350,29 @@ export default function GardenTaskListContainer({
         );
       }
 
-      // Set delta queues to failed
-      setPendingCreates((prev: TaskCreate[]) =>
-        prev.map((c) => ({ ...c, attemptCount: c.attemptCount + 1 }))
-      );
-      setPendingUpdates((prev: TaskUpdate[]) =>
-        prev.map((c) => ({ ...c, attemptCount: c.attemptCount + 1 }))
-      );
-      setPendingDeletes((prev: TaskDelete[]) =>
-        prev.map((c) => ({ ...c, attemptCount: c.attemptCount + 1 }))
-      );
+      // Clear successfully processed operations from delta queues
+      if (responseData.created && responseData.created.length > 0) {
+        setPendingCreates((prev: TaskCreate[]) =>
+          prev.filter(
+            (c) => !responseData.created.some((created) => created.clientTempId === c.clientTempId)
+          )
+        );
+      }
+
+      if (responseData.updated && responseData.updated.length > 0) {
+        setPendingUpdates((prev: TaskUpdate[]) =>
+          prev.filter((u) => !responseData.updated.includes(u.id))
+        );
+      }
+
+      if (responseData.deleted && responseData.deleted.length > 0) {
+        setPendingDeletes((prev: TaskDelete[]) =>
+          prev.filter((d) => !responseData.deleted.some((deleted) => deleted.id === d.id))
+        );
+      }
+
+      // Also clean up any temporary IDs that may have gotten into pending deletes
+      setPendingDeletes((prev: TaskDelete[]) => prev.filter((d) => !d.id.startsWith("temp-")));
 
       console.log(
         `Synced deltas: ${responseData.created?.length || 0} created, ${
@@ -319,7 +383,15 @@ export default function GardenTaskListContainer({
       console.error("Error syncing tasks:", error);
       throw error;
     }
-  }, [selectedSession, pendingCreates, pendingUpdates, pendingDeletes, onRedirectToLogin]);
+  }, [
+    selectedSession,
+    pendingCreates,
+    pendingUpdates,
+    pendingDeletes,
+    onRedirectToLogin,
+    editingTaskId,
+    editingText,
+  ]);
 
   // Create the sync function
   const createSyncFunction = useCallback(() => {
@@ -431,6 +503,18 @@ export default function GardenTaskListContainer({
   );
 
   const enqueuePendingDelete = useCallback((taskId: string) => {
+    // Prevent undefined, null, or empty IDs from being queued
+    if (!taskId || taskId.trim() === "") {
+      console.warn("Attempted to queue invalid task ID for deletion:", taskId);
+      return;
+    }
+
+    // Prevent temporary IDs from being queued for deletion (they don't exist on server)
+    if (taskId.startsWith("temp-")) {
+      console.warn("Attempted to queue temporary task for deletion:", taskId);
+      return;
+    }
+
     setPendingDeletes((prev: TaskDelete[]) => [...prev, { id: taskId, attemptCount: 0 }]);
 
     // Remove any pending updates for this task to avoid wasted work
@@ -451,6 +535,12 @@ export default function GardenTaskListContainer({
       if (!selectedSession) return;
 
       const sessionId = selectedSession.id;
+
+      // Prevent loading the same session multiple times unless forced
+      if (!forceRefresh && lastLoadedSessionRef.current === sessionId) {
+        return;
+      }
+
       const now = Date.now();
 
       try {
@@ -464,16 +554,28 @@ export default function GardenTaskListContainer({
           now - cacheTimestamp < TASK_CACHE_EXPIRATION_TIME;
 
         if (isCacheValid) {
-          console.log(`Using cached tasks for session: ${selectedSession.title}`);
+          // Only log if there are actually tasks to show, to avoid spam for empty sessions
+          if (cachedTasks.length > 0) {
+            console.log(
+              `Using cached tasks for session: ${
+                selectedSession?.title || selectedSession?.id || "Unknown"
+              }`
+            );
+          }
           setTaskList([...cachedTasks]);
           setOriginalTaskOrder([...cachedTasks]);
           setTaskDetailsSortMode("custom");
           setCompletionSortMode("custom");
           setIsStartup(false);
+          lastLoadedSessionRef.current = sessionId; // Mark as loaded
           return;
         }
 
-        console.log(`Fetching fresh task data for session: ${selectedSession.title}`);
+        console.log(
+          `Fetching fresh task data for session: ${
+            selectedSession?.title || selectedSession?.id || "Unknown"
+          }`
+        );
 
         // Get blocks from the selected study session page
         const response = await fetch(`/api/notion/blocks/${selectedSession.id}?children=true`, {
@@ -551,6 +653,7 @@ export default function GardenTaskListContainer({
           setOriginalTaskOrder([...tasks]);
           setTaskDetailsSortMode("custom");
           setCompletionSortMode("custom");
+          lastLoadedSessionRef.current = sessionId; // Mark as loaded
 
           console.log(
             `Loaded and cached ${tasks.length} tasks from session: ${selectedSession.title}`
@@ -561,6 +664,7 @@ export default function GardenTaskListContainer({
           setOriginalTaskOrder([...cachedTasks]);
           setTaskDetailsSortMode("custom");
           setCompletionSortMode("custom");
+          lastLoadedSessionRef.current = sessionId; // Mark as loaded
         }
       } catch (err) {
         console.error("Error loading tasks from session:", err);

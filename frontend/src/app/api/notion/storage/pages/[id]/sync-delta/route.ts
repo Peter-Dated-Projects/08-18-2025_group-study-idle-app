@@ -28,7 +28,7 @@ export interface SyncDeltaRequest {
   sessionPageId: string;
   creates: TaskCreate[];
   updates: TaskUpdate[];
-  deletes: TaskDelete[];
+  deletes: string[]; // Changed to string array to match frontend
 }
 
 export interface SyncDeltaResponse {
@@ -98,33 +98,60 @@ export async function POST(req: Request) {
       `Processing deltas: ${requestBody.creates.length} creates, ${requestBody.updates.length} updates, ${requestBody.deletes.length} deletes`
     );
 
+    // Debug: Log the actual delete IDs being processed
+    if (requestBody.deletes.length > 0) {
+      console.log("Delete IDs received:", requestBody.deletes);
+      console.log(
+        "Delete IDs types:",
+        requestBody.deletes.map((id) => typeof id)
+      );
+      console.log(
+        "Delete IDs with undefined/null:",
+        requestBody.deletes.filter((id) => id === undefined || id === null || id === "")
+      );
+    }
+
     // 1. Process deletes first
-    for (const block of requestBody.deletes) {
+    for (const blockId of requestBody.deletes) {
+      // Skip undefined, null, or empty string IDs
+      if (!blockId || blockId.trim() === "") {
+        console.warn(`Skipping invalid block ID for deletion:`, blockId);
+        result.failed.deleted.push({
+          id: blockId || "undefined",
+          error: "Invalid block ID",
+          attemptCount: 1,
+        });
+        continue;
+      }
+
       try {
         const deleteResponse = await fetchWithTokenRefresh(
           userId,
-          `https://api.notion.com/v1/blocks/${block.id}`,
+          `https://api.notion.com/v1/blocks/${blockId}`,
           {
             method: "DELETE",
           }
         );
 
         if (deleteResponse.ok) {
-          result.deleted.push(block);
-          console.log(`Deleted block: ${block.id}`);
+          result.deleted.push({ id: blockId, attemptCount: 0 });
+          console.log(`Deleted block: ${blockId}`);
         } else {
-          console.warn(`Failed to delete block ${block.id}:`, deleteResponse.statusText);
-          if (block.attemptCount < attemptLimit) {
-            block.attemptCount++;
-            result.failed.deleted.push({
-              id: block.id,
-              error: deleteResponse.statusText,
-              attemptCount: block.attemptCount,
-            });
-          }
+          const errorText = deleteResponse.statusText;
+          console.warn(`Failed to delete block ${blockId}:`, errorText);
+          result.failed.deleted.push({
+            id: blockId,
+            error: errorText,
+            attemptCount: 1,
+          });
         }
       } catch (error) {
-        console.error(`Error deleting block ${block.id}:`, error);
+        console.error(`Error deleting block ${blockId}:`, error);
+        result.failed.deleted.push({
+          id: blockId,
+          error: error instanceof Error ? error.message : "Unknown error",
+          attemptCount: 1,
+        });
       }
     }
 
