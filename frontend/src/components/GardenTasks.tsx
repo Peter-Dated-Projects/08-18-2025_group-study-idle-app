@@ -131,13 +131,42 @@ export default function GardenTasks() {
         return;
       }
 
+      // Verify and set up the storage database
+      console.log("Verifying Notion storage setup...");
+      const verifyResponse = await fetch("/api/notion/storage/verify", {
+        credentials: "include",
+      });
+
+      if (!verifyResponse.ok) {
+        const verifyError = await verifyResponse.json();
+        console.error("Storage verification failed:", verifyError);
+        if (verifyError.needsReauth) {
+          addNotification(
+            "error",
+            "Your Notion connection needs to be refreshed. Please reconnect your account."
+          );
+          redirectToLogin();
+          return;
+        } else {
+          addNotification(
+            "error",
+            verifyError.error || "Failed to set up storage. Please reconnect your Notion account."
+          );
+          redirectToLogin();
+          return;
+        }
+      }
+
+      const verifyData = await verifyResponse.json();
+      console.log("Storage verification successful:", verifyData);
+
       setIsAuthenticated(true);
     } catch (error) {
       console.error("Authentication check failed:", error);
       redirectToLogin();
     }
     setIsLoading(false);
-  }, [redirectToLogin]);
+  }, [redirectToLogin, addNotification]);
 
   const loadStudySessions = useCallback(
     async (forceRefresh: boolean = false) => {
@@ -170,18 +199,52 @@ export default function GardenTasks() {
             redirectToLogin();
             return;
           }
+          if (errorData.needsVerification) {
+            // Database ID not set up, try to verify first
+            console.log("Database not found, running verification...");
+            const verifyResponse = await fetch("/api/notion/storage/verify", {
+              credentials: "include",
+            });
+
+            if (verifyResponse.ok) {
+              console.log("Verification successful, retrying session load...");
+              // Retry loading sessions after successful verification
+              await loadStudySessions(true);
+              return;
+            } else {
+              const verifyError = await verifyResponse.json();
+              addNotification(
+                "error",
+                verifyError.error ||
+                  "Failed to set up your storage. Please reconnect your Notion account."
+              );
+              redirectToLogin();
+              return;
+            }
+          }
           throw new Error(errorData.error || "Failed to load study sessions");
         }
 
         const responseData = await response.json();
         const fetchedSessions = responseData.results || [];
 
+        console.log(`Loaded ${fetchedSessions.length} study sessions`);
+
         // Generate hash for change detection
         const newHash = generateSessionsHash(fetchedSessions);
 
-        // Only update if data has changed or it's the first load
-        if (newHash !== sessionsHash || sessionsCache.length === 0) {
-          console.log("Sessions data changed, updating cache");
+        // Always update if it's the first load (cache is empty) or if data has actually changed
+        // Special case: if we have no sessions but this is a valid response, we should still update
+        const isFirstLoad = sessionsCache.length === 0 && lastFetchTime === 0;
+        const hasDataChanged = newHash !== sessionsHash;
+        const shouldUpdate = isFirstLoad || hasDataChanged;
+
+        if (shouldUpdate) {
+          console.log(
+            isFirstLoad
+              ? "First load - updating with fetched sessions"
+              : "Sessions data changed, updating cache"
+          );
           setStudySessions(fetchedSessions);
           setSessionsCache(fetchedSessions);
           setSessionsHash(newHash);
