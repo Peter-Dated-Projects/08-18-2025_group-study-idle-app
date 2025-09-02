@@ -31,12 +31,14 @@ interface StudySession {
   id: string;
   title: string;
   created_time: string;
+  last_edited_time?: string;
   icon: {
     type: string;
     emoji?: string;
     external?: { url: string };
   } | null;
   url: string;
+  archived?: boolean;
   properties?: {
     Name?: {
       title?: Array<{ text?: { content?: string } }>;
@@ -296,6 +298,19 @@ export default function GardenTasks() {
 
   const handleSessionSelect = (session: StudySession) => {
     setSelectedSession(session);
+  };
+
+  // Transform session data to match GardenTaskListContainer interface
+  const transformSessionForTaskList = (session: StudySession) => {
+    return {
+      id: session.id,
+      title: session.title,
+      createdTime: session.created_time,
+      lastEditedTime: session.last_edited_time || session.created_time,
+      notionUrl: session.url,
+      archived: session.archived || false,
+      properties: session.properties,
+    };
   };
 
   const startEditingSessionName = () => {
@@ -704,7 +719,7 @@ export default function GardenTasks() {
         {selectedSession && (
           <div className="flex-1 min-h-0 w-full max-w-6xl">
             <GardenTaskListContainer
-              selectedSession={selectedSession}
+              selectedSession={transformSessionForTaskList(selectedSession)}
               isAuthenticated={isAuthenticated}
               onRedirectToLogin={redirectToLogin}
               onDataLoaded={handleDataLoaded}

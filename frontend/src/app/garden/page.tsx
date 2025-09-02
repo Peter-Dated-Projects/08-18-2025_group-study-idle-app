@@ -55,7 +55,7 @@ function GardenPageContent() {
   const [isClicking, setIsClicking] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [pixiApp, setPixiApp] = useState<PIXI.Application | null>(null); // PIXI.js Application state
+  const [pixiApp, setPixiApp] = useState<PIXI.Application | undefined>(undefined); // PIXI.js Application state
 
   const router = useRouter();
 

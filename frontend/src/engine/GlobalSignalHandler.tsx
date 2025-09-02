@@ -49,7 +49,7 @@ export abstract class SignalHandler {
 }
 
 class GlobalSignalHandler {
-  private subscribers: Map<string, SignalSubscription[]> = new Map();
+  private subscribers: Map<string, SignalSubscription<unknown>[]> = new Map();
   private pendingSignals: PendingSignal[] = [];
   private subscriptionCounter = 0;
   private handlers: SignalHandler[] = [];
@@ -88,9 +88,9 @@ class GlobalSignalHandler {
       this.subscribers.set(signalName, []);
     }
 
-    const subscription: SignalSubscription<T> = {
+    const subscription: SignalSubscription<unknown> = {
       id: subscriptionId,
-      callback,
+      callback: callback as SignalCallback<unknown>,
     };
 
     this.subscribers.get(signalName)!.push(subscription);

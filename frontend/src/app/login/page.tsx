@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { HeaderFont, googleSVG } from "@/components/constants";
 
-export const AUTH_TOKEN_KEY = "auth_token";
-
 // Helper function to extract plain text from Notion rich text objects
 const extractPlainText = (richTextArray: Array<{ plain_text?: string }>): string => {
   if (!richTextArray || !Array.isArray(richTextArray)) {

@@ -120,7 +120,7 @@ export default function GardenTaskListContainer({
   // Delta-based sync state
   const [pendingCreates, setPendingCreates] = useState<TaskCreate[]>([]);
   const [pendingUpdates, setPendingUpdates] = useState<TaskUpdate[]>([]);
-  const [pendingDeletes, setPendingDeletes] = useState<string[]>([]);
+  const [pendingDeletes, setPendingDeletes] = useState<TaskDelete[]>([]);
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -132,7 +132,7 @@ export default function GardenTaskListContainer({
   const TASK_CACHE_EXPIRATION_TIME = 3 * 60 * 1000; // 3 minutes for tasks (shorter than sessions)
 
   // Generate a simple hash from task data for change detection
-  const generateTasksHash = (tasks: Task[]): string => {
+  const generateTasksHash = useCallback((tasks: Task[]): string => {
     const dataString = tasks
       .map((task) => `${task.id}-${task.title}-${task.completed}-${task.lastEditedTime}`)
       .sort()
@@ -146,7 +146,7 @@ export default function GardenTaskListContainer({
       hash = hash & hash; // Convert to 32-bit integer
     }
     return hash.toString();
-  };
+  }, []);
 
   // Notify parent when data changes
   useEffect(() => {
@@ -260,7 +260,7 @@ export default function GardenTaskListContainer({
         sessionPageId: selectedSession.id,
         creates: [...pendingCreates],
         updates: [...pendingUpdates],
-        deletes: [...pendingDeletes],
+        deletes: pendingDeletes.map((deleteItem) => deleteItem.id),
       };
 
       console.log("Sending sync request:", syncRequest);
@@ -350,10 +350,7 @@ export default function GardenTaskListContainer({
         console.log("Sync completed successfully");
       } catch (error) {
         console.error("Sync failed:", error);
-        addNotification({
-          type: "error",
-          message: "Failed to sync changes to server",
-        });
+        addNotification("error", "Failed to sync changes to server");
         // Reschedule sync on failure
         if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
         syncTimerRef.current = setTimeout(() => {
@@ -426,7 +423,7 @@ export default function GardenTaskListContainer({
           return prev.map((u) => (u.id === taskId ? { ...u, ...update } : u));
         } else {
           // Add new update
-          return [...prev, { id: taskId, ...update }];
+          return [...prev, { id: taskId, attemptCount: 0, ...update }];
         }
       });
     },
@@ -446,7 +443,7 @@ export default function GardenTaskListContainer({
       prev.filter((c: TaskCreate) => c.clientTempId !== taskId)
     );
     setPendingUpdates((prev: TaskUpdate[]) => prev.filter((u: TaskUpdate) => u.id !== taskId));
-    setPendingDeletes((prev: string[]) => prev.filter((d: string) => d !== taskId));
+    setPendingDeletes((prev: TaskDelete[]) => prev.filter((d: TaskDelete) => d.id !== taskId));
   }, []);
 
   const loadTasksFromSession = useCallback(
@@ -486,10 +483,10 @@ export default function GardenTaskListContainer({
         if (!response.ok) {
           const errorData = await response.json();
           if (errorData.needsReauth) {
-            addNotification({
-              type: "error",
-              message: "Your Notion connection has expired. Please reconnect your account.",
-            });
+            addNotification(
+              "error",
+              "Your Notion connection has expired. Please reconnect your account."
+            );
             onRedirectToLogin();
             return;
           }
@@ -567,10 +564,10 @@ export default function GardenTaskListContainer({
         }
       } catch (err) {
         console.error("Error loading tasks from session:", err);
-        addNotification({
-          type: "error",
-          message: `Failed to load tasks: ${err instanceof Error ? err.message : "Unknown error"}`,
-        });
+        addNotification(
+          "error",
+          `Failed to load tasks: ${err instanceof Error ? err.message : "Unknown error"}`
+        );
 
         // Fall back to cache if available
         const cachedTasks = taskCache[sessionId];

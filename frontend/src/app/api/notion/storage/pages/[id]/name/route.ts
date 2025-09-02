@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getUserSession, getUserSessionDatabaseId } from "@/lib/firestore";
 import { fetchWithTokenRefresh } from "@/lib/notion-token-refresh";
 
 interface UpdateSessionNameRequest {
@@ -10,7 +9,7 @@ interface UpdateSessionNameRequest {
 /**
  * PATCH function for updating a study session's name
  */
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const cookieStore = await cookies();
   const userId = cookieStore.get("user_id")?.value;
   if (!userId) {
@@ -18,7 +17,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: "Unauthorized", needsReauth: true }, { status: 401 });
   }
 
-  const sessionId = params.id;
+  const { id: sessionId } = await params;
   const requestBody: UpdateSessionNameRequest = await req.json();
 
   if (!requestBody.name || requestBody.name.trim() === "") {
