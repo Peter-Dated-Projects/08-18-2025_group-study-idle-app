@@ -1,26 +1,29 @@
 # StudyGarden
 
+![StudyGarden Demo](frontend/docs/demo.png)
+
 ## Project Overview
 
-StudyGarden is an idle app designed to help users cultivate productive study habits by gamifying study sessions. Users can grow their virtual garden by staying focused and completing study tasks, turning productivity into a rewarding experience.
+StudyGarden is an engaging idle app designed to gamify productivity. Users grow a virtual garden by completing study tasks, fostering consistent study habits in a rewarding way.
 
 ## Features
 
-- Idle gameplay that rewards consistent study habits
-- Virtual garden growth reflecting user progress
-- Task management and focus timers
-- User authentication and progress tracking
+- **Idle Gameplay:** Encourages consistent focus with rewards.
+- **Virtual Garden:** Reflects user progress visually.
+- **Task Management:** Organize and prioritize study sessions.
+- **Focus Timers:** Stay on track with built-in timers.
+- **User Authentication:** Securely track progress across devices.
 
 ## Tech Stack
 
-- Frontend: React, TypeScript, Tailwind CSS
-- Backend: Node.js, Express, MongoDB
-- Deployment: Vercel (Frontend), Google Cloud Run (Backend)
+- **Frontend:** React, TypeScript, Tailwind CSS
+- **Backend:** Node.js, Express, MongoDB
+- **Deployment:** Vercel (Frontend), Google Cloud Run (Backend)
 
 ## Project Structure
 
-- **Frontend:** React application managing UI, user interactions, and local state
-- **Backend:** REST API handling authentication, data persistence, and business logic
+- **Frontend:** Manages UI, user interactions, and local state.
+- **Backend:** Handles authentication, data persistence, and business logic.
 
 ## Local Development
 
@@ -56,13 +59,13 @@ StudyGarden is an idle app designed to help users cultivate productive study hab
 
 ## Deployment
 
-- **Frontend:** Deployed on Vercel for fast, scalable hosting with automatic CI/CD.
-- **Backend:** Deployed on Google Cloud Run for serverless, scalable API hosting.
+- **Frontend:** Hosted on Vercel for fast, scalable CI/CD.
+- **Backend:** Deployed on Google Cloud Run for serverless scalability.
 
 ## Roadmap
 
-- Implement real-time collaboration features
-- Add more garden customization options
-- Integrate with calendar and task management apps
-- Enhance analytics and progress reports
-- Mobile app development
+- Real-time collaboration features.
+- Expanded garden customization options.
+- Integration with calendar/task management apps.
+- Enhanced analytics and progress reports.
+- Mobile app development.
