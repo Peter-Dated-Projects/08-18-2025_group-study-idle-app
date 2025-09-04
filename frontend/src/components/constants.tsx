@@ -22,6 +22,8 @@ export const googleSVG = (
   </svg>
 );
 
+export const notionSVG = <img width="20" height="20" src="/notion-logo.svg" alt="Notion Icon" />;
+
 // Vibrant wood and plant-inspired color palette
 export const BORDERWIDTH = "8px";
 export const BORDERFILLLIGHT = "rgba(234, 210, 182, 1)";

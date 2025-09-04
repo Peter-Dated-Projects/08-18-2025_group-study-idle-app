@@ -483,6 +483,16 @@ export default function GardenTaskListContainer({
 
     const trimmedTitle = newTitle.trim();
 
+    // Check if there was a change in title value
+    if (
+      taskList.find((t) => t.id === taskId)?.title === trimmedTitle &&
+      !taskId.startsWith("temp-")
+    ) {
+      setEditingTaskId(null);
+      setEditingText("");
+      return; // No change, exit early
+    }
+
     // Update task locally
     setTaskList((prev: Task[]) =>
       prev.map((t: Task) => (t.id === taskId ? { ...t, title: trimmedTitle } : t))

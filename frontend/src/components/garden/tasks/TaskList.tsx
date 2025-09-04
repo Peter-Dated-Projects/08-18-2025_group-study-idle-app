@@ -72,96 +72,92 @@ export default function TaskList({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
+    <div className="flex-1 flex flex-col min-h-0 relative">
       <div
-        className="overflow-auto flex-1"
+        className="overflow-auto flex-1 hide-scrollbar"
         style={{
           scrollbarWidth: "none", // Firefox
           msOverflowStyle: "none", // IE 10+
         }}
         ref={scrollRef}
       >
-        <div className="overflow-auto flex-1">
-          <div className="hide-scrollbar">
-            <table className="w-full border-collapse relative">
-              <thead
-                className="sticky top-0 z-10"
+        <table className="w-full border-collapse relative">
+          <thead
+            className="sticky top-0 z-10"
+            style={{
+              backgroundColor: PANELFILL,
+              borderBottom: `3px solid ${BORDERFILL}`,
+            }}
+          >
+            <tr>
+              <th
+                className="text-center p-3 font-bold w-16 cursor-pointer select-none"
                 style={{
-                  backgroundColor: PANELFILL,
-                  borderBottom: `3px solid ${BORDERFILL}`,
+                  borderRight: `2px solid ${BORDERFILL}`,
+                  borderBottom: `2px solid ${BORDERFILL}`,
+                  color: FONTCOLOR,
+                  fontFamily: HeaderFont,
+                  fontSize: "1rem",
                 }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = HOVER_COLOR;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+                onClick={onCompletionSortClick}
+                title={`Sort by completion (${completionSortMode})`}
               >
-                <tr>
-                  <th
-                    className="text-center p-3 font-bold w-16 cursor-pointer select-none"
-                    style={{
-                      borderRight: `2px solid ${BORDERFILL}`,
-                      borderBottom: `2px solid ${BORDERFILL}`,
-                      color: FONTCOLOR,
-                      fontFamily: HeaderFont,
-                      fontSize: "1rem",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = HOVER_COLOR;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                    }}
-                    onClick={onCompletionSortClick}
-                    title={`Sort by completion (${completionSortMode})`}
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      <i className="fi fi-rr-checkbox text-sm"></i>
-                      <i className={`${getSortIcon(completionSortMode)} text-xs opacity-70`}></i>
-                    </div>
-                  </th>
-                  <th
-                    className="text-left p-3 font-bold cursor-pointer select-none"
-                    style={{
-                      borderBottom: `2px solid ${BORDERFILL}`,
-                      color: FONTCOLOR,
-                      fontFamily: HeaderFont,
-                      fontSize: "1rem",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = HOVER_COLOR;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                    }}
-                    onClick={onTaskDetailsSortClick}
-                    title={`Sort by task name (${taskDetailsSortMode})`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <i className="fi fi-rr-list text-sm"></i>
-                      Task Details
-                      <i className={`${getSortIcon(taskDetailsSortMode)} text-xs opacity-70`}></i>
-                    </div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {tasks.map((task, index) => (
-                  <TaskItem
-                    key={task.id}
-                    ref={editingTaskId === task.id ? editingRef : undefined}
-                    task={task}
-                    taskIndex={index}
-                    isEditing={editingTaskId === task.id}
-                    editingText={editingText}
-                    onEditingTextChange={onEditingTextChange}
-                    onStartEditing={onStartEditing}
-                    onKeyDown={onTaskKeyDown}
-                    onToggleCompletion={onToggleCompletion}
-                    onDelete={onDeleteTask}
-                    onSaveEdit={onSaveTaskEdit}
-                    onCancelEdit={onCancelEditing}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                <div className="flex items-center justify-center gap-1">
+                  <i className="fi fi-rr-checkbox text-sm"></i>
+                  <i className={`${getSortIcon(completionSortMode)} text-xs opacity-70`}></i>
+                </div>
+              </th>
+              <th
+                className="text-left p-3 font-bold cursor-pointer select-none"
+                style={{
+                  borderBottom: `2px solid ${BORDERFILL}`,
+                  color: FONTCOLOR,
+                  fontFamily: HeaderFont,
+                  fontSize: "1rem",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = HOVER_COLOR;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+                onClick={onTaskDetailsSortClick}
+                title={`Sort by task name (${taskDetailsSortMode})`}
+              >
+                <div className="flex items-center gap-2">
+                  <i className="fi fi-rr-list text-sm"></i>
+                  Task Details
+                  <i className={`${getSortIcon(taskDetailsSortMode)} text-xs opacity-70`}></i>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {tasks.map((task, index) => (
+              <TaskItem
+                key={task.id}
+                ref={editingTaskId === task.id ? editingRef : undefined}
+                task={task}
+                taskIndex={index}
+                isEditing={editingTaskId === task.id}
+                editingText={editingText}
+                onEditingTextChange={onEditingTextChange}
+                onStartEditing={onStartEditing}
+                onKeyDown={onTaskKeyDown}
+                onToggleCompletion={onToggleCompletion}
+                onDelete={onDeleteTask}
+                onSaveEdit={onSaveTaskEdit}
+                onCancelEdit={onCancelEditing}
+              />
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* Sticky Footer for Add New Task */}

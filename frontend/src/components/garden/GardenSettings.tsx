@@ -9,10 +9,10 @@ import {
   BORDERLINE,
   FONTCOLOR,
   SECONDARY_TEXT,
-  SUCCESS_COLOR,
-  ERROR_COLOR,
   ACCENT_COLOR,
   HOVER_COLOR,
+  googleSVG,
+  notionSVG,
 } from "@/components/constants";
 
 export default function GardenSettings() {
@@ -82,7 +82,7 @@ export default function GardenSettings() {
   // Settings UI Display
   const settingsUIDisplay = (
     <div
-      className="absolute top-0 left-0 p-4 rounded w-full h-full flex items-center justify-center"
+      className="absolute top-0 left-0 p-4 rounded w-full h-full flex items-center justify-center z-9000"
       style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
       tabIndex={0}
       onKeyDown={(e) => {
@@ -124,8 +124,8 @@ export default function GardenSettings() {
               }}
               onClick={handleLogout}
             >
-              <i className="fi fi-brands-google mr-3 text-lg" style={{ color: "#4285F4" }}></i>
-              Sign out of Google
+              <span className="pr-2">{googleSVG}</span>
+              <span>Sign out of Google</span>
             </button>
             <button
               className="flex items-center justify-center py-4 px-5 rounded-lg transition-all duration-200 mb-4 w-full shadow-sm hover:shadow-md"
@@ -144,8 +144,8 @@ export default function GardenSettings() {
               }}
               onClick={() => handleNotionLogout()}
             >
-              <i className="fi fi-rr-link-alt mr-3 text-lg" style={{ color: "#000000" }}></i>
-              Disconnect from Notion
+              <span className="pr-2">{notionSVG}</span>
+              <span>Sign out of Notion</span>
             </button>
           </div>
 
