@@ -28,30 +28,33 @@ export default function LoginPage() {
   // Notion Database states
   const [isNotionConnected, setIsNotionConnected] = useState(false);
 
-  // Check session on component mount
+  // Redirect to garden when fully authenticated
   useEffect(() => {
-    checkUserSession().finally(() => {
-      setIsLoading(false);
-    });
-  }, []);
+    if (isGoogleSignedIn && isNotionConnected && databaseSynced) {
+      window.location.href = "/garden";
+    }
+  }, [isGoogleSignedIn, isNotionConnected, databaseSynced]);
 
   // Handle OAuth redirect success
   useEffect(() => {
+    // Only process redirect once
+    if (hasProcessedRedirect) return;
+
     const urlParams = new URLSearchParams(window.location.search);
     const authSuccess = urlParams.get("auth");
     const authError = urlParams.get("error");
 
-    // Only process redirect once
-    if (hasProcessedRedirect) return;
+    // if auth not in URL, perform basic check
+    if (!authSuccess && !authError) {
+      checkUserSession().finally(() => {
+        setIsLoading(false);
+      });
+      return;
+    }
 
     if (authSuccess === "success") {
       setHasProcessedRedirect(true);
       setJustAuth(true);
-
-      // Clear URL parameters immediately to prevent multiple processing
-      const url = new URL(window.location.href);
-      url.search = ""; // Clear all search parameters
-      window.history.replaceState({}, "", url.toString());
 
       // Check auth status and reload user data
       setIsLoading(true);
@@ -61,20 +64,8 @@ export default function LoginPage() {
     } else if (authError) {
       setHasProcessedRedirect(true);
       setError(`Authentication failed: ${decodeURIComponent(authError)}`);
-
-      // Clear URL parameters
-      const url = new URL(window.location.href);
-      url.search = ""; // Clear all search parameters
-      window.history.replaceState({}, "", url.toString());
     }
   }, [hasProcessedRedirect]);
-
-  // Redirect to garden when fully authenticated
-  useEffect(() => {
-    if (isGoogleSignedIn && isNotionConnected && databaseSynced) {
-      window.location.href = "/garden";
-    }
-  }, [isGoogleSignedIn, isNotionConnected, databaseSynced]);
 
   // Load databases when Notion is connected
   useEffect(() => {
@@ -82,25 +73,6 @@ export default function LoginPage() {
       checkSessionsDatabaseStatus();
     }
   }, [isNotionConnected]);
-
-  // Attempt to check if the session database is valid
-  useEffect(() => {
-    if (justAuth) {
-      return;
-    }
-    const attemptPause = 1000;
-    const maxAttempts = 5;
-    let attempts = 0;
-    const attemptTimeout = setTimeout(() => {
-      checkSessionsDatabaseStatus();
-      attempts++;
-      if (attempts >= maxAttempts) {
-        clearTimeout(attemptTimeout);
-      }
-    }, attemptPause);
-
-    return () => clearTimeout(attemptTimeout);
-  }, []);
 
   // Check user session from server
   const checkUserSession = async () => {
@@ -129,28 +101,7 @@ export default function LoginPage() {
     }
   };
 
-  const checkSessionsDatabaseStatus = async () => {
-    // Check if the stored session_database_id is valid but in garbage or archived
-    try {
-      const response = await fetch("/api/notion/storage/verify");
-
-      if (!response.ok) {
-        console.warn("/api/notion/storage/verify: Notion database verification failed");
-        setDatabaseSynced(false);
-        setIsNotionConnected(false);
-        setError("Failed to verify the User Sessions Database");
-        return;
-      }
-
-      setDatabaseSynced(true);
-    } catch (error) {
-      console.error("/api/notion/storage/verify: Error verifying Notion database:", error);
-      setDatabaseSynced(false);
-      return;
-    }
-  };
-
-  const checkNotionStatus = useCallback(async () => {
+  const checkNotionStatus = async () => {
     try {
       // Check if notion logged in
       const response = await fetch("/api/notion/session", {
@@ -159,13 +110,22 @@ export default function LoginPage() {
 
       if (!response.ok) {
         setIsNotionConnected(false);
+        // not a first time attempt to verify status
+        if (!justAuth) {
+          setError("Notion session confirmation failed.");
+        }
         return;
       }
 
       const data = await response.json();
       if (!data.success || !data.hasValidTokens) {
-        console.warn("Notion is not connected or tokens are invalid.");
         setIsNotionConnected(false);
+        if (!justAuth) {
+          console.log(justAuth);
+          setError("Failed to confirm Notion auth. Please try reconnecting.");
+          return;
+        }
+        console.warn("Notion is not connected or tokens are invalid.");
         return;
       }
 
@@ -185,7 +145,53 @@ export default function LoginPage() {
       setIsNotionConnected(false);
       setDatabaseSynced(false);
     }
-  }, []);
+  };
+
+  const checkSessionsDatabaseStatus = async () => {
+    const sessionCheck = async () => {
+      // Check if the stored session_database_id is valid but in garbage or archived
+      try {
+        const response = await fetch("/api/notion/storage/verify");
+        const responseData = await response.json();
+
+        console.log(responseData);
+        if (!response.ok) {
+          console.warn("/api/notion/storage/verify: Notion database verification failed");
+
+          setDatabaseSynced(false);
+          setIsNotionConnected(false);
+
+          // check if first time login
+          if (responseData.showError !== false) {
+            setError(responseData.error || "Failed to verify Notion database.");
+          }
+          return;
+        }
+
+        setDatabaseSynced(true);
+      } catch (error) {
+        console.error("/api/notion/storage/verify: Error verifying Notion database:", error);
+        setDatabaseSynced(false);
+        return;
+      }
+    };
+
+    let attemptCount = 0;
+    const maxAttempts = 5;
+    const retryDelay = 1000; // 3 seconds
+
+    const interval = setInterval(async () => {
+      attemptCount++;
+      await sessionCheck();
+
+      if (databaseSynced || attemptCount >= maxAttempts) {
+        clearInterval(interval);
+        setIsLoading(false);
+      }
+    }, retryDelay);
+
+    return () => clearInterval(interval);
+  };
 
   const handleGoogleSignIn = async () => {
     try {

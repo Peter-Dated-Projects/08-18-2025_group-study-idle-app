@@ -25,7 +25,6 @@ interface Task {
   createdTime?: string;
   lastEditedTime?: string;
   archived?: boolean;
-  indent?: number; // For subtask indentation (0 = main task, 1+ = subtask levels)
   syncInstance: {
     isSyncing: boolean;
     prevSyncCall: Promise<void> | null;
@@ -36,7 +35,6 @@ interface Task {
 interface TaskCreate {
   title: string;
   completed: boolean;
-  indent: number;
   clientTempId: string;
   after: string | null;
   attemptCount: number;
@@ -303,9 +301,6 @@ export default function GardenTaskListContainer({
         console.error("Found undefined/null/empty IDs in deletes:", realDeletes);
         console.error("Original pending deletes:", pendingDeletes);
       }
-
-      // Additional safety: log what we're about to send
-      console.log("Deletes being sent to server:", realDeletes);
 
       const syncRequest: SyncRequest = {
         sessionPageId: selectedSession.id,
@@ -625,7 +620,6 @@ export default function GardenTaskListContainer({
                 createdTime: blockObj.created_time,
                 lastEditedTime: blockObj.last_edited_time,
                 archived: false,
-                indent: 0, // Default to main task level
                 syncInstance: {
                   isSyncing: false,
                   prevSyncCall: null,
@@ -698,7 +692,7 @@ export default function GardenTaskListContainer({
     ]
   );
 
-  const createNewTask = (insertAfterTaskId?: string, indentLevel: number = 0) => {
+  const createNewTask = (insertAfterTaskId?: string) => {
     if (!selectedSession) return;
 
     // Generate temporary ID and create task immediately on client side
@@ -719,7 +713,6 @@ export default function GardenTaskListContainer({
       id: tempTaskId,
       title: newTaskTitle,
       completed: false,
-      indent: indentLevel,
       notionUrl: "",
       createdTime: new Date().toISOString(),
       lastEditedTime: new Date().toISOString(),
@@ -764,16 +757,6 @@ export default function GardenTaskListContainer({
       });
     }
 
-    // Queue for creation
-    enqueuePendingCreate({
-      title: newTaskTitle,
-      completed: false,
-      indent: indentLevel,
-      clientTempId: tempTaskId,
-      after: insertAfterTaskId || null,
-      attemptCount: 0,
-    });
-
     // Start editing immediately
     setEditingTaskId(tempTask.id);
     setEditingText(newTaskTitle);
@@ -788,9 +771,6 @@ export default function GardenTaskListContainer({
         });
       }
     }, 100);
-
-    // Mark as changed for sync
-    markAsChanged();
   };
 
   const startEditing = (task: Task) => {
@@ -843,6 +823,25 @@ export default function GardenTaskListContainer({
           c.clientTempId === taskId ? { ...c, title: trimmedTitle, attemptCount: 0 } : c
         )
       );
+
+      // Find previous task in the current list to determine 'after' position
+      const currentIndex = taskList.findIndex((t) => t.id === taskId);
+      let insertAfterTaskId: string | undefined;
+      for (let i = currentIndex - 1; i >= 0; i--) {
+        if (!taskList[i].id.startsWith("temp-")) {
+          insertAfterTaskId = taskList[i].id;
+          break;
+        }
+      }
+
+      // Queue for creation
+      enqueuePendingCreate({
+        title: trimmedTitle,
+        completed: false,
+        clientTempId: taskId,
+        after: insertAfterTaskId || null,
+        attemptCount: 0,
+      });
     }
 
     // Mark as changed for sync
@@ -862,6 +861,7 @@ export default function GardenTaskListContainer({
       setEditingTaskId(null);
     } else if (e.key === "Escape") {
       // Cancel editing
+      saveTaskEdit(task.id, editingText);
       setEditingTaskId(null);
       setEditingText("");
     } else if (e.key === "Backspace" || e.key === "Delete") {

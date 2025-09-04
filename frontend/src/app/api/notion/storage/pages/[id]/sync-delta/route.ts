@@ -111,6 +111,8 @@ export async function POST(req: Request) {
       );
     }
 
+    console.log(requestBody);
+
     // 1. Process deletes first
     for (const blockId of requestBody.deletes) {
       // Skip undefined, null, or empty string IDs
@@ -124,6 +126,10 @@ export async function POST(req: Request) {
         continue;
       }
 
+      // Remove edits to block being deleted
+      requestBody.updates = requestBody.updates.filter((update) => update.id !== blockId);
+
+      // Attempt deletion
       try {
         const deleteResponse = await fetchWithTokenRefresh(
           userId,
@@ -156,31 +162,41 @@ export async function POST(req: Request) {
     }
 
     // 2. Process creates
+    // organize afters
+    const afterMap: Record<string, TaskCreate[]> = {};
     for (const create of requestBody.creates) {
-      // Separate request for each new block
-      try {
-        const createBody: { children: Array<Record<string, unknown>>; after?: string | null } = {
-          children: [
+      if (!afterMap[create.after || "null"]) {
+        afterMap[create.after || "null"] = [];
+      }
+      afterMap[create.after || "null"].push(create);
+    }
+
+    for (const afterId in afterMap) {
+      const creates = afterMap[afterId];
+
+      const childrenJson = creates.map((create) => ({
+        object: "block",
+        type: "to_do",
+        to_do: {
+          rich_text: [
             {
-              object: "block",
-              type: "to_do",
-              to_do: {
-                rich_text: [
-                  {
-                    type: "text",
-                    text: {
-                      content: create.title,
-                      link: null,
-                    },
-                  },
-                ],
-                checked: create.completed,
+              type: "text",
+              text: {
+                content: create.title,
+                link: null,
               },
             },
           ],
+          checked: create.completed,
+        },
+      }));
+
+      try {
+        const createBody: { children: Array<Record<string, unknown>>; after?: string | null } = {
+          children: [...childrenJson],
         };
-        if (create.after) {
-          createBody.after = create.after;
+        if (creates[0].after) {
+          createBody.after = creates[0].after;
         }
 
         // Send request
@@ -195,21 +211,25 @@ export async function POST(req: Request) {
 
         const responseData = await response.json();
         if (response.ok) {
-          const newId = responseData.results[0].id;
-          result.created.push({
-            clientTempId: create.clientTempId,
-            id: newId,
-            attemptCount: create.attemptCount,
-          });
-          console.log(`Created block: ${newId}`);
-        } else {
-          if (create.attemptCount < attemptLimit) {
-            create.attemptCount++;
-            result.failed.created.push({
+          for (const create of creates) {
+            const newId = responseData.results[0].id;
+            result.created.push({
               clientTempId: create.clientTempId,
-              error: responseData.error,
+              id: newId,
               attemptCount: create.attemptCount,
             });
+            console.log(`Created block: ${newId}`);
+          }
+        } else {
+          for (const create of creates) {
+            if (create.attemptCount < attemptLimit) {
+              create.attemptCount++;
+              result.failed.created.push({
+                clientTempId: create.clientTempId,
+                error: responseData.error,
+                attemptCount: create.attemptCount,
+              });
+            }
           }
         }
       } catch (error) {
