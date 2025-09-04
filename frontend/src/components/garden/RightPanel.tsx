@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import GardenTasks from "./GardenTasks";
-import ToolsSection from "./ToolsSection";
-import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "./constants";
+import GardenTasks from "./tasks/GardenTasks";
+import ToolsSection from "./tools/ToolsSection";
+import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../constants";
 
 export default function RightPanel() {
   const [isMinimized, setIsMinimized] = useState(false);

@@ -8,7 +8,7 @@ import { AnimationLoader } from "@/engine/AnimationLoader";
 import { Rigidbody } from "@/engine/Rigidbody";
 import { RectangleCollider, createRectangleCollider, isCollided } from "@/engine/Collider";
 import * as PIXI from "pixi.js";
-import { DESIGN_WIDTH, DESIGN_HEIGHT } from "../components/GardenCanvas";
+import { DESIGN_WIDTH, DESIGN_HEIGHT } from "../components/garden/GardenCanvas";
 
 // Local interface for animation frame data to match CharacterAnimation expectations
 interface AnimationFrameData {

@@ -12,7 +12,7 @@ import {
 import { AvatarSignalHandler } from "@/scripts/AvatarSignalHandler";
 import "@/utils/AvatarSignals"; // Import for console testing functions
 
-import { AVATAR_BOX } from "./constants";
+import { AVATAR_BOX } from "../constants";
 import { FRAMERATE } from "./GardenCanvas";
 
 interface MenuTextures {

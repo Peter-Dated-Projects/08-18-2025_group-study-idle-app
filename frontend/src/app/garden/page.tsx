@@ -1,11 +1,11 @@
 "use client";
 
 import * as PIXI from "pixi.js";
-import GardenCanvas from "@/components/GardenCanvas";
-import MinimizableToolsPanel from "@/components/MinimizableToolsPanel";
-import GardenMenu from "@/components/GardenMenu";
-import GardenTasks from "@/components/GardenTasks";
-import GardenSettings from "@/components/GardenSettings";
+import GardenCanvas from "@/components/garden/GardenCanvas";
+import MinimizableToolsPanel from "@/components/garden/MinimizableToolsPanel";
+import GardenMenu from "@/components/garden/GardenMenu";
+import GardenTasks from "@/components/garden/tasks/GardenTasks";
+import GardenSettings from "@/components/garden/GardenSettings";
 import { NotificationProvider, useGlobalNotification } from "@/components/NotificationProvider";
 
 import { FONTCOLOR, BORDERFILL, BORDERLINE, PANELFILL } from "@/components/constants";

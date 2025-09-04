@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import MusicSync from "./MusicSync";
 import Instructions from "./Instructions";
-import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "./constants";
+import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 
 interface Tab {
   id: string;

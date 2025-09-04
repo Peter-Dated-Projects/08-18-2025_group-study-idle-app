@@ -111,8 +111,6 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log(requestBody);
-
     // 1. Process deletes first
     for (const blockId of requestBody.deletes) {
       // Skip undefined, null, or empty string IDs
@@ -211,14 +209,16 @@ export async function POST(req: Request) {
 
         const responseData = await response.json();
         if (response.ok) {
+          let i = 0;
           for (const create of creates) {
-            const newId = responseData.results[0].id;
+            const newId = responseData.results[i].id;
             result.created.push({
               clientTempId: create.clientTempId,
               id: newId,
               attemptCount: create.attemptCount,
             });
             console.log(`Created block: ${newId}`);
+            i++;
           }
         } else {
           for (const create of creates) {

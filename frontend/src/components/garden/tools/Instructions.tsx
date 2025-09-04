@@ -1,5 +1,5 @@
 import React from "react";
-import { FONTCOLOR } from "./constants";
+import { FONTCOLOR } from "../../constants";
 
 export default function Instructions() {
   return (
