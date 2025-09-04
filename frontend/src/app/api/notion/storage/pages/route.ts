@@ -46,12 +46,16 @@ export async function GET(req: Request) {
   // Retrieve database ID from firestore
   const databaseId = await getUserSessionDatabaseId(userId);
   if (!databaseId) {
-    console.warn("/api/notion/storage/pages: No database found for user");
+    console.warn("/api/notion/storage/pages: No database found for user", userId);
+    console.warn("/api/notion/storage/pages: User may need to run storage verification first");
     return NextResponse.json(
-      { error: "No database found for user", needsReauth: true },
+      { error: "No database found for user", needsReauth: true, needsVerification: true },
       { status: 404 }
     );
   }
+
+  console.log(`/api/notion/storage/pages: Using database ID: ${databaseId}`);
+
   const response = await fetchWithTokenRefresh(
     userId,
     `https://api.notion.com/v1/databases/${databaseId}/query`,

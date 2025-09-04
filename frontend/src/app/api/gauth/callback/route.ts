@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { storeUserSession, simpleEncrypt, UserSession } from "@/lib/firestore";
+import { storeUserSession, simpleEncrypt, UserSession, getUserSession } from "@/lib/firestore";
 
 export async function GET(req: Request) {
   try {
@@ -81,15 +81,20 @@ export async function GET(req: Request) {
     // Create a session ID
     const sessionId = crypto.randomUUID();
 
-    // Store user session
+    // Check if user already has an existing session to preserve Notion tokens
+    const encryptedUserId = simpleEncrypt(userInfo.email);
+    const existingSession = await getUserSession(encryptedUserId);
+    const existingNotionTokens = existingSession?.notionTokens || null;
+
+    // Store user session - preserve existing Notion tokens if they exist
     const userSessionInfo: UserSession = {
       sessionId,
-      userId: simpleEncrypt(userInfo.email), // generate userID based off encrypted version of user email
-      notionTokens: null,
+      userId: encryptedUserId, // generate userID based off encrypted version of user email
+      notionTokens: existingNotionTokens, // Preserve existing Notion tokens
       created_at: new Date(),
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
       userAccountInformation: {
-        userId: simpleEncrypt(userInfo.email),
+        userId: encryptedUserId,
         email: userInfo.email,
         userName: userInfo.name || userInfo.email.split("@")[0], // Use name if available, else email prefix
         created_at: new Date(),
@@ -107,8 +112,7 @@ export async function GET(req: Request) {
     });
 
     // Store encrypted email for quick re-authentication check
-    const encryptedEmail = simpleEncrypt(userInfo.email);
-    cookieStore.set("user_id", encryptedEmail, {
+    cookieStore.set("user_id", encryptedUserId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

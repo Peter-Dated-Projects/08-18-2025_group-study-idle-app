@@ -8,6 +8,13 @@ import { AnimationLoader } from "@/engine/AnimationLoader";
 import { onSignal } from "@/engine/GlobalSignalHandler";
 import * as PIXI from "pixi.js";
 
+// Local interface for animation frame data to match CharacterAnimation expectations
+interface AnimationFrameData {
+  frameIndex?: number;
+  texture?: PIXI.Texture;
+  [key: string]: unknown;
+}
+
 /**
  * Idle animation state
  */
@@ -487,76 +494,118 @@ export async function buildAvatarStateMachine(
 
   // Use the builder with proper state classes
   const builder = new CharacterAnimationBuilder(sprite);
-  if (idleFrames) builder.addState("idle", IdleAnimationState, idleFrames.frames, 150);
+  if (idleFrames)
+    builder.addState("idle", IdleAnimationState, idleFrames.frames as AnimationFrameData[], 150);
   if (idleEmote1Frames)
-    builder.addState("idle_emote_1", IdleEmote1AnimationState, idleEmote1Frames.frames, 150);
+    builder.addState(
+      "idle_emote_1",
+      IdleEmote1AnimationState,
+      idleEmote1Frames.frames as AnimationFrameData[],
+      150
+    );
   if (idleEmote2Frames)
-    builder.addState("idle_emote_2", IdleEmote2AnimationState, idleEmote2Frames.frames, 150);
+    builder.addState(
+      "idle_emote_2",
+      IdleEmote2AnimationState,
+      idleEmote2Frames.frames as AnimationFrameData[],
+      150
+    );
   if (idleEmote3Frames)
-    builder.addState("idle_emote_3", IdleEmote3AnimationState, idleEmote3Frames.frames, 150);
+    builder.addState(
+      "idle_emote_3",
+      IdleEmote3AnimationState,
+      idleEmote3Frames.frames as AnimationFrameData[],
+      150
+    );
   if (cheerIdleFrames2)
-    builder.addState("cheer_idle_2", CheerIdle2AnimationState, cheerIdleFrames2.frames, 150);
+    builder.addState(
+      "cheer_idle_2",
+      CheerIdle2AnimationState,
+      cheerIdleFrames2.frames as AnimationFrameData[],
+      150
+    );
   if (heartActivateFrames)
     builder.addState(
       "heart_activate",
       HeartActivateAnimationState,
-      heartActivateFrames.frames,
+      heartActivateFrames.frames as AnimationFrameData[],
       150
     );
   if (heartIdleFrames)
-    builder.addState("heart_idle", HeartIdleAnimationState, heartIdleFrames.frames, 150);
+    builder.addState(
+      "heart_idle",
+      HeartIdleAnimationState,
+      heartIdleFrames.frames as AnimationFrameData[],
+      150
+    );
   if (heartIdleEmote1Frames)
     builder.addState(
       "heart_idle_emote_1",
       HeartIdleEmote1AnimationState,
-      heartIdleEmote1Frames.frames,
+      heartIdleEmote1Frames.frames as AnimationFrameData[],
       150
     );
   if (heartDeactivateToUWUFrames)
     builder.addState(
       "heart_deactivate_to_UWU",
       HeartDeactivateToUWUAnimationState,
-      heartDeactivateToUWUFrames.frames,
+      heartDeactivateToUWUFrames.frames as AnimationFrameData[],
       150
     );
-  if (UWUIdleFrames) builder.addState("UWU_idle", UWUIdleAnimationState, UWUIdleFrames.frames, 150);
+  if (UWUIdleFrames)
+    builder.addState(
+      "UWU_idle",
+      UWUIdleAnimationState,
+      UWUIdleFrames.frames as AnimationFrameData[],
+      150
+    );
   if (UWUIdleEmote1Frames)
     builder.addState(
       "UWU_idle_emote_1",
       UWUIdleEmote1AnimationState,
-      UWUIdleEmote1Frames.frames,
+      UWUIdleEmote1Frames.frames as AnimationFrameData[],
       150
     );
   if (UWUIdleEmote2Frames)
     builder.addState(
       "UWU_idle_emote_2",
       UWUIdleEmote2AnimationState,
-      UWUIdleEmote2Frames.frames,
+      UWUIdleEmote2Frames.frames as AnimationFrameData[],
       150
     );
   if (UWUIdleEmote3Frames)
     builder.addState(
       "UWU_idle_emote_3",
       UWUIdleEmote3AnimationState,
-      UWUIdleEmote3Frames.frames,
+      UWUIdleEmote3Frames.frames as AnimationFrameData[],
       150
     );
   if (cheerActivateFrames)
     builder.addState(
       "cheer_activate",
       CheerActivateAnimationState,
-      cheerActivateFrames.frames,
+      cheerActivateFrames.frames as AnimationFrameData[],
       150
     );
   if (cheerIdleFrames)
-    builder.addState("cheer_idle", CheerIdleAnimationState, cheerIdleFrames.frames, 150);
+    builder.addState(
+      "cheer_idle",
+      CheerIdleAnimationState,
+      cheerIdleFrames.frames as AnimationFrameData[],
+      150
+    );
   if (cheerIdleFrames2)
-    builder.addState("cheer_idle_2", CheerIdle2AnimationState, cheerIdleFrames2.frames, 150);
+    builder.addState(
+      "cheer_idle_2",
+      CheerIdle2AnimationState,
+      cheerIdleFrames2.frames as AnimationFrameData[],
+      150
+    );
   if (cheerDeactivateFrames)
     builder.addState(
       "cheer_deactivate",
       CheerDeactivateAnimationState,
-      cheerDeactivateFrames.frames,
+      cheerDeactivateFrames.frames as AnimationFrameData[],
       150
     );
 

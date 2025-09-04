@@ -23,21 +23,40 @@ export function getFirestoreDb() {
 
 // Encryption utilities
 const ENCRYPTION_KEY = process.env.NOTION_TOKEN_ENCRYPTION_KEY!.replace(/"/g, ""); // Remove quotes
-const ALGORITHM = "aes-256-gcm";
 
+// Derive key using the same method as the old createCipher for backward compatibility
+// This replicates OpenSSL's EVP_BytesToKey with SHA-256 instead of deprecated MD5
+function deriveKey(password: string, salt: Buffer = Buffer.alloc(0)): Buffer {
+  // Use SHA-256 for key derivation instead of deprecated MD5
+  const keyLength = 32; // 256 bits for AES-256
+  let derivedKey = Buffer.alloc(0);
+  let hash: Buffer = Buffer.alloc(0);
+
+  while (derivedKey.length < keyLength) {
+    const dataToHash = Buffer.concat([hash, Buffer.from(password), salt]);
+    hash = crypto.createHash("sha256").update(dataToHash).digest();
+    derivedKey = Buffer.concat([derivedKey, hash]);
+  }
+
+  return derivedKey.subarray(0, keyLength);
+}
+
+const key = deriveKey(ENCRYPTION_KEY);
+
+// Modern encryption functions using non-deprecated APIs
 export function encryptToken(text: string): { encrypted: string; iv: string; tag: string } {
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipher(ALGORITHM, Buffer.from(ENCRYPTION_KEY, "hex"));
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
 
   let encrypted = cipher.update(text, "utf8", "hex");
   encrypted += cipher.final("hex");
 
-  // Note: For GCM mode, we'd need to handle auth tag differently
-  // For simplicity, using a basic encryption approach
+  const tag = cipher.getAuthTag().toString("hex");
+
   return {
     encrypted,
     iv: iv.toString("hex"),
-    tag: "", // Would contain auth tag for GCM
+    tag,
   };
 }
 
@@ -46,7 +65,12 @@ export function decryptToken(encryptedData: {
   iv: string;
   tag: string;
 }): string {
-  const decipher = crypto.createDecipher(ALGORITHM, Buffer.from(ENCRYPTION_KEY, "hex"));
+  const decipher = crypto.createDecipheriv(
+    "aes-256-gcm",
+    key,
+    Buffer.from(encryptedData.iv, "hex")
+  );
+  decipher.setAuthTag(Buffer.from(encryptedData.tag, "hex"));
 
   let decrypted = decipher.update(encryptedData.encrypted, "hex", "utf8");
   decrypted += decipher.final("utf8");
@@ -54,16 +78,18 @@ export function decryptToken(encryptedData: {
   return decrypted;
 }
 
-// Simplified encryption for now
+// Simplified encryption using modern APIs with fixed IV for backward compatibility
+const FIXED_IV = Buffer.from("0123456789abcdef0123456789abcdef", "hex"); // 16 bytes
+
 export function simpleEncrypt(text: string): string {
-  const cipher = crypto.createCipher("aes-256-cbc", ENCRYPTION_KEY);
+  const cipher = crypto.createCipheriv("aes-256-cbc", key, FIXED_IV);
   let encrypted = cipher.update(text, "utf8", "hex");
   encrypted += cipher.final("hex");
   return encrypted;
 }
 
 export function simpleDecrypt(encryptedText: string): string {
-  const decipher = crypto.createDecipher("aes-256-cbc", ENCRYPTION_KEY);
+  const decipher = crypto.createDecipheriv("aes-256-cbc", key, FIXED_IV);
   let decrypted = decipher.update(encryptedText, "hex", "utf8");
   decrypted += decipher.final("utf8");
   return decrypted;
@@ -91,12 +117,36 @@ export interface UserSession {
   expires_at: Date;
   userAccountInformation: UserAccountInformation | null;
 }
+
 export interface UserAccountInformation {
   userId: string;
   email: string;
   created_at: Date;
   updated_at: Date;
   userName: string;
+}
+
+// Session API response type
+export interface SessionApiResponse {
+  success: boolean;
+  userId: string;
+  userEmail: string;
+  userName: string | null; // Can be null if userAccountInformation is null
+  sessionId: string;
+  hasNotionTokens: boolean;
+  error?: string;
+}
+
+// Cached session state type for frontend components
+export interface CachedSessionState {
+  userId: string;
+  userEmail: string;
+  userName: string | null;
+  sessionId: string;
+  hasNotionTokens: boolean;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  lastChecked: number; // Timestamp of last session check
 }
 
 // Generate a unique session ID

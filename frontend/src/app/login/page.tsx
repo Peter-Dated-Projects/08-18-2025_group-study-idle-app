@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { HeaderFont, googleSVG } from "@/components/constants";
 
-export const AUTH_TOKEN_KEY = "auth_token";
-
 // Helper function to extract plain text from Notion rich text objects
 const extractPlainText = (richTextArray: Array<{ plain_text?: string }>): string => {
   if (!richTextArray || !Array.isArray(richTextArray)) {
@@ -115,7 +113,7 @@ export default function LoginPage() {
       if (response.ok && data.success && data.userEmail) {
         setIsGoogleSignedIn(true);
         setUserEmail(data.userEmail);
-        setUserName(data.userName || null);
+        setUserName(data.userName ?? null); // Use nullish coalescing to handle undefined
         setPreviousEmail(null); // Clear previous email since we have an active session
 
         // Check notion status

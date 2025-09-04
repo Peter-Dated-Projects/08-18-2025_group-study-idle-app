@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getUserSession, UserSession } from "@/lib/firestore";
+import { getUserSession } from "@/lib/firestore";
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const cookieStore = await cookies();
     const userId = cookieStore.get("user_id")?.value;
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
       success: true,
       userId: session.userId,
       userEmail: session.userAccountInformation?.email || session.userId, // Fallback to userId if no account info
-      userName: session.userAccountInformation?.userName,
+      userName: session.userAccountInformation?.userName || null, // Always return null instead of undefined
       sessionId: session.sessionId,
       hasNotionTokens: !!session.notionTokens,
     });
