@@ -1,41 +1,77 @@
 import os
-from datetime import datetime
-from flask import Flask, jsonify, request
-from flask_cors import CORS
+import logging
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
+
+# Import routers
+from routers import health, lobbies
+
+# Load environment variables
+load_dotenv()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-def create_app() -> Flask:
-    app = Flask(__name__)
+# ------------------------------------------------------------------ #
+# FastAPI app setup
+# ------------------------------------------------------------------ #
+
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="Group Study Idle App Backend",
+        description="Backend API for the group study idle game",
+        version="1.0.0"
+    )
 
     # CORS: configure via env in local/prod. Comma-separated origins, default to '*'.
     cors_origins = os.getenv("CORS_ORIGINS", "*")
-    CORS(app, origins=[o.strip() for o in cors_origins.split(",") if o.strip()], supports_credentials=True)
+    origins = [o.strip() for o in cors_origins.split(",") if o.strip()] if cors_origins != "*" else ["*"]
+    
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-    @app.get("/healthz")
-    def healthz():
-        """Liveness probe."""
-        return {"ok": True, "ts": datetime.utcnow().isoformat()}
+    # Include routers
+    app.include_router(health.router)
+    app.include_router(lobbies.router)
 
-    @app.get("/ready")
-    def ready():
-        """Readiness probe. Return 200 when ready to accept traffic."""
-        # Add real checks here (e.g., DB ping) if needed.
-        return {"ready": True}
-
-    @app.get("/api/hello")
-    def hello():
-        name = request.args.get("name", "world")
-        return jsonify(message=f"Hello, {name}!")
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request, exc):
+        """Global exception handler."""
+        logger.error(f"Unhandled exception: {exc}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error"}
+        )
 
     return app
 
 
-# Export `app` for production servers (gunicorn) and Cloud Run
+# ------------------------------------------------------------------ #
+
+# Export `app` for production servers (uvicorn/gunicorn) and Cloud Run
 app = create_app()
 
 
 if __name__ == "__main__":
+    import uvicorn
+    
     # Local dev entrypoint: `python backend/main.py`
     port = int(os.environ.get("PORT", "8080"))  # Cloud Run also sets PORT
-    debug = os.environ.get("FLASK_DEBUG", "true").lower() == "true"
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    debug = os.environ.get("DEBUG", "true").lower() == "true"
+    
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=port,
+        reload=debug,
+        log_level="info"
+    )

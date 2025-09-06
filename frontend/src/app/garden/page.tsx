@@ -7,39 +7,11 @@ import GardenMenu from "@/components/garden/GardenMenu";
 import GardenTasks from "@/components/garden/tasks/GardenTasks";
 import GardenSettings from "@/components/garden/GardenSettings";
 import { NotificationProvider, useGlobalNotification } from "@/components/NotificationProvider";
+import { useSessionAuth } from "@/hooks/useSessionAuth";
 
 import { FONTCOLOR, BORDERFILL, BORDERLINE, PANELFILL } from "@/components/constants";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-
-// Helper function to extract plain text from Notion rich text objects
-const extractPlainText = (richTextArray: Array<{ plain_text?: string }>): string => {
-  if (!richTextArray || !Array.isArray(richTextArray)) {
-    return "";
-  }
-  return richTextArray.map((textObj) => textObj.plain_text || "").join("");
-};
-
-interface NotionDatabase {
-  id: string;
-  title: Array<{ plain_text?: string }>; // Rich text array from Notion API
-  url?: string;
-  created_time?: string;
-  last_edited_time?: string;
-}
-
-interface StudySessionNotionPage {
-  id: string;
-  created_time: string;
-  last_edited_time: string;
-  icon: {
-    type: string;
-    emoji: string;
-  };
-  properties: {
-    [key: string]: unknown;
-  };
-}
 
 export default function GardenPage() {
   return (
@@ -51,61 +23,30 @@ export default function GardenPage() {
 
 function GardenPageContent() {
   const { addNotification } = useGlobalNotification();
+  const { isAuthenticated, isLoading, user, error } = useSessionAuth();
 
   const [isClicking, setIsClicking] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [pixiApp, setPixiApp] = useState<PIXI.Application | undefined>(undefined); // PIXI.js Application state
 
   const router = useRouter();
 
-  // Check authentication status on mount
+  // Handle authentication status changes
   useEffect(() => {
-    checkAuthenticationStatus();
-  }, []);
-
-  const checkAuthenticationStatus = async () => {
-    try {
-      // Check Google auth
-      const authResponse = await fetch("/api/auth/session", {
-        credentials: "include",
-      });
-      const authData = await authResponse.json();
-
-      if (!authResponse.ok || !authData.success || !authData.userEmail) {
-        // Not logged in with Google, redirect to login
-        router.push("/login");
-        return;
-      }
-
-      // Check Notion auth
-      const notionResponse = await fetch("/api/notion/session", {
-        credentials: "include",
-      });
-
-      if (!notionResponse.ok) {
-        // Notion not connected, redirect to login
-        router.push("/login");
-        return;
-      }
-
-      const notionData = await notionResponse.json();
-      if (!notionData.success || !notionData.hasValidTokens) {
-        // Notion not connected, redirect to login
-        router.push("/login");
-        return;
-      }
-
-      setIsCheckingAuth(false);
-    } catch (error) {
-      console.error("Error checking authentication:", error);
-      // On error, redirect to login to be safe
+    if (!isLoading && !isAuthenticated) {
+      // Not authenticated, redirect to login
+      router.push("/login");
+    } else if (error) {
+      addNotification("error", "Authentication error. Please log in again.");
+      router.push("/login");
+    } else if (isAuthenticated && user && !user.hasNotionTokens) {
+      // Google authenticated but Notion not connected, redirect to login
       router.push("/login");
     }
-  };
+  }, [isLoading, isAuthenticated, user, error, router, addNotification]);
 
   // Show loading while checking auth
-  if (isCheckingAuth) {
+  if (isLoading) {
     return (
       <div
         style={{
@@ -118,6 +59,24 @@ function GardenPageContent() {
         }}
       >
         Loading garden...
+      </div>
+    );
+  }
+
+  // Don't render the garden if not properly authenticated
+  if (!isAuthenticated || !user || !user.hasNotionTokens) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          fontSize: "2rem",
+          color: "#333",
+        }}
+      >
+        Redirecting to login...
       </div>
     );
   }

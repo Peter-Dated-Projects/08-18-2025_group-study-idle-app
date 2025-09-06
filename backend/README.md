@@ -1,56 +1,115 @@
-# 🌱 StudyGarden Backend (API)
+# Group Study Idle App - Backend
 
-This is the backend service for **StudyGarden**, a gamified productivity app where completing real-life tasks helps you grow a virtual garden.
+FastAPI backend server for the group study idle game application.
 
-The backend is built with **Flask** and runs on **Google Cloud Run**. It provides REST APIs (and later WebSocket streaming) to handle tasks, rewards, and garden state.
+## Features
 
----
+- **Health Checking**: Standard health and readiness endpoints
+- **Authentication**: Session-based authentication using cookies
+- **Lobby Management**: API endpoints for creating and joining study lobbies
+- **Redis Integration**: Redis utilities for caching and session management
+- **PostgreSQL Integration**: Database utilities for Google Cloud SQL
+- **CORS Support**: Configurable CORS for frontend integration
 
-## 🚀 Features
+## API Endpoints
 
-- Task management endpoints (add, complete, list)
-- Reward system: completing tasks grants coins/seeds
-- Garden API: plant, grow, harvest
-- Health check endpoint (`/healthz`)
-- CORS-enabled for frontend (Next.js)
+### Health Checks
+- `GET /healthz` - Liveness probe
+- `GET /ready` - Readiness probe (includes Redis and DB connectivity checks)
 
----
+### Lobby Management
+- `GET /api/hosting/create` - Create a new lobby (requires authentication)
+- `GET /api/hosting/join?lobby_id=<id>` - Join an existing lobby (requires authentication)
 
-## 🛠 Tech Stack
+## Authentication
 
-- **Python 3.11** + **Flask**
-- **Gunicorn** (production WSGI server)
-- **Google Cloud Run** for hosting
-- (Optional) **Firestore** for persistence
-- (Optional) **Flask-SocketIO** for realtime multiplayer
+The backend uses session-based authentication that integrates with the frontend's authentication system:
 
----
+- User authentication is checked via `user_id` cookie
+- Endpoints requiring authentication will return 401 if user is not logged in
+- Authentication utilities are provided in `auth_utils.py`
 
-## 📦 Local Development
+## Setup
 
+1. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Environment Configuration**:
+   Copy `.env.example` to `.env` and configure your settings:
+   ```bash
+   cp .env.example .env
+   ```
+
+3. **Run Development Server**:
+   ```bash
+   python main.py
+   ```
+   Or using the run script:
+   ```bash
+   ./run.sh
+   ```
+
+## Environment Variables
+
+### FastAPI Configuration
+- `PORT` - Server port (default: 8080)
+- `DEBUG` - Enable debug mode (default: true)
+- `CORS_ORIGINS` - Allowed CORS origins (default: *)
+
+### Redis Configuration
+- `REDIS_HOST` - Redis host (default: localhost)
+- `REDIS_PORT` - Redis port (default: 6379)
+- `REDIS_PASSWORD` - Redis password (optional)
+- `REDIS_DB` - Redis database number (default: 0)
+
+### PostgreSQL Configuration
+- `DB_HOST` - Database host
+- `DB_PORT` - Database port (default: 5432)
+- `DB_NAME` - Database name
+- `DB_USER` - Database user
+- `DB_PASSWORD` - Database password
+
+### Google Cloud SQL (Production)
+- `USE_CLOUD_SQL_PROXY` - Use Cloud SQL proxy (default: false)
+- `INSTANCE_CONNECTION_NAME` - Cloud SQL instance connection name
+- `DB_SOCKET_DIR` - Cloud SQL socket directory (default: /cloudsql)
+
+## Utilities
+
+### Redis Utilities (`utils/redis_utils.py`)
+- Connection management with automatic retry
+- Key-value operations with JSON serialization
+- Hash, set, and list operations
+- Cache utilities with expiration support
+
+### PostgreSQL Utilities (`utils/postgres_utils.py`)
+- Connection pooling for performance
+- Raw SQL query execution
+- SQLAlchemy integration
+- Transaction support
+- Google Cloud SQL compatibility
+
+## Development
+
+### Running in Development Mode
 ```bash
-# Create venv
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install deps
-pip install -r requirements.txt
-
-# Run locally
-flask run --host=0.0.0.0 --port=8080
+DEBUG=true python main.py
 ```
 
-## ☁️ Deployment (Cloud Run)
-
-```
-gcloud run deploy studygarden-api \
-  --source=. \
-  --region=us-central1 \
-  --allow-unauthenticated
+### Running in Production Mode
+```bash
+DEBUG=false ./run.sh
 ```
 
-The service will be available at:
+The run script automatically chooses between uvicorn (development) and gunicorn (production) based on the DEBUG environment variable.
 
-```
-https://studygarden-api-<hash>-<region>.a.run.app
-```
+## Deployment
+
+The application is designed to work with:
+- Google Cloud Run
+- Docker containers
+- Traditional server deployments
+
+For Cloud Run, the `PORT` environment variable is automatically set by the platform.

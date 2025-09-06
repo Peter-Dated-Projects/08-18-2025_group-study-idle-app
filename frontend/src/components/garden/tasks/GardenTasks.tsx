@@ -6,12 +6,11 @@ import {
   SECONDARY_TEXT,
   SUCCESS_COLOR,
   ACCENT_COLOR,
-  BORDERFILL,
   BORDERFILLLIGHT,
 } from "@/components/constants";
 import { useGlobalNotification } from "@/components/NotificationProvider";
+import { useSessionAuth } from "@/hooks/useSessionAuth";
 import GardenTaskListContainer from "./GardenTaskListContainer";
-import Image from "next/image.js";
 
 interface Task {
   id: string;
@@ -54,7 +53,6 @@ interface SessionUpdateResponse {
 }
 
 export default function GardenTasks() {
-  const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [taskList, setTaskList] = useState<Task[]>([]);
   const [studySessions, setStudySessions] = useState<StudySession[]>([]);
@@ -69,10 +67,8 @@ export default function GardenTasks() {
 
   const { addNotification } = useGlobalNotification();
 
-  // Auth states - simplified
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string | null>(null);
+  // Use our authentication hook
+  const { user, isLoading, isAuthenticated, error: authError } = useSessionAuth();
 
   // Cache expiration time (5 minutes)
   const CACHE_EXPIRATION_TIME = 5 * 60 * 1000;
@@ -103,23 +99,11 @@ export default function GardenTasks() {
     return hash.toString();
   }, []);
 
-  const checkAuthentication = useCallback(async () => {
-    setIsLoading(true);
+  // Check Notion-specific authentication and setup
+  const checkNotionSetup = useCallback(async () => {
+    if (!isAuthenticated) return false;
+
     try {
-      // Check Google OAuth session
-      const authResponse = await fetch("/api/auth/session", {
-        credentials: "include",
-      });
-      const authData = await authResponse.json();
-
-      if (!authData.userId) {
-        redirectToLogin();
-        return;
-      }
-
-      setUserEmail(authData.userEmail);
-      setUserName(authData.userName);
-
       // Check Notion OAuth session
       const notionResponse = await fetch("/api/notion/session", {
         credentials: "include",
@@ -127,8 +111,9 @@ export default function GardenTasks() {
       const notionData = await notionResponse.json();
 
       if (!notionData.authenticated) {
+        addNotification("error", "Notion connection lost. Please reconnect your account.");
         redirectToLogin();
-        return;
+        return false;
       }
 
       // Verify and set up the storage database
@@ -146,27 +131,26 @@ export default function GardenTasks() {
             "Your Notion connection needs to be refreshed. Please reconnect your account."
           );
           redirectToLogin();
-          return;
+          return false;
         } else {
           addNotification(
             "error",
             verifyError.error || "Failed to set up storage. Please reconnect your Notion account."
           );
           redirectToLogin();
-          return;
+          return false;
         }
       }
 
       const verifyData = await verifyResponse.json();
       console.log("Storage verification successful:", verifyData);
-
-      setIsAuthenticated(true);
+      return true;
     } catch (error) {
-      console.error("Authentication check failed:", error);
-      redirectToLogin();
+      console.error("Notion setup check failed:", error);
+      addNotification("error", "Failed to verify Notion setup. Please check your connection.");
+      return false;
     }
-    setIsLoading(false);
-  }, [redirectToLogin, addNotification]);
+  }, [isAuthenticated, redirectToLogin, addNotification]);
 
   const loadStudySessions = useCallback(
     async (forceRefresh: boolean = false) => {
@@ -282,18 +266,28 @@ export default function GardenTasks() {
     ]
   );
 
-  // Check if user is authenticated (both Google and Notion)
+  // Handle authentication status changes
   useEffect(() => {
-    checkAuthentication();
-  }, [checkAuthentication]);
+    if (authError) {
+      addNotification("error", "Authentication failed. Please log in again.");
+      redirectToLogin();
+    }
+  }, [authError, addNotification, redirectToLogin]);
 
-  // Load study sessions after authentication
+  // Check Notion setup once authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      console.log("being spammed");
+    if (isAuthenticated && user) {
+      checkNotionSetup();
+    }
+  }, [isAuthenticated, user, checkNotionSetup]);
+
+  // Load study sessions after authentication and Notion setup
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      console.log("Loading sessions for authenticated user");
       loadStudySessions();
     }
-  }, [isAuthenticated, loadStudySessions]);
+  }, [isAuthenticated, user, loadStudySessions]);
 
   const updateSessionsList = async () => {
     // This function is now simplified and delegates to loadStudySessions
@@ -349,11 +343,6 @@ export default function GardenTasks() {
         }`
       );
     }
-  };
-
-  const refreshSessionsCache = async () => {
-    console.log("Manually refreshing sessions cache");
-    await loadStudySessions(true);
   };
 
   const handleDataLoaded = useCallback((data: { taskList: Task[] }) => {
@@ -498,7 +487,7 @@ export default function GardenTasks() {
   };
 
   // Show loading screen while checking authentication
-  if (isLoading || (!selectedSession && isUpdating)) {
+  if (isLoading) {
     return (
       <div className="h-full flex flex-col justify-center items-center text-center py-16">
         <div className="flex justify-center mb-6">
@@ -511,17 +500,55 @@ export default function GardenTasks() {
           Loading Your Study Garden
         </h2>
         <p className="text-base max-w-md" style={{ color: SECONDARY_TEXT, fontFamily: BodyFont }}>
-          Setting up your personalized study environment and checking your connections...
+          Checking authentication and setting up your environment...
         </p>
       </div>
     );
   }
 
-  // If not authenticated, this shouldn't show (should redirect), but just in case
-  if (!isAuthenticated) {
+  // If not authenticated, redirect to login
+  if (!isAuthenticated || !user) {
     return (
-      <div style={{ textAlign: "center", padding: "20px" }}>
-        <p>Redirecting to login...</p>
+      <div className="h-full flex flex-col justify-center items-center text-center py-16">
+        <h2
+          className="text-2xl font-semibold mb-3"
+          style={{ fontFamily: HeaderFont, color: FONTCOLOR }}
+        >
+          Authentication Required
+        </h2>
+        <p
+          className="text-base max-w-md mb-6"
+          style={{ color: SECONDARY_TEXT, fontFamily: BodyFont }}
+        >
+          Please log in to access your study garden.
+        </p>
+        <button
+          onClick={redirectToLogin}
+          className="px-6 py-3 rounded-lg font-semibold text-white"
+          style={{ backgroundColor: ACCENT_COLOR, fontFamily: BodyFont }}
+        >
+          Go to Login
+        </button>
+      </div>
+    );
+  }
+
+  // Show loading for session updates
+  if (!selectedSession && isUpdating) {
+    return (
+      <div className="h-full flex flex-col justify-center items-center text-center py-16">
+        <div className="flex justify-center mb-6">
+          <i className="fi fi-rr-loading text-6xl animate-spin" style={{ color: ACCENT_COLOR }}></i>
+        </div>
+        <h2
+          className="text-2xl font-semibold mb-3"
+          style={{ fontFamily: HeaderFont, color: FONTCOLOR }}
+        >
+          Updating Study Sessions
+        </h2>
+        <p className="text-base max-w-md" style={{ color: SECONDARY_TEXT, fontFamily: BodyFont }}>
+          Syncing your latest study data...
+        </p>
       </div>
     );
   }

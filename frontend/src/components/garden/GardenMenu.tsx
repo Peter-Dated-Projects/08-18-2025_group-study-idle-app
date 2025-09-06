@@ -300,6 +300,51 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
           }}
         /> */}
       </div>
+
+      {/* Leaderboard Icon */}
+      <div
+        style={{
+          gridArea: "bottomright",
+          pointerEvents: "auto",
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "flex-end",
+          padding: "16px",
+        }}
+      >
+        <button
+          onClick={() => {
+            // Placeholder for leaderboard functionality
+            console.log("Leaderboard clicked!");
+          }}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "8px",
+            borderRadius: "50%",
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
+            e.currentTarget.style.transform = "scale(1.1)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+            e.currentTarget.style.transform = "scale(1)";
+          }}
+          title="Leaderboard"
+        >
+          <i
+            className="fi fi-rr-trophy"
+            style={{
+              fontSize: "24px",
+              color: "#FFD700", // Gold color for trophy
+            }}
+          />
+        </button>
+      </div>
     </div>
   );
 }

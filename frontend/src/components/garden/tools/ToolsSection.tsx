@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import MusicSync from "./MusicSync";
 import Instructions from "./Instructions";
 import Lobby from "./Lobby";
+import Pomodoro from "./Pomodoro";
 import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 
 interface Tab {
@@ -23,6 +24,11 @@ export default function ToolsSection() {
       id: "lobby",
       label: "Study Lobby",
       component: <Lobby />,
+    },
+    {
+      id: "pomodoro",
+      label: "Pomo!",
+      component: <Pomodoro />,
     },
     {
       id: "music",

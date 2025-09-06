@@ -8,6 +8,7 @@ import {
   HeaderFont,
   BodyFont,
 } from "../../constants";
+import { useSessionAuth } from "../../../hooks/useSessionAuth";
 
 interface User {
   id: string;
@@ -24,14 +25,58 @@ interface LobbyData {
 
 type LobbyState = "empty" | "hosting" | "joined" | "join";
 
+// Local storage keys for persistence
+const LOBBY_STORAGE_KEY = "garden_lobby_data";
+const LOBBY_STATE_STORAGE_KEY = "garden_lobby_state";
+
 export default function Lobby() {
-  const [lobbyState, setLobbyState] = useState<LobbyState>("empty");
-  const [lobbyData, setLobbyData] = useState<LobbyData | null>(null);
+  // Initialize state from localStorage if available
+  const [lobbyState, setLobbyState] = useState<LobbyState>(() => {
+    if (typeof window !== "undefined") {
+      const savedState = localStorage.getItem(LOBBY_STATE_STORAGE_KEY);
+      return (savedState as LobbyState) || "empty";
+    }
+    return "empty";
+  });
+
+  const [lobbyData, setLobbyData] = useState<LobbyData | null>(() => {
+    if (typeof window !== "undefined") {
+      const savedData = localStorage.getItem(LOBBY_STORAGE_KEY);
+      return savedData ? JSON.parse(savedData) : null;
+    }
+    return null;
+  });
+
   const [joinCode, setJoinCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const cloudRunUrl = process.env.GOOGLE_CLOUD_RUN_URL || "localhost:5000";
+  // Authentication
+  const { user, isLoading: authLoading, isAuthenticated } = useSessionAuth();
+
+  // Helper functions to manage localStorage persistence
+  const saveLobbyData = (state: LobbyState, data: LobbyData | null) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(LOBBY_STATE_STORAGE_KEY, state);
+      if (data) {
+        localStorage.setItem(LOBBY_STORAGE_KEY, JSON.stringify(data));
+      } else {
+        localStorage.removeItem(LOBBY_STORAGE_KEY);
+      }
+    }
+  };
+
+  const clearLobbyData = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(LOBBY_STATE_STORAGE_KEY);
+      localStorage.removeItem(LOBBY_STORAGE_KEY);
+    }
+  };
+
+  // Update localStorage whenever lobbyState or lobbyData changes
+  useEffect(() => {
+    saveLobbyData(lobbyState, lobbyData);
+  }, [lobbyState, lobbyData]);
 
   // Cleanup on component unmount or when user leaves
   useEffect(() => {
@@ -44,24 +89,30 @@ export default function Lobby() {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      if (lobbyState === "hosting" && lobbyData) {
-        closeLobby();
-      }
+      // Don't close lobby on component unmount - only on actual page/browser close
     };
   }, [lobbyState, lobbyData]);
 
   const createLobby = async () => {
+    if (!isAuthenticated || !user) {
+      setError("Please log in to create a lobby");
+      // Redirect to login
+      window.location.href = "/login";
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
-      const response = await fetch(`http://${cloudRunUrl}/api/hosting/create`, {
+      const response = await fetch(`/api/hosting/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Include cookies for session
         body: JSON.stringify({
-          hostName: "Current User", // TODO: Replace with actual user name from auth
+          user_id: user.userId, // Include user_id in request body
         }),
       });
 
@@ -85,18 +136,26 @@ export default function Lobby() {
       return;
     }
 
+    if (!isAuthenticated || !user) {
+      setError("Please log in to join a lobby");
+      // Redirect to login
+      window.location.href = "/login";
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
-      const response = await fetch(`http://${cloudRunUrl}/api/hosting/join`, {
+      const response = await fetch(`/api/hosting/join`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Include cookies for session
         body: JSON.stringify({
-          code: joinCode.trim(),
-          userName: "Current User", // TODO: Replace with actual user name from auth
+          user_id: user.userId,
+          lobby_id: joinCode.trim(),
         }),
       });
 
@@ -117,22 +176,48 @@ export default function Lobby() {
   const closeLobby = async () => {
     if (!lobbyData) return;
 
+    console.log("Current lobbyData:", lobbyData);
+
+    if (!user?.userId) {
+      console.error("Cannot close lobby: user ID not available");
+      return;
+    }
+
+    if (!lobbyData.code) {
+      console.error("Cannot close lobby: lobby code not available", lobbyData);
+      return;
+    }
+
     try {
-      await fetch(`http://${cloudRunUrl}/api/hosting/close`, {
+      const requestBody = {
+        user_id: user.userId,
+        code: lobbyData.code,
+      };
+
+      console.log("Sending close lobby request:", requestBody);
+
+      const response = await fetch(`/api/hosting/end`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          code: lobbyData.code,
-        }),
+        credentials: "include", // Include cookies for session
+        body: JSON.stringify(requestBody),
       });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("Close lobby failed:", response.status, errorData);
+      } else {
+        console.log("Lobby closed successfully");
+      }
     } catch (err) {
       console.error("Error closing lobby:", err);
     }
 
     setLobbyData(null);
     setLobbyState("empty");
+    clearLobbyData(); // Clear persisted data
   };
 
   const leaveLobby = () => {
@@ -140,7 +225,110 @@ export default function Lobby() {
     setLobbyState("empty");
     setJoinCode("");
     setError("");
+    clearLobbyData(); // Clear persisted data
   };
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          padding: "20px",
+          backgroundColor: PANELFILL,
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <p
+            style={{
+              fontFamily: BodyFont,
+              color: SECONDARY_TEXT,
+              fontSize: "1rem",
+            }}
+          >
+            Checking authentication...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login prompt if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          padding: "20px",
+          backgroundColor: PANELFILL,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+            alignItems: "center",
+            textAlign: "center",
+          }}
+        >
+          <h3
+            style={{
+              fontFamily: HeaderFont,
+              color: FONTCOLOR,
+              fontSize: "1.5rem",
+              marginBottom: "8px",
+            }}
+          >
+            Authentication Required
+          </h3>
+          <p
+            style={{
+              fontFamily: BodyFont,
+              color: SECONDARY_TEXT,
+              fontSize: "0.9rem",
+              marginBottom: "20px",
+            }}
+          >
+            Please log in to create or join study lobbies
+          </p>
+          <button
+            onClick={() => (window.location.href = "/login")}
+            style={{
+              backgroundColor: ACCENT_COLOR,
+              color: "white",
+              border: "none",
+              padding: "12px 24px",
+              borderRadius: "8px",
+              fontFamily: BodyFont,
+              fontSize: "1rem",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              minWidth: "200px",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.1)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Empty State
   if (lobbyState === "empty") {
