@@ -8,6 +8,9 @@ from dotenv import load_dotenv
 # Import routers
 from routers import health, lobbies
 
+# Import database
+from database import create_tables
+
 # Load environment variables
 load_dotenv()
 
@@ -26,6 +29,14 @@ def create_app() -> FastAPI:
         description="Backend API for the group study idle game",
         version="1.0.0"
     )
+
+    # Initialize database tables
+    try:
+        create_tables()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        # Don't fail startup - let it try to run anyway
 
     # CORS: configure via env in local/prod. Comma-separated origins, default to '*'.
     cors_origins = os.getenv("CORS_ORIGINS", "*")

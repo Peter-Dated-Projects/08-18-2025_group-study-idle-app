@@ -19,7 +19,7 @@ interface User {
 interface LobbyData {
   code: string;
   host: string;
-  users: User[];
+  users: string[];  // Array of user IDs, not User objects
   createdAt: string;
 }
 
@@ -121,10 +121,16 @@ export default function Lobby() {
         setLobbyData(data);
         setLobbyState("hosting");
       } else {
-        setError("Failed to create lobby. Please try again.");
+        // Extract error message from backend response
+        try {
+          const errorData = await response.json();
+          setError(errorData.detail || errorData.message || "Failed to create lobby. Please try again.");
+        } catch {
+          setError("Failed to create lobby. Please try again.");
+        }
       }
     } catch (err) {
-      setError("Network error. Please check your connection.");
+      setError(`Network error: ${err instanceof Error ? err.message : 'Please check your connection.'}`);
     } finally {
       setLoading(false);
     }
@@ -164,10 +170,16 @@ export default function Lobby() {
         setLobbyData(data);
         setLobbyState("joined");
       } else {
-        setError("Failed to join lobby. Please check the code and try again.");
+        // Extract error message from backend response
+        try {
+          const errorData = await response.json();
+          setError(errorData.detail || errorData.message || "Failed to join lobby. Please check the code and try again.");
+        } catch {
+          setError("Failed to join lobby. Please check the code and try again.");
+        }
       }
     } catch (err) {
-      setError("Network error. Please check your connection.");
+      setError(`Network error: ${err instanceof Error ? err.message : 'Please check your connection.'}`);
     } finally {
       setLoading(false);
     }
@@ -206,8 +218,16 @@ export default function Lobby() {
       });
 
       if (!response.ok) {
-        const errorData = await response.text();
-        console.error("Close lobby failed:", response.status, errorData);
+        try {
+          const errorData = await response.json();
+          const errorMessage = errorData.detail || errorData.message || "Failed to close lobby";
+          console.error("Close lobby failed:", response.status, errorMessage);
+          // You might want to show this error to the user in the UI
+          // For now, we'll just log it since close lobby doesn't have error state in UI
+        } catch {
+          console.error("Close lobby failed:", response.status, "Unknown error");
+        }
+        return; // Don't clear lobby data if close failed
       } else {
         console.log("Lobby closed successfully");
       }
@@ -220,12 +240,57 @@ export default function Lobby() {
     clearLobbyData(); // Clear persisted data
   };
 
-  const leaveLobby = () => {
-    setLobbyData(null);
-    setLobbyState("empty");
-    setJoinCode("");
+  const leaveLobby = async () => {
+    if (!isAuthenticated || !user || !lobbyData) {
+      setError("Cannot leave lobby - not authenticated or no lobby data");
+      return;
+    }
+
+    setLoading(true);
     setError("");
-    clearLobbyData(); // Clear persisted data
+
+    try {
+      const response = await fetch("/api/hosting/leave", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: user.userId,
+          lobby_id: lobbyData.code,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to leave lobby");
+      }
+
+      if (data.success) {
+        // Successfully left lobby - clear local state
+        setLobbyData(null);
+        setLobbyState("empty");
+        setJoinCode("");
+        setError("");
+        clearLobbyData(); // Clear persisted data
+      } else {
+        throw new Error(data.message || "Failed to leave lobby");
+      }
+    } catch (err: any) {
+      console.error("Leave lobby error:", err);
+      setError(err.message || "Failed to leave lobby");
+      
+      // For certain errors, still clear local state
+      if (err.message?.includes("not found") || err.message?.includes("not in lobby")) {
+        setLobbyData(null);
+        setLobbyState("empty");
+        setJoinCode("");
+        clearLobbyData();
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Show loading while checking authentication
@@ -718,9 +783,9 @@ export default function Lobby() {
 
         {lobbyData?.users && lobbyData.users.length > 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {lobbyData.users.map((user) => (
+            {lobbyData.users.map((userId) => (
               <div
-                key={user.id}
+                key={userId}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -748,8 +813,8 @@ export default function Lobby() {
                       margin: 0,
                     }}
                   >
-                    {user.name}
-                    {lobbyData.host === user.id && (
+                    {userId}
+                    {lobbyData.host === userId && (
                       <span
                         style={{
                           marginLeft: "8px",
@@ -770,7 +835,7 @@ export default function Lobby() {
                       margin: 0,
                     }}
                   >
-                    Joined {new Date(user.joinedAt).toLocaleTimeString()}
+                    Online
                   </p>
                 </div>
               </div>

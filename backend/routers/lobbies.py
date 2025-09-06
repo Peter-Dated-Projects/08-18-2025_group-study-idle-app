@@ -6,6 +6,13 @@ import logging
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from auth_utils import require_authentication
+from lobby_service import (
+    create_lobby as db_create_lobby, 
+    get_lobby as db_get_lobby, 
+    join_lobby as db_join_lobby, 
+    leave_lobby as db_leave_lobby, 
+    close_lobby as db_close_lobby
+)
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -52,6 +59,16 @@ class LobbyCloseResponse(BaseModel):
     success: bool
     message: str
 
+class LobbyLeaveRequest(BaseModel):
+    user_id: str
+    lobby_id: str
+
+class LobbyLeaveResponse(BaseModel):
+    success: bool
+    message: str
+    code: str
+    users: list = []
+
 
 # ------------------------------------------------------------------ #
 # Lobby endpoints
@@ -68,25 +85,24 @@ async def create_lobby(request: Request, create_request: LobbyCreateRequest):
         if create_request.user_id != user_id:
             raise HTTPException(status_code=403, detail="User ID mismatch")
         
-        # TODO: Implement lobby creation logic with Redis
-        # This should:
-        # 1. Generate a unique lobby code
-        # 2. Store lobby data in Redis with expiration
-        # 3. Add the host user to the lobby
-        # 4. Return lobby details
+        # Create lobby in database
+        try:
+            lobby = db_create_lobby(user_id)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        
+        if not lobby:
+            raise HTTPException(status_code=500, detail="Failed to create lobby")
         
         logger.info(f"Create lobby endpoint called by user: {user_id}")
-        
-        # Placeholder implementation
-        placeholder_lobby_code = f"LBY{user_id[:6].upper()}"
         
         return LobbyCreateResponse(
             success=True,
             message="Lobby created successfully",
-            code=placeholder_lobby_code,
-            host=user_id,
-            users=[],
-            createdAt="2025-09-05T00:00:00Z"  # Placeholder
+            code=lobby.code,
+            host=lobby.host_user_id,
+            users=lobby.users,
+            createdAt=lobby.created_at.isoformat()
         )
         
     except HTTPException:
@@ -110,22 +126,24 @@ async def join_lobby(request: Request, join_request: LobbyJoinRequest):
         if not join_request.lobby_id:
             raise HTTPException(status_code=400, detail="lobby_id is required")
         
-        # TODO: Implement lobby joining logic with Redis
-        # This should:
-        # 1. Check if lobby exists and is active
-        # 2. Add user to the lobby
-        # 3. Return updated lobby details
-        # 4. Handle lobby capacity limits
+        # Join lobby in database
+        try:
+            lobby = db_join_lobby(join_request.lobby_id, user_id)
+        except Exception as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        
+        if not lobby:
+            raise HTTPException(status_code=404, detail="Lobby not found")
         
         logger.info(f"Join lobby endpoint called by user: {user_id} for lobby_id: {join_request.lobby_id}")
         
         return LobbyJoinResponse(
             success=True,
             message=f"Successfully joined lobby {join_request.lobby_id}",
-            code=join_request.lobby_id,  # Use the lobby_id as the code
-            host="placeholder_host",  # This should come from actual lobby data
-            users=[],  # This should come from actual lobby data
-            createdAt="2025-09-05T00:00:00Z"  # This should come from actual lobby data
+            code=lobby.code,
+            host=lobby.host_user_id,
+            users=lobby.users,
+            createdAt=lobby.created_at.isoformat()
         )
         
     except HTTPException:
@@ -133,6 +151,51 @@ async def join_lobby(request: Request, join_request: LobbyJoinRequest):
     except Exception as e:
         logger.error(f"Error joining lobby: {e}")
         raise HTTPException(status_code=500, detail="Failed to join lobby")
+
+
+@router.post("/leave", response_model=LobbyLeaveResponse)
+async def leave_lobby(request: Request, leave_request: LobbyLeaveRequest):
+    """Leave an existing lobby."""
+    try:
+        # Require authentication and get user ID
+        user_id = require_authentication(request)
+        
+        # Validate that the user_id in request matches authenticated user
+        if leave_request.user_id != user_id:
+            raise HTTPException(status_code=403, detail="User ID mismatch")
+        
+        if not leave_request.lobby_id:
+            raise HTTPException(status_code=400, detail="lobby_id is required")
+        
+        # Leave lobby in database
+        try:
+            lobby = db_leave_lobby(leave_request.lobby_id, user_id)
+        except Exception as e:
+            # Check if it's a not found error vs other errors
+            if "not found" in str(e).lower():
+                raise HTTPException(status_code=404, detail=str(e))
+            elif "not in lobby" in str(e).lower():
+                raise HTTPException(status_code=400, detail=str(e))
+            else:
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        if not lobby:
+            raise HTTPException(status_code=404, detail="Lobby not found")
+        
+        logger.info(f"Leave lobby endpoint called by user: {user_id} for lobby_id: {leave_request.lobby_id}")
+        
+        return LobbyLeaveResponse(
+            success=True,
+            message=f"Successfully left lobby {leave_request.lobby_id}",
+            code=lobby.code,
+            users=lobby.users
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error leaving lobby: {e}")
+        raise HTTPException(status_code=500, detail="Failed to leave lobby")
 
 
 @router.post("/end", response_model=LobbyCloseResponse)
@@ -147,11 +210,20 @@ async def close_lobby(request: Request, close_request: LobbyCloseRequest):
         if close_request.user_id != user_id:
             raise HTTPException(status_code=403, detail="User ID mismatch")
         
-        # TODO: Implement lobby closing logic
-        # This should:
-        # 1. Verify the user is the host of the lobby
-        # 2. Remove lobby from Redis
-        # 3. Notify other users (if real-time notifications are implemented)
+        # Close lobby in database
+        try:
+            success = db_close_lobby(close_request.code, user_id)
+        except Exception as e:
+            # Check if it's a permission error vs not found error
+            if "Only the lobby host" in str(e):
+                raise HTTPException(status_code=403, detail=str(e))
+            elif "not found" in str(e):
+                raise HTTPException(status_code=404, detail=str(e))
+            else:
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Lobby not found or permission denied")
         
         logger.info(f"Close lobby endpoint called by user: {user_id} for lobby: {close_request.code}")
         

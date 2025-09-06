@@ -12,6 +12,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "lobby_id parameter is required" }, { status: 400 });
     }
 
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
     // Forward the request to the backend
     const backendResponse = await fetch(
       `${BACKEND_URL}/api/hosting/status?lobby_id=${encodeURIComponent(lobbyId)}`,
@@ -24,8 +28,11 @@ export async function GET(request: NextRequest) {
             Cookie: request.headers.get("cookie")!,
           }),
         },
+        signal: controller.signal, // Add timeout signal
       }
     );
+
+    clearTimeout(timeoutId); // Clear timeout if request completes
 
     const responseData = await backendResponse.json();
 
@@ -41,6 +48,15 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error proxying lobby status request:", error);
+    
+    // Check if error is due to timeout
+    if (error instanceof Error && error.name === 'AbortError') {
+      return NextResponse.json(
+        { detail: "Request timeout - backend server is not responding" },
+        { status: 504 }
+      );
+    }
+    
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
