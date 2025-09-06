@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import MusicSync from "./MusicSync";
 import Instructions from "./Instructions";
+import Lobby from "./Lobby";
 import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 
 interface Tab {
@@ -19,6 +20,11 @@ export default function ToolsSection() {
       component: <Instructions />,
     },
     {
+      id: "lobby",
+      label: "Study Lobby",
+      component: <Lobby />,
+    },
+    {
       id: "music",
       label: "Music Sync",
       component: <MusicSync />,
@@ -30,10 +36,13 @@ export default function ToolsSection() {
       style={{
         position: "relative",
         width: "100%",
-        height: "100%",
         backgroundColor: PANELFILL,
         display: "flex",
         flexDirection: "column",
+        border: `2px solid ${BORDERLINE}`,
+        borderBottomLeftRadius: "8px",
+        borderBottomRightRadius: "8px",
+        overflow: "hidden",
       }}
     >
       {/* Header with tabs */}
@@ -89,6 +98,10 @@ export default function ToolsSection() {
           flex: 1,
           overflow: "auto",
           backgroundColor: PANELFILL,
+          border: `1px solid ${BORDERLINE}`,
+          borderTop: "none",
+          borderBottomLeftRadius: "6px",
+          borderBottomRightRadius: "6px",
         }}
       >
         {tabs.find((tab) => tab.id === activeTab)?.component}

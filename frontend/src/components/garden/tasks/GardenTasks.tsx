@@ -613,7 +613,16 @@ export default function GardenTasks() {
                         Choose a session to begin your study journey...
                       </option>
                       {studySessions.map((session: StudySession) => (
-                        <option key={session.id} value={session.id}>
+                        <option
+                          key={session.id}
+                          value={session.id}
+                          className="truncate"
+                          style={{
+                            textOverflow: "ellipsis",
+                            overflow: "hidden",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           {session.properties?.Name?.title?.[0]?.text?.content || session.title}
                         </option>
                       ))}
@@ -668,11 +677,11 @@ export default function GardenTasks() {
               className="mb-6 p-5 rounded-lg"
               style={{ backgroundColor: "white", border: `2px solid ${ACCENT_COLOR}` }}
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-3">
                     <i className="fi fi-rr-document text-xl" style={{ color: ACCENT_COLOR }}></i>
-                    <div className="w-full max-w-[600px]">
+                    <div className="flex-1 min-w-0">
                       {isEditingSessionName ? (
                         <input
                           type="text"
@@ -692,7 +701,6 @@ export default function GardenTasks() {
                             borderColor: ACCENT_COLOR,
                             fontFamily: HeaderFont,
                             width: "100%",
-                            maxWidth: "600px",
                             boxSizing: "border-box",
                           }}
                           autoFocus
@@ -709,20 +717,14 @@ export default function GardenTasks() {
                             color: FONTCOLOR,
                             fontFamily: HeaderFont,
                             width: "100%",
-                            maxWidth: "600px",
                             boxSizing: "border-box",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
                           }}
                         >
-                          {(
-                            selectedSession.properties?.Name?.title?.[0]?.text?.content ||
-                            selectedSession.title
-                          )?.length > 50
-                            ? (
-                                selectedSession.properties?.Name?.title?.[0]?.text?.content ||
-                                selectedSession.title
-                              ).slice(0, 50) + "..."
-                            : selectedSession.properties?.Name?.title?.[0]?.text?.content ||
-                              selectedSession.title}
+                          {selectedSession.properties?.Name?.title?.[0]?.text?.content ||
+                            selectedSession.title}
                         </h3>
                       )}
                     </div>
@@ -751,29 +753,29 @@ export default function GardenTasks() {
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => setSelectedSession(null)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ml-4 hover:bg-accent hover:text-white text-bold"
-                  style={{
-                    color: ACCENT_COLOR,
-                    fontFamily: BodyFont,
-                    border: `1px solid ${ACCENT_COLOR}`,
-                    fontSize: "0.875rem",
-                    backgroundColor: "transparent",
-                    maxWidth: "120px",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = BORDERFILLLIGHT;
-                    e.currentTarget.style.color = "white";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                    e.currentTarget.style.color = ACCENT_COLOR;
-                  }}
-                >
-                  <i className="fi fi-rr-arrow-small-left text-sm"></i>
-                  Change Session
-                </button>
+                <div className="flex-shrink-0 h-full">
+                  <button
+                    onClick={() => setSelectedSession(null)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-accent hover:text-white text-bold h-full"
+                    style={{
+                      color: ACCENT_COLOR,
+                      fontFamily: BodyFont,
+                      border: `1px solid ${ACCENT_COLOR}`,
+                      fontSize: "0.875rem",
+                      backgroundColor: "transparent",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = BORDERFILLLIGHT;
+                      e.currentTarget.style.color = "white";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                      e.currentTarget.style.color = ACCENT_COLOR;
+                    }}
+                  >
+                    <i className="fi fi-rr-arrow-small-left text-sm"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

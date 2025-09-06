@@ -47,7 +47,6 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
   const menuContainers = useRef<{
     avatar: PIXI.Container;
     inventory: PIXI.Container;
-    stats: PIXI.Container;
   } | null>(null);
 
   useEffect(() => {
@@ -88,7 +87,6 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
       menuContainers.current = {
         avatar: new PIXI.Container(),
         inventory: new PIXI.Container(),
-        stats: new PIXI.Container(),
       };
 
       // Setup avatar container with character animation
@@ -137,7 +135,6 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
 
       // Setup other menu containers (placeholder content)
       setupMenuContainer(menuContainers.current.inventory, "Inventory", 0x4444ff);
-      setupMenuContainer(menuContainers.current.stats, "Stats", 0xffff44);
 
       // Create render textures with nearest neighbor scaling for pixel-perfect rendering
       const newTextures: MenuTextures = {
@@ -282,7 +279,7 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
             maxWidth: "150px",
             maxHeight: "150px",
             objectFit: "contain",
-            border: "1px solid #333", // Debug border
+            // border: "1px solid #333", // Debug border
             imageRendering: "pixelated" as const, // Disable antialiasing for crisp pixels
           }}
         />
