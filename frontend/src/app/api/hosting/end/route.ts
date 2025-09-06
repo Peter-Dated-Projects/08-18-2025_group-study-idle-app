@@ -42,15 +42,15 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error proxying end lobby request:", error);
-    
+
     // Check if error is due to timeout
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (error instanceof Error && error.name === "AbortError") {
       return NextResponse.json(
         { detail: "Request timeout - backend server is not responding" },
         { status: 504 }
       );
     }
-    
+
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

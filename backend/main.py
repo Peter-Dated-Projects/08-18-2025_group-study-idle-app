@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
 # Import routers
-from routers import health, lobbies
+from routers import health, lobbies, websockets
 
 # Import database
 from database import create_tables
@@ -53,6 +53,7 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(health.router)
     app.include_router(lobbies.router)
+    app.include_router(websockets.router)
 
     @app.exception_handler(Exception)
     async def global_exception_handler(request, exc):

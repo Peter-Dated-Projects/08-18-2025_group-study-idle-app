@@ -9,6 +9,7 @@ import {
   BodyFont,
 } from "../../constants";
 import { useSessionAuth } from "../../../hooks/useSessionAuth";
+import { useWebSocket } from "../../../hooks/useWebSocket";
 
 interface User {
   id: string;
@@ -19,7 +20,7 @@ interface User {
 interface LobbyData {
   code: string;
   host: string;
-  users: string[];  // Array of user IDs, not User objects
+  users: string[]; // Array of user IDs, not User objects
   createdAt: string;
 }
 
@@ -54,6 +55,9 @@ export default function Lobby() {
   // Authentication
   const { user, isLoading: authLoading, isAuthenticated } = useSessionAuth();
 
+  // WebSocket connection for real-time updates
+  const { isConnected, connectionCount, onLobbyEvent } = useWebSocket();
+
   // Helper functions to manage localStorage persistence
   const saveLobbyData = (state: LobbyState, data: LobbyData | null) => {
     if (typeof window !== "undefined") {
@@ -77,6 +81,59 @@ export default function Lobby() {
   useEffect(() => {
     saveLobbyData(lobbyState, lobbyData);
   }, [lobbyState, lobbyData]);
+
+  // Handle real-time lobby events from WebSocket
+  useEffect(() => {
+    if (!lobbyData || !user?.userId) return;
+
+    const cleanup = onLobbyEvent((event) => {
+      console.log("Received lobby event:", event);
+
+      // Only process events for our current lobby
+      if (event.lobby_code !== lobbyData.code) return;
+
+      switch (event.action) {
+        case "join":
+          if (event.user_id !== user.userId) {
+            // Another user joined
+            setLobbyData((prevData) => {
+              if (!prevData) return prevData;
+              return {
+                ...prevData,
+                users: event.users,
+              };
+            });
+          }
+          break;
+
+        case "leave":
+          if (event.user_id !== user.userId) {
+            // Another user left
+            setLobbyData((prevData) => {
+              if (!prevData) return prevData;
+              return {
+                ...prevData,
+                users: event.users,
+              };
+            });
+          }
+          break;
+
+        case "disband":
+          // Lobby was disbanded by host
+          if (event.user_id !== user.userId) {
+            // Show notification that lobby was disbanded
+            setError("Lobby was disbanded by the host");
+          }
+          setLobbyData(null);
+          setLobbyState("empty");
+          clearLobbyData();
+          break;
+      }
+    });
+
+    return cleanup;
+  }, [lobbyData, user?.userId, onLobbyEvent]);
 
   // Cleanup on component unmount or when user leaves
   useEffect(() => {
@@ -124,13 +181,17 @@ export default function Lobby() {
         // Extract error message from backend response
         try {
           const errorData = await response.json();
-          setError(errorData.detail || errorData.message || "Failed to create lobby. Please try again.");
+          setError(
+            errorData.detail || errorData.message || "Failed to create lobby. Please try again."
+          );
         } catch {
           setError("Failed to create lobby. Please try again.");
         }
       }
     } catch (err) {
-      setError(`Network error: ${err instanceof Error ? err.message : 'Please check your connection.'}`);
+      setError(
+        `Network error: ${err instanceof Error ? err.message : "Please check your connection."}`
+      );
     } finally {
       setLoading(false);
     }
@@ -173,13 +234,19 @@ export default function Lobby() {
         // Extract error message from backend response
         try {
           const errorData = await response.json();
-          setError(errorData.detail || errorData.message || "Failed to join lobby. Please check the code and try again.");
+          setError(
+            errorData.detail ||
+              errorData.message ||
+              "Failed to join lobby. Please check the code and try again."
+          );
         } catch {
           setError("Failed to join lobby. Please check the code and try again.");
         }
       }
     } catch (err) {
-      setError(`Network error: ${err instanceof Error ? err.message : 'Please check your connection.'}`);
+      setError(
+        `Network error: ${err instanceof Error ? err.message : "Please check your connection."}`
+      );
     } finally {
       setLoading(false);
     }
@@ -280,7 +347,7 @@ export default function Lobby() {
     } catch (err: any) {
       console.error("Leave lobby error:", err);
       setError(err.message || "Failed to leave lobby");
-      
+
       // For certain errors, still clear local state
       if (err.message?.includes("not found") || err.message?.includes("not in lobby")) {
         setLobbyData(null);
@@ -717,6 +784,36 @@ export default function Lobby() {
           >
             Code: <span style={{ fontWeight: "bold", color: ACCENT_COLOR }}>{lobbyData?.code}</span>
           </p>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "4px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <div
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  backgroundColor: isConnected ? "#10b981" : "#ef4444",
+                }}
+              />
+              <span
+                style={{
+                  fontFamily: BodyFont,
+                  color: SECONDARY_TEXT,
+                  fontSize: "0.8rem",
+                }}
+              >
+                {isConnected ? "Connected" : "Disconnected"}
+              </span>
+            </div>
+            <span
+              style={{
+                fontFamily: BodyFont,
+                color: SECONDARY_TEXT,
+                fontSize: "0.8rem",
+              }}
+            >
+              {connectionCount} total users online
+            </span>
+          </div>
         </div>
 
         {lobbyState === "hosting" ? (

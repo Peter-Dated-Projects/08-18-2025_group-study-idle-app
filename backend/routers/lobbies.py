@@ -87,7 +87,7 @@ async def create_lobby(request: Request, create_request: LobbyCreateRequest):
         
         # Create lobby in database
         try:
-            lobby = db_create_lobby(user_id)
+            lobby = await db_create_lobby(user_id)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
         
@@ -128,7 +128,7 @@ async def join_lobby(request: Request, join_request: LobbyJoinRequest):
         
         # Join lobby in database
         try:
-            lobby = db_join_lobby(join_request.lobby_id, user_id)
+            lobby = await db_join_lobby(join_request.lobby_id, user_id)
         except Exception as e:
             raise HTTPException(status_code=404, detail=str(e))
         
@@ -169,7 +169,7 @@ async def leave_lobby(request: Request, leave_request: LobbyLeaveRequest):
         
         # Leave lobby in database
         try:
-            lobby = db_leave_lobby(leave_request.lobby_id, user_id)
+            lobby = await db_leave_lobby(leave_request.lobby_id, user_id)
         except Exception as e:
             # Check if it's a not found error vs other errors
             if "not found" in str(e).lower():
@@ -212,7 +212,7 @@ async def close_lobby(request: Request, close_request: LobbyCloseRequest):
         
         # Close lobby in database
         try:
-            success = db_close_lobby(close_request.code, user_id)
+            success = await db_close_lobby(close_request.code, user_id)
         except Exception as e:
             # Check if it's a permission error vs not found error
             if "Only the lobby host" in str(e):

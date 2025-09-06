@@ -7,6 +7,7 @@ import logging
 from datetime import datetime
 from database import Lobby, SessionLocal
 from typing import Optional, List
+from websocket_manager import manager, LobbyEvent
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -25,7 +26,19 @@ def generate_lobby_code() -> str:
     # Generate 16-character code
     return ''.join(secrets.choice(characters) for _ in range(16))
 
-def create_lobby(host_id: str) -> Optional[Lobby]:
+async def _broadcast_lobby_event(event: LobbyEvent):
+    """
+    Helper function to safely broadcast lobby events.
+    
+    Args:
+        event: The lobby event to broadcast
+    """
+    try:
+        await manager.broadcast_lobby_event(event)
+    except Exception as e:
+        logger.warning(f"Failed to broadcast lobby event: {e}")
+
+async def create_lobby(host_id: str) -> Optional[Lobby]:
     """
     Create a new lobby with a unique code.
     
@@ -66,6 +79,19 @@ def create_lobby(host_id: str) -> Optional[Lobby]:
         db.commit()
         db.refresh(lobby)
         
+        # Add user to WebSocket lobby tracking
+        manager.add_user_to_lobby(host_id, lobby.code)
+        
+        # Broadcast join event for the host
+        event = LobbyEvent(
+            type="lobby",
+            action="join",
+            lobby_code=lobby.code,
+            user_id=host_id,
+            users=lobby.users
+        )
+        await _broadcast_lobby_event(event)
+        
         logger.info(f"Created lobby {code} hosted by {host_id}")
         return lobby
         
@@ -98,7 +124,7 @@ def get_lobby(code: str) -> Optional[Lobby]:
     finally:
         db.close()
 
-def join_lobby(code: str, user_id: str) -> Optional[Lobby]:
+async def join_lobby(code: str, user_id: str) -> Optional[Lobby]:
     """
     Add a user to an existing lobby.
     
@@ -126,6 +152,19 @@ def join_lobby(code: str, user_id: str) -> Optional[Lobby]:
             db.commit()
             db.refresh(lobby)
             
+            # Add user to WebSocket lobby tracking
+            manager.add_user_to_lobby(user_id, lobby.code)
+            
+            # Broadcast join event to all users in the lobby
+            event = LobbyEvent(
+                type="lobby",
+                action="join",
+                lobby_code=lobby.code,
+                user_id=user_id,
+                users=lobby.users
+            )
+            await _broadcast_lobby_event(event)
+            
             logger.info(f"User {user_id} joined lobby {code}")
         else:
             logger.info(f"User {user_id} already in lobby {code}")
@@ -141,7 +180,7 @@ def join_lobby(code: str, user_id: str) -> Optional[Lobby]:
     finally:
         db.close()
 
-def leave_lobby(code: str, user_id: str) -> Optional[Lobby]:
+async def leave_lobby(code: str, user_id: str) -> Optional[Lobby]:
     """
     Remove a user from a lobby.
     
@@ -173,6 +212,19 @@ def leave_lobby(code: str, user_id: str) -> Optional[Lobby]:
         db.commit()
         db.refresh(lobby)
         
+        # Remove user from WebSocket lobby tracking
+        manager.remove_user_from_lobby(user_id)
+        
+        # Broadcast leave event to remaining users in the lobby
+        event = LobbyEvent(
+            type="lobby",
+            action="leave",
+            lobby_code=lobby.code,
+            user_id=user_id,
+            users=lobby.users
+        )
+        await _broadcast_lobby_event(event)
+        
         logger.info(f"User {user_id} left lobby {code}")
         return lobby
         
@@ -185,7 +237,7 @@ def leave_lobby(code: str, user_id: str) -> Optional[Lobby]:
     finally:
         db.close()
 
-def close_lobby(code: str, host_id: str) -> bool:
+async def close_lobby(code: str, host_id: str) -> bool:
     """
     Delete a lobby (host only).
     
@@ -210,6 +262,23 @@ def close_lobby(code: str, host_id: str) -> bool:
         if lobby.host_user_id != host_id:
             logger.warning(f"User {host_id} tried to close lobby {code} but is not the host")
             raise Exception("Only the lobby host can close the lobby")
+        
+        # Get all users for the disband event
+        users_to_notify = lobby.users.copy()
+        
+        # Remove all users from WebSocket lobby tracking
+        for user_id in users_to_notify:
+            manager.remove_user_from_lobby(user_id)
+        
+        # Broadcast disband event to all users in the lobby
+        event = LobbyEvent(
+            type="lobby",
+            action="disband",
+            lobby_code=lobby.code,
+            user_id=host_id,
+            users=[]  # Empty since lobby is disbanded
+        )
+        await _broadcast_lobby_event(event)
         
         # Delete the lobby
         db.delete(lobby)
