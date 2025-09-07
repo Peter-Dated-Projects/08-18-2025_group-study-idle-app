@@ -2,9 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as PIXI from "pixi.js";
-import { Assets } from "pixi.js";
 import { Entity } from "@/engine/Entity";
-import { Rect } from "@/engine/Rect";
 import { RectangleCollider, createRectangleCollider } from "@/engine/Collider";
 import { loadPixelTexture, createAndAddEntity } from "@/engine/EntityUtils";
 import { AnimationLoader } from "@/engine/AnimationLoader";
@@ -16,6 +14,10 @@ export const DAY_CYCLE_TIME = 180;
 
 export const DEFAULT_LAMP_COLOR = 0xffffff;
 export const SECONDARY_LAMP_COLOR = 0xffffff;
+
+// Ensure we're in browser environment before using ResizeObserver
+const isClient = typeof window !== 'undefined';
+const hasResizeObserver = isClient && typeof ResizeObserver !== 'undefined';
 
 // Design constants for consistent scaling
 export const DESIGN_WIDTH = 1920;
@@ -55,6 +57,12 @@ export default function GardenCanvas({
     let initializationInProgress = false;
 
     async function init() {
+      // Ensure we're in client environment before initializing PIXI
+      if (!isClient) {
+        console.log("[GardenCanvas] Not in client environment, skipping initialization...");
+        return;
+      }
+
       // Prevent multiple initializations from running simultaneously
       if (initializationInProgress) {
         console.log("[GardenCanvas] Initialization already in progress, skipping...");
@@ -146,20 +154,40 @@ export default function GardenCanvas({
         app.canvas.style.top = "0";
         app.canvas.style.left = "0";
 
+        // Declare onResize function reference
+        // eslint-disable-next-line prefer-const
+        let onResizeFunction: (() => void) | undefined;
+
         // Manual resize handler to ensure canvas matches parent
         const handleResize = () => {
           if (disposed || !parentRef.current) return;
           const parent = parentRef.current;
           app.renderer.resize(parent.clientWidth, parent.clientHeight);
 
-          // Trigger the onResize to update renderSprite scaling
-          onResize();
+          // Trigger the onResize to update renderSprite scaling (only if defined)
+          if (onResizeFunction) {
+            onResizeFunction();
+          }
         };
 
-        // Set up resize observer for responsive behavior
-        const resizeObserver = new ResizeObserver(handleResize);
-        resizeObserver.observe(elementCheck);
-        resizeObserverRef.current = resizeObserver;
+        // Set up resize observer for responsive behavior - use a defensive approach
+        let resizeObserver: ResizeObserver | null = null;
+        try {
+          if (hasResizeObserver) {
+            resizeObserver = new ResizeObserver(handleResize);
+            resizeObserver.observe(elementCheck);
+            resizeObserverRef.current = resizeObserver;
+          }
+        } catch (error) {
+          console.warn('ResizeObserver initialization failed:', error);
+          // Fallback to window resize listener if ResizeObserver fails
+          const fallbackResize = () => handleResize();
+          window.addEventListener('resize', fallbackResize);
+          // Store cleanup function
+          resizeObserverRef.current = {
+            disconnect: () => window.removeEventListener('resize', fallbackResize)
+          } as ResizeObserver;
+        }
 
         finalElementCheck.appendChild(app.canvas);
 
@@ -322,7 +350,7 @@ export default function GardenCanvas({
         });
 
         // game render loop
-        ticker.add((ticker) => {
+        ticker.add(() => {
           if (disposed) return;
           if (!isActiveTab) return;
           if (!isDirty) return;
@@ -360,6 +388,10 @@ export default function GardenCanvas({
 
           isDirty = true;
         };
+
+        // Assign the onResize function to the reference so handleResize can call it
+        onResizeFunction = onResize;
+
         app.renderer.on("resize", onResize);
         onResize();
 

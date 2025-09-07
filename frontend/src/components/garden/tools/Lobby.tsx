@@ -58,6 +58,15 @@ export default function Lobby() {
   // WebSocket connection for real-time updates
   const { isConnected, connectionCount, onLobbyEvent } = useWebSocket();
 
+  // Log WebSocket connection status changes
+  useEffect(() => {
+    console.log("🔌 Lobby: WebSocket connection status", {
+      isConnected,
+      connectionCount,
+      user_id: user?.userId,
+    });
+  }, [isConnected, connectionCount, user?.userId]);
+
   // Helper functions to manage localStorage persistence
   const saveLobbyData = (state: LobbyState, data: LobbyData | null) => {
     if (typeof window !== "undefined") {
@@ -87,14 +96,28 @@ export default function Lobby() {
     if (!lobbyData || !user?.userId) return;
 
     const cleanup = onLobbyEvent((event) => {
-      console.log("Received lobby event:", event);
+      console.log("🏠 Lobby: Received event", {
+        action: event.action,
+        lobby_code: event.lobby_code,
+        user_id: event.user_id,
+        users: event.users,
+        current_lobby: lobbyData?.code,
+        current_user: user?.userId,
+      });
 
       // Only process events for our current lobby
-      if (event.lobby_code !== lobbyData.code) return;
+      if (event.lobby_code !== lobbyData.code) {
+        console.log("🏠 Lobby: Ignoring event for different lobby", {
+          event_lobby: event.lobby_code,
+          current_lobby: lobbyData.code,
+        });
+        return;
+      }
 
       switch (event.action) {
         case "join":
           if (event.user_id !== user.userId) {
+            console.log("🏠 Lobby: Another user joined", event.user_id);
             // Another user joined
             setLobbyData((prevData) => {
               if (!prevData) return prevData;
@@ -103,11 +126,14 @@ export default function Lobby() {
                 users: event.users,
               };
             });
+          } else {
+            console.log("🏠 Lobby: We joined the lobby");
           }
           break;
 
         case "leave":
           if (event.user_id !== user.userId) {
+            console.log("🏠 Lobby: Another user left", event.user_id);
             // Another user left
             setLobbyData((prevData) => {
               if (!prevData) return prevData;
@@ -116,24 +142,105 @@ export default function Lobby() {
                 users: event.users,
               };
             });
+          } else {
+            console.log("🏠 Lobby: We left the lobby");
           }
           break;
 
         case "disband":
+          console.log("🏠 Lobby: Lobby was disbanded", {
+            disbanded_by: event.user_id,
+            current_user: user.userId,
+            is_host: event.user_id === user.userId,
+          });
           // Lobby was disbanded by host
           if (event.user_id !== user.userId) {
             // Show notification that lobby was disbanded
             setError("Lobby was disbanded by the host");
+            console.log("🏠 Lobby: Showing disband notification to non-host user");
+          } else {
+            console.log("🏠 Lobby: Host disbanded their own lobby");
           }
           setLobbyData(null);
           setLobbyState("empty");
           clearLobbyData();
           break;
+
+        default:
+          console.warn("🏠 Lobby: Unknown event action", event.action);
       }
     });
 
     return cleanup;
   }, [lobbyData, user?.userId, onLobbyEvent]);
+
+  // Validate lobby on component mount/refresh (for non-hosts)
+  useEffect(() => {
+    const validateLobby = async () => {
+      if (!lobbyData || !user?.userId || !isAuthenticated) return;
+
+      // Only validate for non-hosts
+      if (lobbyState === "hosting" || lobbyData.host === user.userId) return;
+
+      console.log("Validating lobby on refresh/mount for non-host user...");
+
+      try {
+        const response = await fetch(`/api/hosting/status?lobby_id=${lobbyData.code}`, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          // Network error or server error
+          console.log("Lobby validation failed due to network/server error, clearing local data");
+          setError("The lobby you were in is no longer available");
+          setLobbyData(null);
+          setLobbyState("empty");
+          clearLobbyData();
+          return;
+        }
+
+        const statusData = await response.json();
+
+        // Check if lobby exists and user is still a member
+        if (!statusData.lobby_exists || !statusData.is_member) {
+          console.log("Lobby validation failed - lobby doesn't exist or user is not a member");
+          setError("The lobby you were in is no longer available");
+          setLobbyData(null);
+          setLobbyState("empty");
+          clearLobbyData();
+          return;
+        }
+
+        // Update lobby data with current state from server
+        if (statusData.success) {
+          console.log("Lobby validation successful, updating local data");
+          setLobbyData({
+            code: statusData.code,
+            host: statusData.host,
+            users: statusData.users,
+            createdAt: statusData.createdAt,
+          });
+
+          // Update lobby state based on current role
+          if (statusData.is_host) {
+            setLobbyState("hosting");
+          } else {
+            setLobbyState("joined");
+          }
+        }
+      } catch (err) {
+        console.error("Error validating lobby:", err);
+        setError("Failed to validate lobby status");
+        // Don't clear data on network errors, user can retry
+      }
+    };
+
+    // Only run validation after authentication is complete and we have lobby data
+    if (!authLoading && lobbyData) {
+      validateLobby();
+    }
+  }, [authLoading, isAuthenticated, user?.userId]); // Only depend on auth state, not lobbyData to avoid loops
 
   // Cleanup on component unmount or when user leaves
   useEffect(() => {
@@ -151,7 +258,10 @@ export default function Lobby() {
   }, [lobbyState, lobbyData]);
 
   const createLobby = async () => {
+    console.log("🏗️ Lobby: Creating lobby", { user_id: user?.userId, isAuthenticated });
+
     if (!isAuthenticated || !user) {
+      console.log("🏗️ Lobby: Not authenticated, redirecting to login");
       setError("Please log in to create a lobby");
       // Redirect to login
       window.location.href = "/login";
@@ -162,6 +272,7 @@ export default function Lobby() {
     setError("");
 
     try {
+      console.log("🏗️ Lobby: Sending create request to backend");
       const response = await fetch(`/api/hosting/create`, {
         method: "POST",
         headers: {
@@ -173,22 +284,28 @@ export default function Lobby() {
         }),
       });
 
+      console.log("🏗️ Lobby: Create response", { status: response.status });
+
       if (response.status === 200) {
         const data = await response.json();
+        console.log("🏗️ Lobby: Successfully created lobby", data);
         setLobbyData(data);
         setLobbyState("hosting");
       } else {
         // Extract error message from backend response
         try {
           const errorData = await response.json();
+          console.log("🏗️ Lobby: Create failed with error", errorData);
           setError(
             errorData.detail || errorData.message || "Failed to create lobby. Please try again."
           );
         } catch {
+          console.log("🏗️ Lobby: Create failed with unknown error");
           setError("Failed to create lobby. Please try again.");
         }
       }
     } catch (err) {
+      console.error("🏗️ Lobby: Network error creating lobby", err);
       setError(
         `Network error: ${err instanceof Error ? err.message : "Please check your connection."}`
       );
@@ -198,12 +315,20 @@ export default function Lobby() {
   };
 
   const joinLobby = async () => {
+    console.log("🚪 Lobby: Joining lobby", {
+      joinCode: joinCode.trim(),
+      user_id: user?.userId,
+      isAuthenticated,
+    });
+
     if (!joinCode.trim()) {
+      console.log("🚪 Lobby: No join code provided");
       setError("Please enter a lobby code");
       return;
     }
 
     if (!isAuthenticated || !user) {
+      console.log("🚪 Lobby: Not authenticated, redirecting to login");
       setError("Please log in to join a lobby");
       // Redirect to login
       window.location.href = "/login";
@@ -214,6 +339,7 @@ export default function Lobby() {
     setError("");
 
     try {
+      console.log("🚪 Lobby: Sending join request to backend");
       const response = await fetch(`/api/hosting/join`, {
         method: "POST",
         headers: {
@@ -226,24 +352,30 @@ export default function Lobby() {
         }),
       });
 
+      console.log("🚪 Lobby: Join response", { status: response.status });
+
       if (response.status === 200) {
         const data = await response.json();
+        console.log("🚪 Lobby: Successfully joined lobby", data);
         setLobbyData(data);
         setLobbyState("joined");
       } else {
         // Extract error message from backend response
         try {
           const errorData = await response.json();
+          console.log("🚪 Lobby: Join failed with error", errorData);
           setError(
             errorData.detail ||
               errorData.message ||
               "Failed to join lobby. Please check the code and try again."
           );
         } catch {
+          console.log("🚪 Lobby: Join failed with unknown error");
           setError("Failed to join lobby. Please check the code and try again.");
         }
       }
     } catch (err) {
+      console.error("🚪 Lobby: Network error joining lobby", err);
       setError(
         `Network error: ${err instanceof Error ? err.message : "Please check your connection."}`
       );
@@ -253,17 +385,22 @@ export default function Lobby() {
   };
 
   const closeLobby = async () => {
+    console.log("🔒 Lobby: Closing lobby", {
+      lobby_code: lobbyData?.code,
+      user_id: user?.userId,
+    });
+
     if (!lobbyData) return;
 
-    console.log("Current lobbyData:", lobbyData);
+    console.log("🔒 Lobby: Current lobbyData:", lobbyData);
 
     if (!user?.userId) {
-      console.error("Cannot close lobby: user ID not available");
+      console.error("🔒 Lobby: Cannot close lobby - user ID not available");
       return;
     }
 
     if (!lobbyData.code) {
-      console.error("Cannot close lobby: lobby code not available", lobbyData);
+      console.error("🔒 Lobby: Cannot close lobby - lobby code not available", lobbyData);
       return;
     }
 
@@ -272,8 +409,7 @@ export default function Lobby() {
         user_id: user.userId,
         code: lobbyData.code,
       };
-
-      console.log("Sending close lobby request:", requestBody);
+      console.log("🔒 Lobby: Sending close request", requestBody);
 
       const response = await fetch(`/api/hosting/end`, {
         method: "POST",
@@ -284,22 +420,24 @@ export default function Lobby() {
         body: JSON.stringify(requestBody),
       });
 
+      console.log("🔒 Lobby: Close response", { status: response.status });
+
       if (!response.ok) {
         try {
           const errorData = await response.json();
           const errorMessage = errorData.detail || errorData.message || "Failed to close lobby";
-          console.error("Close lobby failed:", response.status, errorMessage);
+          console.error("🔒 Lobby: Close failed with error", response.status, errorMessage);
           // You might want to show this error to the user in the UI
           // For now, we'll just log it since close lobby doesn't have error state in UI
         } catch {
-          console.error("Close lobby failed:", response.status, "Unknown error");
+          console.error("🔒 Lobby: Close failed with unknown error", response.status);
         }
         return; // Don't clear lobby data if close failed
       } else {
-        console.log("Lobby closed successfully");
+        console.log("🔒 Lobby: Successfully closed lobby");
       }
     } catch (err) {
-      console.error("Error closing lobby:", err);
+      console.error("🔒 Lobby: Network error closing lobby", err);
     }
 
     setLobbyData(null);
@@ -308,7 +446,14 @@ export default function Lobby() {
   };
 
   const leaveLobby = async () => {
+    console.log("🚪🔙 Lobby: Leaving lobby", {
+      lobby_code: lobbyData?.code,
+      user_id: user?.userId,
+      isAuthenticated,
+    });
+
     if (!isAuthenticated || !user || !lobbyData) {
+      console.log("🚪🔙 Lobby: Cannot leave - missing authentication or lobby data");
       setError("Cannot leave lobby - not authenticated or no lobby data");
       return;
     }
@@ -317,6 +462,7 @@ export default function Lobby() {
     setError("");
 
     try {
+      console.log("🚪🔙 Lobby: Sending leave request to backend");
       const response = await fetch("/api/hosting/leave", {
         method: "POST",
         headers: {
@@ -329,12 +475,14 @@ export default function Lobby() {
       });
 
       const data = await response.json();
+      console.log("🚪🔙 Lobby: Leave response", { status: response.status, data });
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to leave lobby");
       }
 
       if (data.success) {
+        console.log("🚪🔙 Lobby: Successfully left lobby");
         // Successfully left lobby - clear local state
         setLobbyData(null);
         setLobbyState("empty");
@@ -344,17 +492,70 @@ export default function Lobby() {
       } else {
         throw new Error(data.message || "Failed to leave lobby");
       }
-    } catch (err: any) {
-      console.error("Leave lobby error:", err);
-      setError(err.message || "Failed to leave lobby");
+    } catch (err: unknown) {
+      console.error("🚪🔙 Lobby: Error leaving lobby", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to leave lobby";
+      setError(errorMessage);
 
       // For certain errors, still clear local state
-      if (err.message?.includes("not found") || err.message?.includes("not in lobby")) {
+      if (errorMessage?.includes("not found") || errorMessage?.includes("not in lobby")) {
+        console.log("🚪🔙 Lobby: Clearing local state due to lobby not found");
         setLobbyData(null);
         setLobbyState("empty");
         setJoinCode("");
         clearLobbyData();
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshLobby = async () => {
+    if (!lobbyData || !user?.userId) return;
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`/api/hosting/status?lobby_id=${lobbyData.code}`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || errorData.message || "Failed to refresh lobby");
+      }
+
+      const statusData = await response.json();
+
+      // Check if lobby exists and user is still a member
+      if (!statusData.lobby_exists || !statusData.is_member) {
+        setError("You are no longer a member of this lobby");
+        setLobbyData(null);
+        setLobbyState("empty");
+        clearLobbyData();
+        return;
+      }
+
+      // Update lobby data with current state from server
+      setLobbyData({
+        code: statusData.code,
+        host: statusData.host,
+        users: statusData.users,
+        createdAt: statusData.createdAt,
+      });
+
+      // Update lobby state based on current role
+      if (statusData.is_host) {
+        setLobbyState("hosting");
+      } else {
+        setLobbyState("joined");
+      }
+    } catch (err: unknown) {
+      console.error("Refresh lobby error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to refresh lobby";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -840,28 +1041,66 @@ export default function Lobby() {
             Close Lobby
           </button>
         ) : (
-          <button
-            onClick={leaveLobby}
-            style={{
-              backgroundColor: "transparent",
-              color: SECONDARY_TEXT,
-              border: `1px solid ${BORDERLINE}`,
-              padding: "8px 16px",
-              borderRadius: "6px",
-              fontFamily: BodyFont,
-              fontSize: "0.9rem",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = BORDERLINE;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-            }}
-          >
-            Leave Lobby
-          </button>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              onClick={refreshLobby}
+              disabled={loading}
+              style={{
+                backgroundColor: "transparent",
+                color: ACCENT_COLOR,
+                border: `1px solid ${ACCENT_COLOR}`,
+                padding: "8px 16px",
+                borderRadius: "6px",
+                fontFamily: BodyFont,
+                fontSize: "0.9rem",
+                cursor: loading ? "not-allowed" : "pointer",
+                transition: "all 0.2s ease",
+                opacity: loading ? 0.6 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = ACCENT_COLOR;
+                  e.currentTarget.style.color = "white";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                  e.currentTarget.style.color = ACCENT_COLOR;
+                }
+              }}
+            >
+              {loading ? "Refreshing..." : "Refresh"}
+            </button>
+            <button
+              onClick={leaveLobby}
+              disabled={loading}
+              style={{
+                backgroundColor: "transparent",
+                color: SECONDARY_TEXT,
+                border: `1px solid ${BORDERLINE}`,
+                padding: "8px 16px",
+                borderRadius: "6px",
+                fontFamily: BodyFont,
+                fontSize: "0.9rem",
+                cursor: loading ? "not-allowed" : "pointer",
+                transition: "all 0.2s ease",
+                opacity: loading ? 0.6 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = BORDERLINE;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }
+              }}
+            >
+              Leave Lobby
+            </button>
+          </div>
         )}
       </div>
 

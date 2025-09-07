@@ -22,6 +22,7 @@ else:
     print(f"⚠ No .env file found at {env_path}")
 
 print("\n=== Database Configuration Test ===")
+print(f"INSTANCE_IS_GCP: {os.getenv('INSTANCE_IS_GCP', 'Not set')}")
 print(f"INSTANCE_CONNECTION_NAME: {os.getenv('INSTANCE_CONNECTION_NAME', 'Not set')}")
 print(f"USE_CLOUD_SQL_PROXY: {os.getenv('USE_CLOUD_SQL_PROXY', 'Not set')}")
 print(f"DB_USER: {os.getenv('DB_USER', 'Not set')}")
@@ -30,7 +31,7 @@ print(f"DB_HOST: {os.getenv('DB_HOST', 'Not set')}")
 print(f"DB_PORT: {os.getenv('DB_PORT', 'Not set')}")
 
 try:
-    from database import get_database_url, create_engine_with_cloud_sql, create_tables
+    from database import get_database_url, create_engine_with_cloud_sql
     
     print("\n=== Testing Database Connection ===")
     
@@ -48,26 +49,29 @@ try:
     with engine.connect() as connection:
         from sqlalchemy import text
         result = connection.execute(text("SELECT 1 as test"))
-        test_value = result.scalar()
-        if test_value == 1:
+        row = result.fetchone()
+        if row and row[0] == 1:
             print("✓ Database connection successful!")
         else:
-            print("✗ Database connection test failed")
+            print("⚠ Unexpected result from test query")
     
-    # Test table creation
-    print("Creating database tables...")
+    # Test table creation (optional)
+    print("Testing table creation...")
+    from database import create_tables
     create_tables()
-    print("✓ Database tables created/verified successfully!")
+    print("✓ Tables created/verified successfully!")
     
-    print("\n🎉 All database tests passed! Your Cloud SQL configuration is working correctly.")
+    print("\n🎉 All database tests passed!")
     
-except ImportError as e:
-    print(f"\n✗ Import error: {e}")
-    print("Make sure you've installed all dependencies with: pip install -r requirements.txt")
 except Exception as e:
-    print(f"\n✗ Database error: {e}")
-    print("\nTroubleshooting tips:")
-    print("1. If using Cloud SQL Proxy, make sure it's running: ./start-proxy.sh")
-    print("2. Check your .env file configuration")
-    print("3. Verify your Cloud SQL instance is running")
-    print("4. Ensure you have the correct permissions")
+    print(f"\n❌ Database test failed: {e}")
+    
+    # Import GCP utils for diagnostics
+    try:
+        from gcp_utils import print_gcp_diagnostics
+        print("\n=== Running diagnostics ===")
+        print_gcp_diagnostics()
+    except ImportError:
+        print("GCP diagnostics not available")
+    
+    sys.exit(1)

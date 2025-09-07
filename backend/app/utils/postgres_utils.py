@@ -29,6 +29,7 @@ class PostgreSQLClient:
         self.db_password = os.getenv("DB_PASSWORD", "")
         
         # Google Cloud SQL specific settings
+        self.instance_is_gcp = os.getenv("INSTANCE_IS_GCP", "false").lower() == "true"
         self.db_socket_dir = os.getenv("DB_SOCKET_DIR", "/cloudsql")
         self.instance_connection_name = os.getenv("INSTANCE_CONNECTION_NAME")
         self.use_cloud_sql_proxy = os.getenv("USE_CLOUD_SQL_PROXY", "false").lower() == "true"
@@ -39,17 +40,48 @@ class PostgreSQLClient:
     
     def _get_connection_string(self) -> str:
         """Get the appropriate connection string based on environment."""
-        if self.use_cloud_sql_proxy and self.instance_connection_name:
-            # Using Cloud SQL Proxy with Unix socket
+        if self.instance_is_gcp and self.instance_connection_name:
+            if self.use_cloud_sql_proxy:
+                # GCP instance using Cloud SQL Proxy with Unix socket
+                socket_path = f"{self.db_socket_dir}/{self.instance_connection_name}"
+                logger.info(f"GCP instance using Unix socket at {socket_path}")
+                return f"postgresql://{self.db_user}:{self.db_password}@/{self.db_name}?host={socket_path}"
+            else:
+                # GCP instance - will use Cloud SQL Connector (handled by main database.py)
+                logger.info("GCP instance - deferring to main database connection logic")
+                return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        elif self.use_cloud_sql_proxy and self.instance_connection_name:
+            # Legacy Cloud SQL Proxy with Unix socket
             socket_path = f"{self.db_socket_dir}/{self.instance_connection_name}"
+            logger.info(f"Using Cloud SQL Proxy Unix socket at {socket_path}")
             return f"postgresql://{self.db_user}:{self.db_password}@/{self.db_name}?host={socket_path}"
         else:
-            # Standard TCP connection
+            # Standard TCP connection (local development)
+            logger.info(f"Using direct TCP connection to {self.db_host}:{self.db_port}")
             return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
     
     def _get_psycopg2_connection_params(self) -> Dict[str, Any]:
         """Get connection parameters for psycopg2."""
-        if self.use_cloud_sql_proxy and self.instance_connection_name:
+        if self.instance_is_gcp and self.instance_connection_name:
+            if self.use_cloud_sql_proxy:
+                # GCP instance using Cloud SQL Proxy
+                return {
+                    "host": f"{self.db_socket_dir}/{self.instance_connection_name}",
+                    "database": self.db_name,
+                    "user": self.db_user,
+                    "password": self.db_password
+                }
+            else:
+                # GCP instance - use standard TCP (Cloud SQL Connector handled elsewhere)
+                return {
+                    "host": self.db_host,
+                    "port": self.db_port,
+                    "database": self.db_name,
+                    "user": self.db_user,
+                    "password": self.db_password
+                }
+        elif self.use_cloud_sql_proxy and self.instance_connection_name:
+            # Legacy Cloud SQL Proxy
             return {
                 "host": f"{self.db_socket_dir}/{self.instance_connection_name}",
                 "database": self.db_name,
@@ -57,6 +89,7 @@ class PostgreSQLClient:
                 "password": self.db_password
             }
         else:
+            # Standard TCP connection
             return {
                 "host": self.db_host,
                 "port": self.db_port,

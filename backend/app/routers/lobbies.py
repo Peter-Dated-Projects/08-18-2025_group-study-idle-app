@@ -1,17 +1,20 @@
 """
-Lobby management endpoints.
-Handles lobby creation, joining, and management functionality.
+Redis-based lobby management endpoints.
+Handles lobby creation, joining, and management functionality using Redis with RedisJSON.
 """
 import logging
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from auth_utils import require_authentication
-from lobby_service import (
-    create_lobby as db_create_lobby, 
-    get_lobby as db_get_lobby, 
-    join_lobby as db_join_lobby, 
-    leave_lobby as db_leave_lobby, 
-    close_lobby as db_close_lobby
+from ..auth_utils import require_authentication
+from ..services.lobby_service import (
+    create_lobby as redis_create_lobby, 
+    get_lobby as redis_get_lobby, 
+    join_lobby as redis_join_lobby, 
+    leave_lobby as redis_leave_lobby, 
+    close_lobby as redis_close_lobby,
+    list_all_lobbies,
+    get_lobby_count,
+    health_check
 )
 
 # Configure logging
@@ -69,6 +72,13 @@ class LobbyLeaveResponse(BaseModel):
     code: str
     users: list = []
 
+class LobbyHealthResponse(BaseModel):
+    status: str
+    redis_ping: bool
+    redis_json_operations: bool
+    total_lobbies: int
+    timestamp: str
+    error: str = None
 
 # ------------------------------------------------------------------ #
 # Lobby endpoints
@@ -76,7 +86,7 @@ class LobbyLeaveResponse(BaseModel):
 
 @router.post("/create", response_model=LobbyCreateResponse)
 async def create_lobby(request: Request, create_request: LobbyCreateRequest):
-    """Create a new lobby."""
+    """Create a new lobby using Redis."""
     try:
         # Require authentication and get user ID
         user_id = require_authentication(request)
@@ -85,13 +95,13 @@ async def create_lobby(request: Request, create_request: LobbyCreateRequest):
         if create_request.user_id != user_id:
             raise HTTPException(status_code=403, detail="User ID mismatch")
         
-        # Create lobby in database
+        # Create lobby in Redis
         try:
-            lobby = await db_create_lobby(user_id)
+            lobby_data = await redis_create_lobby(user_id)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
         
-        if not lobby:
+        if not lobby_data:
             raise HTTPException(status_code=500, detail="Failed to create lobby")
         
         logger.info(f"Create lobby endpoint called by user: {user_id}")
@@ -99,10 +109,10 @@ async def create_lobby(request: Request, create_request: LobbyCreateRequest):
         return LobbyCreateResponse(
             success=True,
             message="Lobby created successfully",
-            code=lobby.code,
-            host=lobby.host_user_id,
-            users=lobby.users,
-            createdAt=lobby.created_at.isoformat()
+            code=lobby_data.code,
+            host=lobby_data.host_user_id,
+            users=lobby_data.users,
+            createdAt=lobby_data.created_at
         )
         
     except HTTPException:
@@ -114,7 +124,7 @@ async def create_lobby(request: Request, create_request: LobbyCreateRequest):
 
 @router.post("/join", response_model=LobbyJoinResponse)
 async def join_lobby(request: Request, join_request: LobbyJoinRequest):
-    """Join an existing lobby."""
+    """Join an existing lobby using Redis."""
     try:
         # Require authentication and get user ID
         user_id = require_authentication(request)
@@ -126,13 +136,13 @@ async def join_lobby(request: Request, join_request: LobbyJoinRequest):
         if not join_request.lobby_id:
             raise HTTPException(status_code=400, detail="lobby_id is required")
         
-        # Join lobby in database
+        # Join lobby in Redis
         try:
-            lobby = await db_join_lobby(join_request.lobby_id, user_id)
+            lobby_data = await redis_join_lobby(join_request.lobby_id, user_id)
         except Exception as e:
             raise HTTPException(status_code=404, detail=str(e))
         
-        if not lobby:
+        if not lobby_data:
             raise HTTPException(status_code=404, detail="Lobby not found")
         
         logger.info(f"Join lobby endpoint called by user: {user_id} for lobby_id: {join_request.lobby_id}")
@@ -140,10 +150,10 @@ async def join_lobby(request: Request, join_request: LobbyJoinRequest):
         return LobbyJoinResponse(
             success=True,
             message=f"Successfully joined lobby {join_request.lobby_id}",
-            code=lobby.code,
-            host=lobby.host_user_id,
-            users=lobby.users,
-            createdAt=lobby.created_at.isoformat()
+            code=lobby_data.code,
+            host=lobby_data.host_user_id,
+            users=lobby_data.users,
+            createdAt=lobby_data.created_at
         )
         
     except HTTPException:
@@ -155,7 +165,7 @@ async def join_lobby(request: Request, join_request: LobbyJoinRequest):
 
 @router.post("/leave", response_model=LobbyLeaveResponse)
 async def leave_lobby(request: Request, leave_request: LobbyLeaveRequest):
-    """Leave an existing lobby."""
+    """Leave an existing lobby using Redis."""
     try:
         # Require authentication and get user ID
         user_id = require_authentication(request)
@@ -167,9 +177,9 @@ async def leave_lobby(request: Request, leave_request: LobbyLeaveRequest):
         if not leave_request.lobby_id:
             raise HTTPException(status_code=400, detail="lobby_id is required")
         
-        # Leave lobby in database
+        # Leave lobby in Redis
         try:
-            lobby = await db_leave_lobby(leave_request.lobby_id, user_id)
+            lobby_data = await redis_leave_lobby(leave_request.lobby_id, user_id)
         except Exception as e:
             # Check if it's a not found error vs other errors
             if "not found" in str(e).lower():
@@ -179,7 +189,7 @@ async def leave_lobby(request: Request, leave_request: LobbyLeaveRequest):
             else:
                 raise HTTPException(status_code=500, detail=str(e))
         
-        if not lobby:
+        if not lobby_data:
             raise HTTPException(status_code=404, detail="Lobby not found")
         
         logger.info(f"Leave lobby endpoint called by user: {user_id} for lobby_id: {leave_request.lobby_id}")
@@ -187,8 +197,8 @@ async def leave_lobby(request: Request, leave_request: LobbyLeaveRequest):
         return LobbyLeaveResponse(
             success=True,
             message=f"Successfully left lobby {leave_request.lobby_id}",
-            code=lobby.code,
-            users=lobby.users
+            code=lobby_data.code,
+            users=lobby_data.users
         )
         
     except HTTPException:
@@ -200,7 +210,7 @@ async def leave_lobby(request: Request, leave_request: LobbyLeaveRequest):
 
 @router.post("/end", response_model=LobbyCloseResponse)
 async def close_lobby(request: Request, close_request: LobbyCloseRequest):
-    """Close an existing lobby (host only)."""
+    """Close an existing lobby (host only) using Redis."""
 
     try:
         # Require authentication and get user ID
@@ -210,9 +220,9 @@ async def close_lobby(request: Request, close_request: LobbyCloseRequest):
         if close_request.user_id != user_id:
             raise HTTPException(status_code=403, detail="User ID mismatch")
         
-        # Close lobby in database
+        # Close lobby in Redis
         try:
-            success = await db_close_lobby(close_request.code, user_id)
+            success = await redis_close_lobby(close_request.code, user_id)
         except Exception as e:
             # Check if it's a permission error vs not found error
             if "Only the lobby host" in str(e):
@@ -233,7 +243,6 @@ async def close_lobby(request: Request, close_request: LobbyCloseRequest):
         )
         
     except HTTPException:
-        print("HTTP exception occurred while closing lobby")
         raise 
     except Exception as e:
         logger.error(f"Error closing lobby: {e}")
@@ -241,27 +250,37 @@ async def close_lobby(request: Request, close_request: LobbyCloseRequest):
 
 
 # ------------------------------------------------------------------ #
-# Additional lobby endpoints can be added here
+# Additional Redis-based lobby endpoints
 # ------------------------------------------------------------------ #
 
 @router.get("/status/{lobby_id}")
 async def get_lobby_status(request: Request, lobby_id: str):
-    """Get current status of a lobby."""
+    """Get current status of a lobby using Redis."""
     try:
         user_id = require_authentication(request)
         
-        # TODO: Implement lobby status retrieval
-        # Return lobby info, user list, etc.
+        # Get lobby from Redis
+        lobby_data = redis_get_lobby(lobby_id)
+        
+        if not lobby_data:
+            raise HTTPException(status_code=404, detail="Lobby not found")
+        
+        # Check if user is in the lobby
+        is_member = user_id in lobby_data.users
+        is_host = lobby_data.host_user_id == user_id
         
         logger.info(f"Lobby status requested by user: {user_id} for lobby: {lobby_id}")
         
         return {
             "success": True,
-            "lobby_id": lobby_id,
-            "status": "active",
-            "users": [],
-            "host": user_id,
-            "created_at": "2025-09-05T12:00:00Z"
+            "code": lobby_data.code,
+            "host": lobby_data.host_user_id,
+            "users": lobby_data.users,
+            "createdAt": lobby_data.created_at,
+            "status": lobby_data.status,
+            "is_member": is_member,
+            "is_host": is_host,
+            "user_count": len(lobby_data.users)
         }
         
     except HTTPException:
@@ -273,18 +292,31 @@ async def get_lobby_status(request: Request, lobby_id: str):
 
 @router.get("/list")
 async def list_user_lobbies(request: Request):
-    """List lobbies the authenticated user is part of."""
+    """List lobbies the authenticated user is part of using Redis."""
     try:
         user_id = require_authentication(request)
         
-        # TODO: Implement user lobby listing
-        # Return lobbies where user is host or member
+        # Get all lobbies and filter by user membership
+        all_lobbies = list_all_lobbies()
+        user_lobbies = []
         
-        logger.info(f"List lobbies requested by user: {user_id}")
+        for lobby_data in all_lobbies:
+            if user_id in lobby_data.users:
+                user_lobbies.append({
+                    "code": lobby_data.code,
+                    "host": lobby_data.host_user_id,
+                    "users": lobby_data.users,
+                    "createdAt": lobby_data.created_at,
+                    "status": lobby_data.status,
+                    "is_host": lobby_data.host_user_id == user_id,
+                    "user_count": len(lobby_data.users)
+                })
+        
+        logger.info(f"List lobbies requested by user: {user_id}, found {len(user_lobbies)} lobbies")
         
         return {
             "success": True,
-            "lobbies": []
+            "lobbies": user_lobbies
         }
         
     except HTTPException:
@@ -292,3 +324,95 @@ async def list_user_lobbies(request: Request):
     except Exception as e:
         logger.error(f"Error listing lobbies: {e}")
         raise HTTPException(status_code=500, detail="Failed to list lobbies")
+
+
+@router.get("/admin/all")
+async def list_all_lobbies_admin(request: Request):
+    """
+    List all active lobbies (admin endpoint) using Redis.
+    Note: This should be protected with proper admin authentication in production.
+    """
+    try:
+        user_id = require_authentication(request)
+        logger.info(f"Admin list all lobbies requested by user: {user_id}")
+        
+        # Get all lobbies from Redis
+        all_lobbies = list_all_lobbies()
+        
+        lobbies_data = []
+        for lobby_data in all_lobbies:
+            lobbies_data.append({
+                "code": lobby_data.code,
+                "host": lobby_data.host_user_id,
+                "users": lobby_data.users,
+                "createdAt": lobby_data.created_at,
+                "status": lobby_data.status,
+                "user_count": len(lobby_data.users)
+            })
+        
+        return {
+            "success": True,
+            "total_lobbies": len(lobbies_data),
+            "lobbies": lobbies_data
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error listing all lobbies: {e}")
+        raise HTTPException(status_code=500, detail="Failed to list all lobbies")
+
+
+@router.get("/admin/stats")
+async def get_lobby_stats(request: Request):
+    """Get lobby system statistics using Redis."""
+    try:
+        user_id = require_authentication(request)
+        logger.info(f"Admin lobby stats requested by user: {user_id}")
+        
+        total_lobbies = get_lobby_count()
+        all_lobbies = list_all_lobbies()
+        
+        # Calculate statistics
+        total_users = sum(len(lobby.users) for lobby in all_lobbies)
+        average_users_per_lobby = total_users / total_lobbies if total_lobbies > 0 else 0
+        
+        # Count lobbies by status
+        status_counts = {}
+        for lobby in all_lobbies:
+            status = lobby.status
+            status_counts[status] = status_counts.get(status, 0) + 1
+        
+        return {
+            "success": True,
+            "total_lobbies": total_lobbies,
+            "total_users": total_users,
+            "average_users_per_lobby": round(average_users_per_lobby, 2),
+            "status_distribution": status_counts
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting lobby stats: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get lobby stats")
+
+
+@router.get("/health", response_model=LobbyHealthResponse)
+async def lobby_system_health():
+    """Check the health of the Redis-based lobby system."""
+    try:
+        health_data = health_check()
+        
+        return LobbyHealthResponse(**health_data)
+        
+    except Exception as e:
+        logger.error(f"Error checking lobby system health: {e}")
+        return LobbyHealthResponse(
+            status="unhealthy",
+            redis_ping=False,
+            redis_json_operations=False,
+            total_lobbies=0,
+            timestamp="",
+            error=str(e)
+        )

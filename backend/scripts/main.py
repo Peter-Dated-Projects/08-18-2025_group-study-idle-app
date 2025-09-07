@@ -6,10 +6,7 @@ from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
 # Import routers
-from routers import health, lobbies, websockets
-
-# Import database
-from database import create_tables
+from routers import health, websockets
 
 # Load environment variables
 load_dotenv()
@@ -30,13 +27,17 @@ def create_app() -> FastAPI:
         version="1.0.0"
     )
 
-    # Initialize database tables
-    try:
-        create_tables()
-        logger.info("Database initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
-        # Don't fail startup - let it try to run anyway
+    # Use Redis-based lobby system
+    logger.info("Using Redis-based lobby system")
+    from routers import lobbies
+    app.include_router(lobbies.router)
+    
+    # Test Redis connectivity
+    from utils.redis_json_utils import ping_redis_json
+    if ping_redis_json():
+        logger.info("Redis connection successful")
+    else:
+        logger.warning("Redis connection failed - lobby system may not work properly")
 
     # CORS: configure via env in local/prod. Comma-separated origins, default to '*'.
     cors_origins = os.getenv("CORS_ORIGINS", "*")
@@ -50,9 +51,8 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Include routers
+    # Include other routers
     app.include_router(health.router)
-    app.include_router(lobbies.router)
     app.include_router(websockets.router)
 
     @app.exception_handler(Exception)
@@ -63,6 +63,24 @@ def create_app() -> FastAPI:
             status_code=500,
             content={"detail": "Internal server error"}
         )
+
+    @app.get("/api/system/info")
+    async def system_info():
+        """Get system information including which lobby backend is in use."""
+        info = {
+            "lobby_backend": "redis",
+            "version": "1.0.0",
+            "redis_available": False
+        }
+        
+        # Test Redis availability
+        try:
+            from utils.redis_json_utils import ping_redis_json
+            info["redis_available"] = ping_redis_json()
+        except Exception as e:
+            logger.error(f"Redis availability check failed: {e}")
+        
+        return info
 
     return app
 

@@ -1,0 +1,74 @@
+{
+  "total_tests": 11,
+  "passed": 11,
+  "failed": 0,
+  "success_rate": 100.0,
+  "results": [
+    {
+      "test": "Redis Connectivity",
+      "success": true,
+      "message": "Redis is available",
+      "timestamp": "2025-09-06T20:11:24.708018"
+    },
+    {
+      "test": "Health Check",
+      "success": true,
+      "message": "Status: healthy, Redis ping: True",
+      "timestamp": "2025-09-06T20:11:24.711579"
+    },
+    {
+      "test": "JSON Operations",
+      "success": true,
+      "message": "All JSON operations successful",
+      "timestamp": "2025-09-06T20:11:24.713974"
+    },
+    {
+      "test": "Create Lobby",
+      "success": true,
+      "message": "Created lobby YW2MZUAEV2ZAUSYE for user test_user_1",
+      "timestamp": "2025-09-06T20:11:24.716148"
+    },
+    {
+      "test": "Get Lobby",
+      "success": true,
+      "message": "Retrieved lobby YW2MZUAEV2ZAUSYE",
+      "timestamp": "2025-09-06T20:11:24.716649"
+    },
+    {
+      "test": "Get Lobby Users",
+      "success": true,
+      "message": "Retrieved 1 users from lobby YW2MZUAEV2ZAUSYE",
+      "timestamp": "2025-09-06T20:11:24.717157"
+    },
+    {
+      "test": "Join Lobby",
+      "success": true,
+      "message": "User test_user_2 joined lobby YW2MZUAEV2ZAUSYE",
+      "timestamp": "2025-09-06T20:11:24.719250"
+    },
+    {
+      "test": "Leave Lobby",
+      "success": true,
+      "message": "User test_user_2 left lobby YW2MZUAEV2ZAUSYE",
+      "timestamp": "2025-09-06T20:11:24.720790"
+    },
+    {
+      "test": "Close Lobby",
+      "success": true,
+      "message": "Closed lobby YW2MZUAEV2ZAUSYE",
+      "timestamp": "2025-09-06T20:11:24.722188"
+    },
+    {
+      "test": "List All Lobbies",
+      "success": true,
+      "message": "Retrieved 0 total lobbies",
+      "timestamp": "2025-09-06T20:11:24.722490"
+    },
+    {
+      "test": "Get Lobby Count",
+      "success": true,
+      "message": "Total lobby count: 0",
+      "timestamp": "2025-09-06T20:11:24.722731"
+    }
+  ]
+}

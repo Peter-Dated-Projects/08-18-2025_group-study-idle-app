@@ -33,10 +33,10 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Leave lobby proxy error:", error);
 
-    if (error.name === "AbortError") {
+    if (error instanceof Error && error.name === "AbortError") {
       return NextResponse.json(
         { error: "Request timeout - backend server may be unavailable" },
         { status: 504 }

@@ -13,15 +13,13 @@ interface GameEvent {
   type: "game";
   action: string;
   game_id: string;
-  data: any;
+  data: Record<string, unknown>;
 }
-
-type WebSocketEvent = LobbyEvent | GameEvent;
 
 interface UseWebSocketReturn {
   isConnected: boolean;
   connectionCount: number;
-  sendMessage: (message: any) => void;
+  sendMessage: (message: Record<string, unknown>) => void;
   onLobbyEvent: (handler: (event: LobbyEvent) => void) => void;
   onGameEvent: (handler: (event: GameEvent) => void) => void;
   connect: () => void;
@@ -57,7 +55,7 @@ export function useWebSocket(): UseWebSocketReturn {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      console.log("WebSocket: Connected");
+      console.log("🟢 WebSocket: Connection established");
       setIsConnected(true);
       reconnectAttemptsRef.current = 0;
 
@@ -68,32 +66,51 @@ export function useWebSocket(): UseWebSocketReturn {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log("WebSocket: Received message", data);
+        console.log("🔵 WebSocket: Received message", data);
 
         // Handle pong response
         if (data.type === "pong") {
+          console.log("📡 WebSocket: Pong received, connections:", data.connections);
           setConnectionCount(data.connections || 0);
+          return;
+        }
+
+        // Handle system messages
+        if (data.type === "system") {
+          console.log("⚙️ WebSocket: System message", data);
           return;
         }
 
         // Handle lobby events
         if (data.type === "lobby") {
           const lobbyEvent = data as LobbyEvent;
+          console.log(
+            `🏠 WebSocket: Lobby event - ${lobbyEvent.action.toUpperCase()} in lobby ${
+              lobbyEvent.lobby_code
+            }`,
+            lobbyEvent
+          );
           lobbyEventHandlersRef.current.forEach((handler) => handler(lobbyEvent));
         }
 
         // Handle game events
         if (data.type === "game") {
           const gameEvent = data as GameEvent;
+          console.log(`🎮 WebSocket: Game event - ${gameEvent.action.toUpperCase()}`, gameEvent);
           gameEventHandlersRef.current.forEach((handler) => handler(gameEvent));
         }
+
+        // Log unhandled message types
+        if (!["pong", "system", "lobby", "game"].includes(data.type)) {
+          console.warn("❓ WebSocket: Unknown message type", data);
+        }
       } catch (error) {
-        console.error("WebSocket: Error parsing message", error);
+        console.error("❌ WebSocket: Error parsing message", error);
       }
     };
 
     ws.onclose = (event) => {
-      console.log("WebSocket: Disconnected", event.code, event.reason);
+      console.log(`🔴 WebSocket: Connection closed (code: ${event.code}, reason: ${event.reason})`);
       setIsConnected(false);
       wsRef.current = null;
 
@@ -101,7 +118,7 @@ export function useWebSocket(): UseWebSocketReturn {
       if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
         const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
         console.log(
-          `WebSocket: Reconnecting in ${delay}ms (attempt ${
+          `🔄 WebSocket: Reconnecting in ${delay}ms (attempt ${
             reconnectAttemptsRef.current + 1
           }/${maxReconnectAttempts})`
         );
@@ -110,11 +127,13 @@ export function useWebSocket(): UseWebSocketReturn {
           reconnectAttemptsRef.current++;
           connect();
         }, delay);
+      } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+        console.log("❌ WebSocket: Max reconnection attempts reached");
       }
     };
 
     ws.onerror = (error) => {
-      console.error("WebSocket: Error", error);
+      console.error("❌ WebSocket: Connection error", error);
     };
   }, [user?.userId]);
 
@@ -133,7 +152,7 @@ export function useWebSocket(): UseWebSocketReturn {
     reconnectAttemptsRef.current = maxReconnectAttempts; // Prevent auto-reconnect
   }, []);
 
-  const sendMessage = useCallback((message: any) => {
+  const sendMessage = useCallback((message: Record<string, unknown>) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message));
     } else {
