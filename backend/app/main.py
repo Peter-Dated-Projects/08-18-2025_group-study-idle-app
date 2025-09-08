@@ -13,12 +13,14 @@ load_dotenv(env_file)
 
 # Import routers - handle both direct execution and module import
 try:
-    from .routers import health, websockets, lobbies
+    from .routers import health, websockets, lobbies, friends, groups
     from .utils.redis_json_utils import ping_redis_json
+    from .models.database import create_tables
 except ImportError:
     # Direct execution from app directory
-    from routers import health, websockets, lobbies
+    from routers import health, websockets, lobbies, friends, groups
     from utils.redis_json_utils import ping_redis_json
+    from models.database import create_tables
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -36,6 +38,17 @@ def create_app() -> FastAPI:
         version="1.0.0"
     )
 
+    @app.on_event("startup")
+    async def startup_event():
+        """Initialize database tables on startup."""
+        try:
+            logger.info("Checking and creating database tables...")
+            create_tables()
+            logger.info("Database tables are ready")
+        except Exception as e:
+            logger.error(f"Failed to create database tables: {e}")
+            # Don't fail startup - let the app start but log the error
+            
     # Use Redis-based lobby system
     logger.info("Using Redis-based lobby system")
     app.include_router(lobbies.router)
@@ -61,6 +74,8 @@ def create_app() -> FastAPI:
     # Include other routers
     app.include_router(health.router)
     app.include_router(websockets.router)
+    app.include_router(friends.router)
+    app.include_router(groups.router)
 
     @app.exception_handler(Exception)
     async def global_exception_handler(request, exc):

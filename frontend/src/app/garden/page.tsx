@@ -6,6 +6,7 @@ import MinimizableToolsPanel from "@/components/garden/MinimizableToolsPanel";
 import GardenMenu from "@/components/garden/GardenMenu";
 import GardenTasks from "@/components/garden/tasks/GardenTasks";
 import GardenSettings from "@/components/garden/GardenSettings";
+import GardenIcons from "@/components/garden/GardenIcons";
 import { NotificationProvider, useGlobalNotification } from "@/components/NotificationProvider";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
 
@@ -118,6 +119,7 @@ function GardenPageContent() {
               />
               <GardenMenu pixiApp={pixiApp} />
               <GardenSettings />
+              <GardenIcons />
             </div>
 
             <div

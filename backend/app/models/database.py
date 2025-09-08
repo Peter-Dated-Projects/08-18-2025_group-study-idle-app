@@ -4,10 +4,18 @@ Database configuration and connection setup for Cloud SQL PostgreSQL.
 import os
 import logging
 from datetime import datetime
+from pathlib import Path
+from urllib.parse import quote_plus
+from dotenv import load_dotenv
 
 from sqlalchemy import create_engine, Column, String, DateTime, ARRAY
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+# Load environment variables from config/.env
+config_dir = Path(__file__).parent.parent.parent / "config"
+env_file = config_dir / ".env"
+load_dotenv(env_file)
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -24,7 +32,7 @@ def get_database_url():
     
     # Database credentials
     db_user = os.getenv("DB_USER", "postgres")
-    db_password = os.getenv("DB_PASSWORD", "")
+    db_password = os.getenv("DB_PASSWORD", "").strip("'\"")  # Strip quotes if present
     db_name = os.getenv("DB_NAME", "postgres")
     
     # Method 1: Direct DATABASE_URL (highest priority)
@@ -41,11 +49,11 @@ def get_database_url():
                 db_host = os.getenv("DB_HOST", "127.0.0.1")
                 db_port = os.getenv("DB_PORT", "5432")
                 logger.info(f"GCP instance using Cloud SQL Auth Proxy at {db_host}:{db_port}")
-                return f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+                return f"postgresql+psycopg2://{db_user}:{quote_plus(db_password)}@{db_host}:{db_port}/{db_name}"
             else:
                 # GCP instance using Cloud SQL Connector (recommended for production)
                 logger.info(f"GCP instance using Cloud SQL Connector for instance: {instance_connection_name}")
-                return f"cloudsql+psycopg2://{db_user}:{db_password}@/{db_name}?instance={instance_connection_name}"
+                return f"cloudsql+psycopg2://{db_user}:{quote_plus(db_password)}@/{db_name}?instance={instance_connection_name}"
         else:
             logger.warning("INSTANCE_IS_GCP=true but INSTANCE_CONNECTION_NAME not set, falling back to direct connection")
     
@@ -54,13 +62,13 @@ def get_database_url():
         db_host = os.getenv("DB_HOST", "127.0.0.1")
         db_port = os.getenv("DB_PORT", "5432")
         logger.info(f"Using Cloud SQL Auth Proxy at {db_host}:{db_port}")
-        return f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+        return f"postgresql+psycopg2://{db_user}:{quote_plus(db_password)}@{db_host}:{db_port}/{db_name}"
     
     # Method 4: Direct IP/local connection (default for local development)
     db_host = os.getenv("DB_HOST", "localhost")
     db_port = os.getenv("DB_PORT", "5432")
     logger.info(f"Using direct connection to {db_host}:{db_port}")
-    return f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    return f"postgresql+psycopg2://{db_user}:{quote_plus(db_password)}@{db_host}:{db_port}/{db_name}"
 
 def create_engine_with_cloud_sql():
     """
@@ -177,17 +185,43 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Base class for all ORM models
 Base = declarative_base()
 
-class Lobby(Base):
+class UserRelation(Base):
     """
-    Lobby model for storing group study session information.
+    User relations model for storing friendships.
     """
-    __tablename__ = "lobbies"
+    __tablename__ = "user_relations"
     
-    code = Column(String, primary_key=True, index=True)  # 16-character unique code
-    host_user_id = Column(String, nullable=False)  # User ID of the host
-    users = Column(ARRAY(String), default=list)  # List of user IDs in the lobby
+    user_id = Column(String, primary_key=True, index=True)  # User's ID
+    friend_ids = Column(ARRAY(String), default=list)  # List of friend user IDs
     created_at = Column(DateTime, default=datetime.utcnow)
-    status = Column(String, default="active")  # active, ended, etc.
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class StudyGroup(Base):
+    """
+    Study groups model for storing private study groups.
+    """
+    __tablename__ = "study_groups"
+    
+    id = Column(String, primary_key=True, index=True)  # 16-character unique UUID
+    creator_id = Column(String, nullable=False)  # User ID of the creator
+    member_ids = Column(ARRAY(String), default=list)  # List of member user IDs
+    group_name = Column(String(32), nullable=False)  # Group name (max 32 chars)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class UserStats(Base):
+    """
+    User statistics model for tracking user activity and limits.
+    """
+    __tablename__ = "user_stats"
+    
+    user_id = Column(String, primary_key=True, index=True)  # User's ID
+    group_count = Column(String, default="0")  # Number of groups user has joined (stored as string)
+    group_ids = Column(ARRAY(String), default=list)  # List of group IDs user is a member of
+    friend_count = Column(String, default="0")  # Number of friends user has
+    pomo_count = Column(String, default="0")  # Number of pomodoros completed
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 def get_db():
     """
