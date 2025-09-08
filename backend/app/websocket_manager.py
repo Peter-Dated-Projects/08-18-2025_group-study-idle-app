@@ -100,8 +100,9 @@ class ConnectionManager:
     async def broadcast_to_lobby(self, message: dict, lobby_code: str, exclude_user: str = None):
         """Send a message to all users in a specific lobby."""
         if lobby_code not in self.lobby_users:
+            print(f"Lobby no longer active: {lobby_code}")
             return
-            
+        
         disconnected_users = []
         for user_id in self.lobby_users[lobby_code]:
             if exclude_user and user_id == exclude_user:

@@ -55,7 +55,7 @@ Environment variables are loaded from `backend/config/.env`. The following varia
 - `DEBUG`: Enable debug mode (default: true)
 - `HOST`: Server host (default: 0.0.0.0)
 - `LOG_LEVEL`: Logging level (default: info)
-- `CORS_ORIGINS`: Comma-separated list of allowed origins (default: "*")
+- `CORS_ORIGINS`: Comma-separated list of allowed origins (default: "\*")
 - `REDIS_HOST`: Redis server host (default: localhost)
 - `REDIS_PORT`: Redis server port (default: 6379)
 - `REDIS_PASSWORD`: Redis password (if required)

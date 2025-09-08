@@ -2,8 +2,7 @@
 """
 D    print(f"📁 Loading config from: {env_file}")
     print(f"🚀 Starting Group Study Idle App Backend on port {port}")
-    print(f"📝 Debug mode: {debug} {'(hot reload enabled)' if debug else '(production mode)'}")
-    print(f"📊 Log level: {log_level}")
+    print(f"📝 Debug mode: {debug}")
     print(f"🔗 Server will be available at: http://{host}:{port}")
     print("-" * 50)pment server launcher for the Group Study Idle App backend.
 Run this file from the backend directory to start the development server.

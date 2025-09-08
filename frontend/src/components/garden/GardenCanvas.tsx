@@ -16,8 +16,8 @@ export const DEFAULT_LAMP_COLOR = 0xffffff;
 export const SECONDARY_LAMP_COLOR = 0xffffff;
 
 // Ensure we're in browser environment before using ResizeObserver
-const isClient = typeof window !== 'undefined';
-const hasResizeObserver = isClient && typeof ResizeObserver !== 'undefined';
+const isClient = typeof window !== "undefined";
+const hasResizeObserver = isClient && typeof ResizeObserver !== "undefined";
 
 // Design constants for consistent scaling
 export const DESIGN_WIDTH = 1920;
@@ -179,13 +179,13 @@ export default function GardenCanvas({
             resizeObserverRef.current = resizeObserver;
           }
         } catch (error) {
-          console.warn('ResizeObserver initialization failed:', error);
+          console.warn("ResizeObserver initialization failed:", error);
           // Fallback to window resize listener if ResizeObserver fails
           const fallbackResize = () => handleResize();
-          window.addEventListener('resize', fallbackResize);
+          window.addEventListener("resize", fallbackResize);
           // Store cleanup function
           resizeObserverRef.current = {
-            disconnect: () => window.removeEventListener('resize', fallbackResize)
+            disconnect: () => window.removeEventListener("resize", fallbackResize),
           } as ResizeObserver;
         }
 

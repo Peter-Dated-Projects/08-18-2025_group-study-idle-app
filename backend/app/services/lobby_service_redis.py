@@ -375,7 +375,11 @@ async def close_lobby(code: str, host_id: str) -> bool:
         # Get all users for the disband event
         users_to_notify = lobby_data.users.copy()
         
-        # Broadcast disband event to all users in the lobby BEFORE removing them
+        # Remove all users from WebSocket lobby tracking
+        for user_id in users_to_notify:
+            manager.remove_user_from_lobby(user_id)
+        
+        # Broadcast disband event to all users in the lobby
         event = LobbyEvent(
             type="lobby",
             action="disband",
@@ -384,10 +388,6 @@ async def close_lobby(code: str, host_id: str) -> bool:
             users=[]  # Empty since lobby is disbanded
         )
         await _broadcast_lobby_event(event)
-        
-        # Remove all users from WebSocket lobby tracking AFTER broadcasting
-        for user_id in users_to_notify:
-            manager.remove_user_from_lobby(user_id)
         
         # Remove lobby from Redis and codes set
         redis_json_client.json_del(lobby_key)

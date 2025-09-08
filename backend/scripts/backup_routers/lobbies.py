@@ -5,8 +5,8 @@ Handles lobby creation, joining, and management functionality using Redis with R
 import logging
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from auth_utils import require_authentication
-from lobby_service_redis import (
+from app.auth_utils import require_authentication
+from app.services.lobby_service import (
     create_lobby as redis_create_lobby, 
     get_lobby as redis_get_lobby, 
     join_lobby as redis_join_lobby, 

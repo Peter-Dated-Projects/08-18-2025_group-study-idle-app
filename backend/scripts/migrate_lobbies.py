@@ -5,8 +5,8 @@ This script helps transition from the old PostgreSQL-based lobby system to the n
 import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any
-from database import SessionLocal, Lobby
-from lobby_service_redis import (
+from app.models.database import SessionLocal, Lobby
+from app.services.lobby_service import (
     redis_json_client, 
     LobbyData, 
     _get_lobby_key, 
