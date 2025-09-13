@@ -24,10 +24,9 @@ export function getFirestoreDb() {
 // Encryption utilities
 const ENCRYPTION_KEY = process.env.NOTION_TOKEN_ENCRYPTION_KEY!.replace(/"/g, ""); // Remove quotes
 
-// Derive key using the same method as the old createCipher for backward compatibility
-// This replicates OpenSSL's EVP_BytesToKey with SHA-256 instead of deprecated MD5
+// Derive key using SHA-256 for key derivation
 function deriveKey(password: string, salt: Buffer = Buffer.alloc(0)): Buffer {
-  // Use SHA-256 for key derivation instead of deprecated MD5
+  // Use SHA-256 for key derivation
   const keyLength = 32; // 256 bits for AES-256
   let derivedKey = Buffer.alloc(0);
   let hash: Buffer = Buffer.alloc(0);
@@ -43,7 +42,7 @@ function deriveKey(password: string, salt: Buffer = Buffer.alloc(0)): Buffer {
 
 const key = deriveKey(ENCRYPTION_KEY);
 
-// Modern encryption functions using non-deprecated APIs
+// Encryption functions using modern APIs
 export function encryptToken(text: string): { encrypted: string; iv: string; tag: string } {
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
@@ -78,7 +77,7 @@ export function decryptToken(encryptedData: {
   return decrypted;
 }
 
-// Simplified encryption using modern APIs with fixed IV for backward compatibility
+// Simplified encryption using fixed IV
 const FIXED_IV = Buffer.from("0123456789abcdef0123456789abcdef", "hex"); // 16 bytes
 
 export function simpleEncrypt(text: string): string {

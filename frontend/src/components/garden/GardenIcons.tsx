@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../constants";
-import FriendsMenu from "./FriendsMenu";
+import FriendsMenu from "./ui/FriendsMenu";
 import UserProfile from "./UserProfile";
-import GroupsModal from "./GroupsModal";
+import GroupsModal from "./ui/GroupsModal";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
 
 interface GardenIconsProps {

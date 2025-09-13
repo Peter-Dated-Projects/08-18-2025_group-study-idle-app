@@ -2,10 +2,10 @@
 
 import * as PIXI from "pixi.js";
 import GardenCanvas from "@/components/garden/GardenCanvas";
-import MinimizableToolsPanel from "@/components/garden/MinimizableToolsPanel";
-import GardenMenu from "@/components/garden/GardenMenu";
+import MinimizableToolsPanel from "@/components/garden/tools/MinimizableToolsPanel";
+import GardenMenu from "@/components/garden/ui/GardenMenu";
 import GardenTasks from "@/components/garden/tasks/GardenTasks";
-import GardenSettings from "@/components/garden/GardenSettings";
+import GardenSettings from "@/components/garden/ui/GardenSettings";
 import GardenIcons from "@/components/garden/GardenIcons";
 import { NotificationProvider, useGlobalNotification } from "@/components/NotificationProvider";
 import { useSessionAuth } from "@/hooks/useSessionAuth";

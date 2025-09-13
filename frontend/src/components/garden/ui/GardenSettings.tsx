@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
+import BaseModal from "./BaseModal";
 import {
-  SETTINGS_ICON,
   HeaderFont,
   BodyFont,
   BORDERFILL,
@@ -18,24 +18,18 @@ import {
 export default function GardenSettings() {
   const [settingsActive, setSettingsActive] = useState<boolean>(false);
 
-  const settingsRef = useRef<HTMLDivElement>(null);
-
   // ---------------------------------------------------------------------- //
   // on load effect
   useEffect(() => {
-    if (settingsActive && settingsRef.current) {
-      settingsRef.current.focus();
-    }
-
-    // preload image
+    // preload images for settings UI
     const preloadImage = (src: string) => {
       const img = new Image();
       img.src = src;
     };
 
-    // Preload all images
-    preloadImage(SETTINGS_ICON);
-  }, [settingsActive]);
+    // Preload settings header image
+    preloadImage(SETTINGS_HEADER);
+  }, []);
 
   // ---------------------------------------------------------------------- //
   const redirectToLogin = () => {
@@ -67,38 +61,49 @@ export default function GardenSettings() {
   // Settings Icon
   const settingsIcon = (
     <div className="absolute bottom-0 right-0 p-4">
-      <div style={{ display: "inline-block" }}>
-        <img
-          onClick={() => setSettingsActive(true)}
-          src={SETTINGS_ICON}
-          alt="Settings"
-          className="w-16 h-16 transition-transform duration-150 hover:scale-110"
-          style={{ imageRendering: "pixelated" }}
-        />
-      </div>
+      <button
+        onClick={() => setSettingsActive(true)}
+        style={{
+          width: "50px",
+          height: "50px",
+          backgroundColor: BORDERFILL,
+          border: `3px solid ${BORDERLINE}`,
+          borderRadius: "8px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          fontSize: "20px",
+          color: FONTCOLOR,
+          transition: "all 0.2s ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = HOVER_COLOR;
+          e.currentTarget.style.transform = "scale(1.1)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = BORDERFILL;
+          e.currentTarget.style.transform = "scale(1)";
+        }}
+        title="Settings"
+      >
+        <i className="fi fi-ss-settings"></i>
+      </button>
     </div>
   );
 
-  // Settings UI Display
-  const settingsUIDisplay = (
-    <div
-      className="absolute top-0 left-0 p-4 rounded w-full h-full flex items-center justify-center z-9000"
-      style={{ backgroundColor: "rgba(0,0,0,0.2)" }}
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") setSettingsActive(false);
-      }}
-      // Ensure the div can receive focus for keyboard events
-      ref={settingsRef}
-    >
-      <div
-        className="bg-white bg-opacity-90 p-6 rounded shadow-lg max-w-md mx-auto items-center justify-center py-15 px-10 w-3/4 h-7/10"
-        style={{ backgroundColor: PANELFILL, border: `5px solid ${BORDERLINE}` }}
+  return (
+    <>
+      {settingsIcon}
+
+      <BaseModal
+        isVisible={settingsActive}
+        onClose={() => setSettingsActive(false)}
+        title=""
+        showHeader={false}
+        constrainToCanvas={true}
       >
-        <div
-          className="w-full h-full text-white"
-          style={{ border: `5px solid ${BORDERLINE}`, backgroundColor: BORDERFILL }}
-        >
+        <div className="w-full h-full text-white" style={{ backgroundColor: BORDERFILL }}>
           <img
             src={SETTINGS_HEADER}
             alt="Settings Header"
@@ -185,11 +190,7 @@ export default function GardenSettings() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </BaseModal>
+    </>
   );
-
-  // ---------------------------------------------------------------------- //
-  if (settingsActive) return settingsUIDisplay;
-  return settingsIcon;
 }

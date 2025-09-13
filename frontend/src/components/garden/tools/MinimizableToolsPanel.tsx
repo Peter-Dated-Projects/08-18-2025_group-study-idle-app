@@ -1,6 +1,6 @@
 import React from "react";
-import ToolsSection from "./tools/ToolsSection";
-import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../constants";
+import ToolsSection from "./ToolsSection";
+import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 
 export default function MinimizableToolsPanel({
   isMinimized,
