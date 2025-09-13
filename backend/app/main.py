@@ -13,12 +13,12 @@ load_dotenv(env_file)
 
 # Import routers - handle both direct execution and module import
 try:
-    from .routers import health, websockets, lobbies, friends, groups
+    from .routers import health, websockets, lobbies, friends, groups, leaderboard
     from .utils.redis_json_utils import ping_redis_json
     from .models.database import create_tables
 except ImportError:
     # Direct execution from app directory
-    from routers import health, websockets, lobbies, friends, groups
+    from routers import health, websockets, lobbies, friends, groups, leaderboard
     from utils.redis_json_utils import ping_redis_json
     from models.database import create_tables
 
@@ -76,6 +76,7 @@ def create_app() -> FastAPI:
     app.include_router(websockets.router)
     app.include_router(friends.router)
     app.include_router(groups.router)
+    app.include_router(leaderboard.router)
 
     @app.exception_handler(Exception)
     async def global_exception_handler(request, exc):

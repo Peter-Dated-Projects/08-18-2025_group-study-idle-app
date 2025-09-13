@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import quote_plus
 from dotenv import load_dotenv
 
-from sqlalchemy import create_engine, Column, String, DateTime, ARRAY
+from sqlalchemy import create_engine, Column, String, DateTime, ARRAY, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -219,7 +219,21 @@ class UserStats(Base):
     group_count = Column(String, default="0")  # Number of groups user has joined (stored as string)
     group_ids = Column(ARRAY(String), default=list)  # List of group IDs user is a member of
     friend_count = Column(String, default="0")  # Number of friends user has
-    pomo_count = Column(String, default="0")  # Number of pomodoros completed
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class PomoLeaderboard(Base):
+    """
+    Pomodoro leaderboard model for tracking user productivity statistics.
+    Stores daily, weekly, monthly, and yearly pomodoro counts for ranking users.
+    """
+    __tablename__ = "pomo_leaderboard"
+    
+    user_id = Column(String, primary_key=True, index=True)  # User's ID
+    daily_pomo = Column(Integer, default=0)  # Daily pomodoro count
+    weekly_pomo = Column(Integer, default=0)  # Weekly pomodoro count  
+    monthly_pomo = Column(Integer, default=0)  # Monthly pomodoro count
+    yearly_pomo = Column(Integer, default=0)  # Yearly pomodoro count
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import List
 
-from ..models.database import get_db, UserRelation, UserStats
+from ..models.database import get_db, UserRelation, UserStats, PomoLeaderboard
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -92,8 +92,7 @@ async def add_friend(request: AddFriendRequest, db: Session = Depends(get_db)):
                 user_id=request.user_id,
                 group_count="0",
                 group_ids=[],
-                friend_count="1",
-                pomo_count="0"
+                friend_count="1"
             )
             db.add(user_stats)
         else:
@@ -106,12 +105,22 @@ async def add_friend(request: AddFriendRequest, db: Session = Depends(get_db)):
                 user_id=request.friend_id,
                 group_count="0",
                 group_ids=[],
-                friend_count="1",
-                pomo_count="0"
+                friend_count="1"
             )
             db.add(friend_stats)
         else:
             friend_stats.friend_count = str(len(friend_relation.friend_ids))
+        
+        # Ensure both users have PomoLeaderboard entries
+        user_pomo = db.query(PomoLeaderboard).filter(PomoLeaderboard.user_id == request.user_id).first()
+        if not user_pomo:
+            user_pomo = PomoLeaderboard(user_id=request.user_id)
+            db.add(user_pomo)
+        
+        friend_pomo = db.query(PomoLeaderboard).filter(PomoLeaderboard.user_id == request.friend_id).first()
+        if not friend_pomo:
+            friend_pomo = PomoLeaderboard(user_id=request.friend_id)
+            db.add(friend_pomo)
         
         # Commit all changes
         db.commit()

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
 
-from ..models.database import get_db, StudyGroup, UserStats
+from ..models.database import get_db, StudyGroup, UserStats, PomoLeaderboard
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -89,7 +89,7 @@ class UserStatsResponse(BaseModel):
     group_count: str
     group_ids: List[str]
     friend_count: str
-    pomo_count: str
+    total_pomo: int  # Total yearly pomodoros from PomoLeaderboard
 
 class UserStatsGetResponse(BaseModel):
     success: bool
@@ -411,6 +411,9 @@ async def get_user_stats(user_id: str, db: Session = Depends(get_db)):
         # Find user stats
         user_stats = db.query(UserStats).filter(UserStats.user_id == user_id).first()
         
+        # Find user's pomodoro stats from leaderboard
+        pomo_stats = db.query(PomoLeaderboard).filter(PomoLeaderboard.user_id == user_id).first()
+        
         if not user_stats:
             # Return default stats if user doesn't exist
             default_stats = UserStatsResponse(
@@ -418,16 +421,19 @@ async def get_user_stats(user_id: str, db: Session = Depends(get_db)):
                 group_count="0",
                 group_ids=[],
                 friend_count="0",
-                pomo_count="0"
+                total_pomo=0
             )
             return UserStatsGetResponse(success=True, stats=default_stats)
+        
+        # Get total pomodoros from leaderboard (use yearly as total)
+        total_pomo = pomo_stats.yearly_pomo if pomo_stats else 0
         
         stats_response = UserStatsResponse(
             user_id=user_stats.user_id,
             group_count=user_stats.group_count,
             group_ids=user_stats.group_ids or [],
             friend_count=user_stats.friend_count,
-            pomo_count=user_stats.pomo_count
+            total_pomo=total_pomo
         )
         
         return UserStatsGetResponse(success=True, stats=stats_response)
