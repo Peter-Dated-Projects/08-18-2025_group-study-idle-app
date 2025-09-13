@@ -4,8 +4,8 @@ Service for managing study groups in ArangoDB.
 import logging
 import uuid
 from datetime import datetime
-from ..utils.arangodb_utils import get_db
 from ..utils.arangodb_utils import (
+    get_db,
     USERS_COLLECTION,
     STUDY_GROUPS_COLLECTION,
     GROUP_MEMBERS_COLLECTION,

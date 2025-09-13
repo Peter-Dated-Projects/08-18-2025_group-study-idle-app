@@ -9,21 +9,19 @@ from arango.exceptions import CollectionCreateError, GraphCreateError
 # Add the project root to the python path to allow for absolute imports
 sys.path.append(str(Path(__file__).parent.parent))
 
-from app.utils.arangodb_utils import get_db, ARANGO_DB_NAME
+from app.utils.arangodb_utils import (
+    get_db, 
+    USERS_COLLECTION,
+    STUDY_GROUPS_COLLECTION,
+    FRIEND_RELATIONS_COLLECTION,
+    GROUP_MEMBERS_COLLECTION,
+    FRIENDS_GRAPH,
+    GROUPS_GRAPH,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Collection names
-USERS_COLLECTION = "users"
-STUDY_GROUPS_COLLECTION = "study_groups"
-FRIEND_RELATIONS_COLLECTION = "friend_relations"
-GROUP_MEMBERS_COLLECTION = "group_members"
-
-# Graph names
-FRIENDS_GRAPH = "friends_graph"
-GROUPS_GRAPH = "groups_graph"
 
 def create_collections(db):
     """
@@ -83,7 +81,12 @@ def create_graphs(db):
 
 
 if __name__ == "__main__":
-    logger.info(f"Starting ArangoDB initialization for database: '{ARANGO_DB_NAME}'")
+    # Get database name from client
+    from app.utils.arangodb_utils import get_arango_client
+    client = get_arango_client()
+    db_name = client.arango_db_name
+    
+    logger.info(f"Starting ArangoDB initialization for database: '{db_name}'")
     try:
         db_connection = get_db()
         create_collections(db_connection)

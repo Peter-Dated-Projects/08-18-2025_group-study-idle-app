@@ -2,8 +2,8 @@
 Service for managing friendships in ArangoDB.
 """
 import logging
-from ..utils.arangodb_utils import get_db
 from ..utils.arangodb_utils import (
+    get_db,
     USERS_COLLECTION,
     FRIEND_RELATIONS_COLLECTION,
     FRIENDS_GRAPH,

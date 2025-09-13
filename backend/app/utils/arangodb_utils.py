@@ -1,6 +1,8 @@
 """
-Utility functions for interacting with ArangoDB.
+ArangoDB utility functions for the group study idle app backend.
+Provides SDK-style functions for ArangoDB operations.
 """
+
 import os
 import logging
 from pathlib import Path
@@ -16,60 +18,105 @@ load_dotenv(env_file)
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# ArangoDB connection details
-ARANGO_HOST = os.getenv("ARANGO_HOST", "localhost")
-ARANGO_PORT = int(os.getenv("ARANGO_PORT", 8529))
-ARANGO_ROOT_PASSWORD = os.getenv("ARANGO_ROOT_PASSWORD")
-ARANGO_DB_NAME = os.getenv("ARANGO_DB_NAME", "social_db")
-ARANGO_URL = f"http://{ARANGO_HOST}:{ARANGO_PORT}"
+# Collection names
+USERS_COLLECTION = "users"
+STUDY_GROUPS_COLLECTION = "study_groups"
+FRIEND_RELATIONS_COLLECTION = "friend_relations"
+GROUP_MEMBERS_COLLECTION = "group_members"
 
-def get_arango_client():
-    """
-    Initializes and returns an ArangoDB client.
-    Connects as root to perform administrative tasks.
-    """
-    try:
-        client = ArangoClient(hosts=ARANGO_URL)
-        return client
-    except Exception as e:
-        logger.error(f"Failed to initialize ArangoDB client: {e}")
-        raise
+# Graph names
+FRIENDS_GRAPH = "friends_graph"
+GROUPS_GRAPH = "groups_graph"
 
-def get_db_connection():
-    """
-    Get a connection to the social_db database.
-    Connects as root and creates the database if it doesn't exist.
-    """
-    try:
-        client = get_arango_client()
-        sys_db = client.db("_system", username="root", password=ARANGO_ROOT_PASSWORD)
 
-        if not sys_db.has_database(ARANGO_DB_NAME):
+class ArangoDBClient:
+    """ArangoDB client wrapper with utility methods."""
+    
+    def __init__(self):
+        """Initialize ArangoDB client with environment configuration."""
+        self.arango_host = os.getenv("ARANGO_HOST", "localhost")
+        self.arango_port = int(os.getenv("ARANGO_PORT", "8529"))
+        self.arango_root_password = os.getenv("ARANGO_ROOT_PASSWORD")
+        self.arango_db_name = os.getenv("ARANGO_DB_NAME", "social_db")
+        self.arango_url = f"http://{self.arango_host}:{self.arango_port}"
+        
+        self._client = None
+        self._db = None
+    
+    @property
+    def client(self) -> ArangoClient:
+        """Get ArangoDB client instance (lazy initialization)."""
+        if self._client is None:
             try:
-                sys_db.create_database(ARANGO_DB_NAME)
-                logger.info(f"Database '{ARANGO_DB_NAME}' created.")
-            except DatabaseCreateError as e:
-                logger.error(f"Failed to create database '{ARANGO_DB_NAME}': {e}")
+                self._client = ArangoClient(hosts=self.arango_url)
+            except Exception as e:
+                logger.error(f"Failed to initialize ArangoDB client: {e}")
                 raise
+        return self._client
+    
+    @property
+    def db(self):
+        """Get database instance (lazy initialization)."""
+        if self._db is None:
+            self._db = self._get_db_connection()
+        return self._db
+    
+    def _get_db_connection(self):
+        """
+        Get a connection to the social_db database.
+        Connects as root and creates the database if it doesn't exist.
+        """
+        try:
+            sys_db = self.client.db("_system", username="root", password=self.arango_root_password)
 
-        return client.db(ARANGO_DB_NAME, username="root", password=ARANGO_ROOT_PASSWORD)
-    except Exception as e:
-        logger.error(f"Failed to connect to ArangoDB database '{ARANGO_DB_NAME}': {e}")
-        raise
+            if not sys_db.has_database(self.arango_db_name):
+                try:
+                    sys_db.create_database(self.arango_db_name)
+                    logger.info(f"Database '{self.arango_db_name}' created.")
+                except DatabaseCreateError as e:
+                    logger.error(f"Failed to create database '{self.arango_db_name}': {e}")
+                    raise
 
-# A global instance of the database connection
-# This can be used in a similar way to FastAPI's Depends
-try:
-    db = get_db_connection()
-    logger.info(f"Successfully connected to ArangoDB database: '{ARANGO_DB_NAME}'")
-except Exception as e:
-    db = None
-    logger.error(f"Could not establish a global connection to ArangoDB: {e}")
+            return self.client.db(self.arango_db_name, username="root", password=self.arango_root_password)
+        except Exception as e:
+            logger.error(f"Failed to connect to ArangoDB database '{self.arango_db_name}': {e}")
+            raise
+    
+    def ping(self) -> bool:
+        """Check if ArangoDB is available."""
+        try:
+            return self.db.ping()
+        except Exception as e:
+            logger.error(f"ArangoDB ping failed: {e}")
+            return False
+
+
+# Global client instance
+_arango_client = None
+
+def get_arango_client() -> ArangoDBClient:
+    """Get the global ArangoDB client instance."""
+    global _arango_client
+    if _arango_client is None:
+        _arango_client = ArangoDBClient()
+    return _arango_client
 
 def get_db():
     """
     Dependency to get the ArangoDB database instance.
     """
-    if db is None:
+    try:
+        client = get_arango_client()
+        return client.db
+    except Exception as e:
+        logger.error(f"Could not establish a connection to ArangoDB: {e}")
         raise ConnectionError("Could not establish a connection to ArangoDB.")
-    return db
+
+
+# Legacy functions for backward compatibility
+def get_db_connection():
+    """
+    Legacy function for backward compatibility.
+    Use get_db() instead.
+    """
+    return get_db()
