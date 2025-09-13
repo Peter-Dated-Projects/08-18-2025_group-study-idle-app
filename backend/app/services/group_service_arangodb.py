@@ -145,7 +145,12 @@ class GroupService:
             return None
 
         members = self.get_group_members(group_id)
-        group["member_ids"] = [m["user_id"] for m in members]
+        group["member_ids"] = [m.get("user_id") or m.get("_key") for m in members if m.get("user_id") or m.get("_key")]
+        
+        # Ensure group_name field exists (map from 'name' if needed)
+        if "name" in group and "group_name" not in group:
+            group["group_name"] = group["name"]
+            
         return group
 
     def get_user_groups(self, user_id: str) -> list:
@@ -157,8 +162,15 @@ class GroupService:
         """
         groups = []
         for group_doc in self.db.aql.execute(aql):
-            members = self.get_group_members(group_doc["group_id"])
-            group_doc["member_ids"] = [m["user_id"] for m in members]
+            # Use group_id if available, otherwise use _key
+            group_key = group_doc.get("group_id") or group_doc.get("_key")
+            members = self.get_group_members(group_key)
+            group_doc["member_ids"] = [m.get("user_id") or m.get("_key") for m in members if m.get("user_id") or m.get("_key")]
+            
+            # Ensure group_name field exists (map from 'name' if needed)
+            if "name" in group_doc and "group_name" not in group_doc:
+                group_doc["group_name"] = group_doc["name"]
+            
             groups.append(group_doc)
         return groups
 

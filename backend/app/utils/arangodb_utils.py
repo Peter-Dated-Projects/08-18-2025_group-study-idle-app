@@ -85,7 +85,9 @@ class ArangoDBClient:
     def ping(self) -> bool:
         """Check if ArangoDB is available."""
         try:
-            return self.db.ping()
+            # Test database connection by executing a simple query
+            self.db.aql.execute("RETURN 1")
+            return True
         except Exception as e:
             logger.error(f"ArangoDB ping failed: {e}")
             return False

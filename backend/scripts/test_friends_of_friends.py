@@ -202,7 +202,7 @@ def print_network_summary():
 if __name__ == "__main__":
     try:
         # Check if backend is running
-        response = requests.get(f"{BACKEND_URL}/health")
+        response = requests.get(f"{BACKEND_URL}/healthz")
         if response.status_code != 200:
             logger.error("Backend is not running! Please start the backend server.")
             exit(1)

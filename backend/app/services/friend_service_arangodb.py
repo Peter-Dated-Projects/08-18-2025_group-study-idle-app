@@ -83,10 +83,10 @@ class FriendService:
 
         aql_query = f"""
         FOR friend IN 1..1 OUTBOUND '{USERS_COLLECTION}/{user_id}' GRAPH '{FRIENDS_GRAPH}'
-            RETURN friend.user_id
+            RETURN friend.user_id ? friend.user_id : friend._key
         """
         cursor = self.db.aql.execute(aql_query)
-        return [friend_id for friend_id in cursor]
+        return [friend_id for friend_id in cursor if friend_id is not None]
 
     def get_friends_of_friends(self, user_id: str) -> list[str]:
         """
@@ -100,15 +100,16 @@ class FriendService:
 
         aql_query = f"""
         FOR friend_of_friend IN 2..2 OUTBOUND '{USERS_COLLECTION}/{user_id}' GRAPH '{FRIENDS_GRAPH}'
-            FILTER friend_of_friend.user_id != '{user_id}'
+            LET friend_id = friend_of_friend.user_id ? friend_of_friend.user_id : friend_of_friend._key
+            FILTER friend_id != '{user_id}'
             FILTER friend_of_friend._id NOT IN (
                 FOR direct_friend IN 1..1 OUTBOUND '{USERS_COLLECTION}/{user_id}' GRAPH '{FRIENDS_GRAPH}'
                     RETURN direct_friend._id
             )
-            RETURN DISTINCT friend_of_friend.user_id
+            RETURN DISTINCT friend_id
         """
         cursor = self.db.aql.execute(aql_query)
-        return [friend_of_friend_id for friend_of_friend_id in cursor]
+        return [friend_of_friend_id for friend_of_friend_id in cursor if friend_of_friend_id is not None and friend_of_friend_id != user_id]
 
 # Create a singleton instance of the service
 friend_service = FriendService()
