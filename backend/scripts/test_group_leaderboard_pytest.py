@@ -10,10 +10,8 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.absolute()))
 
-from app.utils.redis_json_utils import set_json, get_json, delete_json
-from app.utils.redis_utils import redis_client
+from app.utils.redis_json_utils import set_json, delete_json
 import requests
-import time
 
 
 @pytest.fixture(scope="session")
@@ -115,6 +113,7 @@ def test_data():
         # Cleanup: Remove test data
         delete_json("study_groups")
         delete_json("leaderboard")
+
 
 def test_group_leaderboard_daily(backend_server, test_data):
     """Test group leaderboard for daily period."""
@@ -227,6 +226,14 @@ def test_invalid_group_id(backend_server, test_data):
     # Should return 404 or appropriate error status
     assert response.status_code in [404, 400], f"Expected 404 or 400 for invalid group, got {response.status_code}"
 
+
+def test_invalid_user_id(backend_server, test_data):
+    """Test behavior with invalid user ID."""
+    base_url = f"{backend_server}/api/group-leaderboard"
+    response = requests.get(f"{base_url}/member/nonexistent_user/group/group_001")
+    
+    # Should return 404 or appropriate error status
+    assert response.status_code in [404, 400], f"Expected 404 or 400 for invalid user, got {response.status_code}"
 
 
 # Pytest runner and backwards compatibility
@@ -349,11 +356,3 @@ if __name__ == "__main__":
             print("🧹 Test data cleaned up")
         except Exception:
             pass
-    
-    if server_down > 0:
-        print("\n💡 To test the endpoints, start the server first:")
-        print("  cd backend && python run_server.py")
-    elif passed == len(results):
-        print("\n🎉 All tests passed! Group leaderboard endpoints are working correctly.")
-    else:
-        print("\n⚠️  Some tests failed. Check the output above for details.")

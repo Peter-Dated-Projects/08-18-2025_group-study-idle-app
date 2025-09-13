@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Test script for friends-of-friends functionality.
+Pytest test suite for friends-of-friends functionality.
 Creates a network of users and tests second-degree connections.
 """
+import pytest
 import requests
 import logging
 from typing import List
@@ -14,6 +15,42 @@ logger = logging.getLogger(__name__)
 # API base URL
 BACKEND_URL = "http://localhost:8000"
 FRIENDS_API_URL = f"{BACKEND_URL}/api/friends"
+
+
+@pytest.fixture(scope="session")
+def backend_server():
+    """Ensure backend server is running for all tests."""
+    try:
+        response = requests.get(f"{BACKEND_URL}/healthz")
+        if response.status_code != 200:
+            pytest.skip("Backend server is not running")
+    except requests.exceptions.ConnectionError:
+        pytest.skip("Cannot connect to backend server")
+    return BACKEND_URL
+
+
+@pytest.fixture
+def test_friendships():
+    """Create and cleanup test friendship network."""
+    friendships = [
+        ("alice", "bob"),
+        ("alice", "david"),
+        ("bob", "charlie"),
+        ("bob", "frank"),
+        ("david", "eve")
+    ]
+    
+    # Setup: Create friendships
+    created_friendships = []
+    for user1, user2 in friendships:
+        if add_friend(user1, user2):
+            created_friendships.append((user1, user2))
+    
+    yield created_friendships
+    
+    # Cleanup: Remove friendships
+    for user1, user2 in created_friendships:
+        remove_friend(user1, user2)
 
 def add_friend(user_id: str, friend_id: str) -> bool:
     """Add a friendship between two users."""
@@ -87,17 +124,11 @@ def setup_test_network():
     
     return friendships
 
-def test_friends_of_friends():
-    """Test the friends-of-friends functionality."""
-    logger.info("=" * 50)
-    logger.info("TESTING FRIENDS-OF-FRIENDS FUNCTIONALITY")
-    logger.info("=" * 50)
+
+def test_alice_friends_of_friends(backend_server, test_friendships):
+    """Test Alice's friends-of-friends connections."""
+    logger.info("Testing Alice's connections")
     
-    # Setup network
-    setup_test_network()
-    
-    # Test Alice's friends-of-friends
-    logger.info("\n--- Testing Alice's connections ---")
     alice_friends = get_friends("alice")
     alice_fof = get_friends_of_friends("alice")
     
@@ -106,20 +137,19 @@ def test_friends_of_friends():
     
     # Expected: Charlie (through Bob), Eve (through David)
     expected_alice_fof = ["charlie", "eve"]
-    missing = [f for f in expected_alice_fof if f not in alice_fof]
-    unexpected = [f for f in alice_fof if f not in expected_alice_fof]
     
-    if not missing and not unexpected:
-        logger.info("✅ Alice's friends-of-friends test PASSED")
-    else:
-        logger.error("❌ Alice's friends-of-friends test FAILED")
-        if missing:
-            logger.error(f"  Missing: {missing}")
-        if unexpected:
-            logger.error(f"  Unexpected: {unexpected}")
+    for expected_friend in expected_alice_fof:
+        assert expected_friend in alice_fof, f"Expected {expected_friend} in Alice's friends-of-friends"
     
-    # Test Bob's friends-of-friends  
-    logger.info("\n--- Testing Bob's connections ---")
+    # Ensure direct friends are not in friends-of-friends
+    for direct_friend in alice_friends:
+        assert direct_friend not in alice_fof, f"Direct friend {direct_friend} should not be in friends-of-friends"
+
+
+def test_bob_friends_of_friends(backend_server, test_friendships):
+    """Test Bob's friends-of-friends connections.""" 
+    logger.info("Testing Bob's connections")
+    
     bob_friends = get_friends("bob")
     bob_fof = get_friends_of_friends("bob")
     
@@ -128,20 +158,19 @@ def test_friends_of_friends():
     
     # Expected: David (through Alice), but not Alice herself since she's direct friend
     expected_bob_fof = ["david"]
-    missing = [f for f in expected_bob_fof if f not in bob_fof]
-    unexpected = [f for f in bob_fof if f not in expected_bob_fof and f not in bob_friends]
     
-    if not missing and not unexpected:
-        logger.info("✅ Bob's friends-of-friends test PASSED")
-    else:
-        logger.error("❌ Bob's friends-of-friends test FAILED")
-        if missing:
-            logger.error(f"  Missing: {missing}")
-        if unexpected:
-            logger.error(f"  Unexpected: {unexpected}")
+    for expected_friend in expected_bob_fof:
+        assert expected_friend in bob_fof, f"Expected {expected_friend} in Bob's friends-of-friends"
     
-    # Test Charlie's friends-of-friends
-    logger.info("\n--- Testing Charlie's connections ---")
+    # Ensure direct friends are not in friends-of-friends
+    for direct_friend in bob_friends:
+        assert direct_friend not in bob_fof, f"Direct friend {direct_friend} should not be in friends-of-friends"
+
+
+def test_charlie_friends_of_friends(backend_server, test_friendships):
+    """Test Charlie's friends-of-friends connections."""
+    logger.info("Testing Charlie's connections")
+    
     charlie_friends = get_friends("charlie")
     charlie_fof = get_friends_of_friends("charlie")
     
@@ -150,31 +179,23 @@ def test_friends_of_friends():
     
     # Expected: Alice, Frank (through Bob)
     expected_charlie_fof = ["alice", "frank"]
-    missing = [f for f in expected_charlie_fof if f not in charlie_fof]
-    unexpected = [f for f in charlie_fof if f not in expected_charlie_fof]
     
-    if not missing and not unexpected:
-        logger.info("✅ Charlie's friends-of-friends test PASSED")
-    else:
-        logger.error("❌ Charlie's friends-of-friends test FAILED")
-        if missing:
-            logger.error(f"  Missing: {missing}")
-        if unexpected:
-            logger.error(f"  Unexpected: {unexpected}")
+    for expected_friend in expected_charlie_fof:
+        assert expected_friend in charlie_fof, f"Expected {expected_friend} in Charlie's friends-of-friends"
+
+
+def test_empty_friends_of_friends(backend_server):
+    """Test user with no friends has empty friends-of-friends."""
+    logger.info("Testing user with no friends")
     
-    # Test edge case: user with no friends
-    logger.info("\n--- Testing user with no friends ---")
     lonely_user_fof = get_friends_of_friends("lonely_user")
     logger.info(f"Lonely user's friends-of-friends: {lonely_user_fof}")
     
-    if not lonely_user_fof:
-        logger.info("✅ Empty friends-of-friends test PASSED")
-    else:
-        logger.error(f"❌ Empty friends-of-friends test FAILED: {lonely_user_fof}")
+    assert not lonely_user_fof, f"User with no friends should have empty friends-of-friends, got: {lonely_user_fof}"
 
 def cleanup_test_network():
     """Clean up the test network."""
-    logger.info("\n--- Cleaning up test network ---")
+    logger.info("Cleaning up test network")
     
     friendships = [
         ("alice", "bob"),
@@ -189,9 +210,10 @@ def cleanup_test_network():
     
     logger.info("Test network cleaned up")
 
+
 def print_network_summary():
     """Print a summary of the current network."""
-    logger.info("\n--- Network Summary ---")
+    logger.info("Network Summary")
     users = ["alice", "bob", "charlie", "david", "eve", "frank"]
     
     for user in users:
@@ -199,28 +221,52 @@ def print_network_summary():
         fof = get_friends_of_friends(user)
         logger.info(f"{user}: friends={friends}, friends-of-friends={fof}")
 
+
+# Pytest runner function
+def test_complete_friends_of_friends_suite(backend_server):
+    """Run the complete friends-of-friends test suite as a single integration test."""
+    logger.info("=" * 50)
+    logger.info("RUNNING COMPLETE FRIENDS-OF-FRIENDS TEST SUITE")
+    logger.info("=" * 50)
+    
+    # Setup network
+    setup_test_network()
+    
+    try:
+        # Test all scenarios
+        test_alice_friends_of_friends(backend_server, [])
+        test_bob_friends_of_friends(backend_server, [])
+        test_charlie_friends_of_friends(backend_server, [])
+        test_empty_friends_of_friends(backend_server)
+        
+        # Print summary
+        print_network_summary()
+        
+        logger.info("🎉 All friends-of-friends tests completed!")
+        
+    finally:
+        # Cleanup
+        cleanup_test_network()
+
+
 if __name__ == "__main__":
+    # For backwards compatibility when run directly
+    import sys
     try:
         # Check if backend is running
         response = requests.get(f"{BACKEND_URL}/healthz")
         if response.status_code != 200:
             logger.error("Backend is not running! Please start the backend server.")
-            exit(1)
+            sys.exit(1)
         
         logger.info("Backend is running, starting tests...")
         
-        # Run the test
-        test_friends_of_friends()
-        
-        # Print summary
-        print_network_summary()
-        
-        # Cleanup
-        cleanup_test_network()
-        
-        logger.info("\n🎉 Friends-of-friends testing completed!")
+        # Run as pytest would
+        test_complete_friends_of_friends_suite(BACKEND_URL)
         
     except requests.exceptions.ConnectionError:
         logger.error("❌ Cannot connect to backend server. Please ensure it's running on http://localhost:8000")
+        sys.exit(1)
     except Exception as e:
         logger.error(f"❌ Test failed with error: {e}")
+        sys.exit(1)
