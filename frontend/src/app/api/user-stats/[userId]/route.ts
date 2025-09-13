@@ -11,7 +11,7 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
     }
 
     // Make request to FastAPI backend
-    const response = await fetch(`${BACKEND_URL}/api/groups/user-stats/${userId}`, {
+    const response = await fetch(`${BACKEND_URL}/api/user-stats/${userId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
