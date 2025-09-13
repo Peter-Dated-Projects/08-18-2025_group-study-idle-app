@@ -1,6 +1,7 @@
 import os
 import logging
 from pathlib import Path
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -13,12 +14,12 @@ load_dotenv(env_file)
 
 # Import routers - handle both direct execution and module import
 try:
-    from .routers import health, websockets, lobbies, friends, groups, leaderboard
+    from .routers import health, websockets, lobbies, friends, groups, leaderboard, redis_leaderboard, group_leaderboard, periodic_sync, periodic_reset
     from .utils.redis_json_utils import ping_redis_json
     from .models.database import create_tables
 except ImportError:
     # Direct execution from app directory
-    from routers import health, websockets, lobbies, friends, groups, leaderboard
+    from routers import health, websockets, lobbies, friends, groups, leaderboard, redis_leaderboard, group_leaderboard, periodic_sync, periodic_reset
     from utils.redis_json_utils import ping_redis_json
     from models.database import create_tables
 
@@ -31,23 +32,53 @@ logger = logging.getLogger(__name__)
 # FastAPI app setup
 # ------------------------------------------------------------------ #
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifespan (startup and shutdown)."""
+    # Startup
+    logger.info("Application starting up...")
+    
+    try:
+        logger.info("Checking and creating database tables...")
+        create_tables()
+        logger.info("Database tables are ready")
+    except Exception as e:
+        logger.error(f"Failed to create database tables: {e}")
+        # Don't fail startup - let the app start but log the error
+    
+    # Start periodic sync background task
+    try:
+        from app.services.background_task_manager import background_task_manager
+        await background_task_manager.start_periodic_sync()
+        logger.info("Periodic sync background task started")
+    except Exception as e:
+        logger.error(f"Failed to start periodic sync: {e}")
+        # Don't fail startup - the app can run without periodic sync
+    
+    logger.info("Application startup complete")
+    
+    yield  # Application is running
+    
+    # Shutdown
+    logger.info("Application shutting down...")
+    
+    try:
+        from app.services.background_task_manager import background_task_manager
+        await background_task_manager.stop_periodic_sync()
+        logger.info("Background tasks stopped")
+    except Exception as e:
+        logger.error(f"Error stopping background tasks: {e}")
+    
+    logger.info("Application shutdown complete")
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Group Study Idle App Backend",
         description="Backend API for the group study idle game",
-        version="1.0.0"
+        version="1.0.0",
+        lifespan=lifespan
     )
-
-    @app.on_event("startup")
-    async def startup_event():
-        """Initialize database tables on startup."""
-        try:
-            logger.info("Checking and creating database tables...")
-            create_tables()
-            logger.info("Database tables are ready")
-        except Exception as e:
-            logger.error(f"Failed to create database tables: {e}")
-            # Don't fail startup - let the app start but log the error
             
     # Use Redis-based lobby system
     logger.info("Using Redis-based lobby system")
@@ -77,6 +108,10 @@ def create_app() -> FastAPI:
     app.include_router(friends.router)
     app.include_router(groups.router)
     app.include_router(leaderboard.router)
+    app.include_router(redis_leaderboard.router)  # Redis-cached leaderboard for frontend
+    app.include_router(group_leaderboard.router)  # Group-specific leaderboards via Redis
+    app.include_router(periodic_sync.router)  # Periodic sync management
+    app.include_router(periodic_reset.router)  # Periodic reset management
 
     @app.exception_handler(Exception)
     async def global_exception_handler(request, exc):
