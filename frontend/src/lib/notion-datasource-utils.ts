@@ -40,9 +40,12 @@ export async function getDataSourceIds(userId: string, databaseId: string): Prom
     }
 
     const databaseData: DatabaseResponse = await response.json();
-    const dataSourceIds = databaseData.data_sources.map(ds => ds.id);
-    
-    console.log(`✅ Found ${dataSourceIds.length} data sources for database ${databaseId}:`, dataSourceIds);
+    const dataSourceIds = databaseData.data_sources.map((ds) => ds.id);
+
+    console.log(
+      `✅ Found ${dataSourceIds.length} data sources for database ${databaseId}:`,
+      dataSourceIds
+    );
     return dataSourceIds;
   } catch (error) {
     console.error("❌ Error getting data source IDs:", error);
@@ -58,11 +61,11 @@ export async function getDataSourceIds(userId: string, databaseId: string): Prom
  */
 export async function getPrimaryDataSourceId(userId: string, databaseId: string): Promise<string> {
   const dataSourceIds = await getDataSourceIds(userId, databaseId);
-  
+
   if (dataSourceIds.length === 0) {
     throw new Error(`No data sources found for database ${databaseId}`);
   }
-  
+
   // Return the first data source (primary one)
   return dataSourceIds[0];
 }

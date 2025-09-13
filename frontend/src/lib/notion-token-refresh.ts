@@ -1,6 +1,6 @@
 import { getUserSession, updateUserSession, simpleEncrypt, simpleDecrypt } from "./firestore";
 
-// Use the centralized constant  
+// Use the centralized constant
 const NOTION_API_VERSION = "2025-09-03";
 
 interface TokenRefreshResponse {

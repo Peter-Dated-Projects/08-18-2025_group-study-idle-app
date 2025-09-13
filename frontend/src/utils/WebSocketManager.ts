@@ -27,11 +27,11 @@ class WebSocketManager {
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private pingInterval: NodeJS.Timeout | null = null;
   private hookRefCount = 0; // Track how many hooks are using this manager
-  
+
   // Event handlers
   private lobbyEventHandlers: EventHandler<LobbyEvent>[] = [];
   private gameEventHandlers: EventHandler<GameEvent>[] = [];
-  
+
   // State change listeners
   private connectionStateListeners: Array<(isConnected: boolean) => void> = [];
   private connectionCountListeners: Array<(count: number) => void> = [];
@@ -54,7 +54,7 @@ class WebSocketManager {
   setUserId(userId: string | null) {
     if (this.userId !== userId) {
       this.userId = userId;
-      
+
       // Reconnect with new user ID if we had a connection
       if (userId && this.ws) {
         this.disconnect();
@@ -95,7 +95,7 @@ class WebSocketManager {
       this.isConnected = true;
       this.connectionError = null;
       this.reconnectAttempts = 0;
-      
+
       this.notifyConnectionStateListeners(true);
       this.notifyConnectionErrorListeners(null);
 
@@ -160,12 +160,14 @@ class WebSocketManager {
       if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
         const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
         console.log(
-          `🔄 WebSocket: Reconnecting in ${delay}ms (attempt ${
-            this.reconnectAttempts + 1
-          }/${this.maxReconnectAttempts})`
+          `🔄 WebSocket: Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1}/${
+            this.maxReconnectAttempts
+          })`
         );
 
-        this.connectionError = `Connection lost. Reconnecting... (${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`;
+        this.connectionError = `Connection lost. Reconnecting... (${this.reconnectAttempts + 1}/${
+          this.maxReconnectAttempts
+        })`;
         this.notifyConnectionErrorListeners(this.connectionError);
 
         this.reconnectTimeout = setTimeout(() => {
@@ -174,7 +176,8 @@ class WebSocketManager {
         }, delay);
       } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
         console.log("❌ WebSocket: Max reconnection attempts reached");
-        this.connectionError = "Server is unreachable. Please check your connection and try refreshing the page.";
+        this.connectionError =
+          "Server is unreachable. Please check your connection and try refreshing the page.";
         this.notifyConnectionErrorListeners(this.connectionError);
       }
     };
@@ -234,7 +237,7 @@ class WebSocketManager {
     this.connectionStateListeners.push(listener);
     // Immediately call with current state
     listener(this.isConnected);
-    
+
     return () => {
       const index = this.connectionStateListeners.indexOf(listener);
       if (index > -1) {
@@ -247,7 +250,7 @@ class WebSocketManager {
     this.connectionCountListeners.push(listener);
     // Immediately call with current state
     listener(this.connectionCount);
-    
+
     return () => {
       const index = this.connectionCountListeners.indexOf(listener);
       if (index > -1) {
@@ -260,7 +263,7 @@ class WebSocketManager {
     this.connectionErrorListeners.push(listener);
     // Immediately call with current state
     listener(this.connectionError);
-    
+
     return () => {
       const index = this.connectionErrorListeners.indexOf(listener);
       if (index > -1) {
@@ -303,7 +306,7 @@ class WebSocketManager {
   // Start periodic ping (only once, managed internally)
   private startPeriodicPing() {
     if (this.pingInterval) return; // Already started
-    
+
     this.pingInterval = setInterval(() => {
       if (this.isConnected) {
         this.sendMessage({ type: "ping" });
@@ -321,7 +324,7 @@ class WebSocketManager {
   // Hook lifecycle management
   onHookMount(): () => void {
     this.hookRefCount++;
-    
+
     // Start ping when first hook mounts
     if (this.hookRefCount === 1) {
       this.startPeriodicPing();
@@ -330,7 +333,7 @@ class WebSocketManager {
     // Return cleanup function
     return () => {
       this.hookRefCount--;
-      
+
       // Stop ping when last hook unmounts
       if (this.hookRefCount === 0) {
         this.stopPeriodicPing();

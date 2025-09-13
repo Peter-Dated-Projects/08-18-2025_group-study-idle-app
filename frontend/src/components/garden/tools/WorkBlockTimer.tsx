@@ -135,9 +135,11 @@ export default function WorkBlockTimer() {
     const hours = Math.floor(totalMinutes / 60);
     const mins = totalMinutes % 60;
     const secs = seconds % 60;
-    
+
     if (hours > 0) {
-      return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+      return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs
+        .toString()
+        .padStart(2, "0")}`;
     } else {
       return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
     }
@@ -184,8 +186,9 @@ export default function WorkBlockTimer() {
     const newHours = parseInt(editHours) || 0;
     const newMinutes = parseInt(editMinutes) || 0;
     const totalMinutes = newHours * 60 + newMinutes;
-    
-    if (totalMinutes > 0 && totalMinutes <= 1440) { // Max 24 hours
+
+    if (totalMinutes > 0 && totalMinutes <= 1440) {
+      // Max 24 hours
       updateSetting("workDuration", totalMinutes);
     } else {
       // Reset to current values if invalid
@@ -258,9 +261,16 @@ export default function WorkBlockTimer() {
           onClick={handleTimeEdit}
         >
           {isEditingTime ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+            <div
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}
+            >
               <div
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                }}
               >
                 <input
                   type="number"
@@ -282,7 +292,9 @@ export default function WorkBlockTimer() {
                     outline: "none",
                   }}
                 />
-                <span style={{ fontSize: "48px", fontWeight: "bold", fontFamily: "monospace" }}>:</span>
+                <span style={{ fontSize: "48px", fontWeight: "bold", fontFamily: "monospace" }}>
+                  :
+                </span>
                 <input
                   type="number"
                   min="0"
@@ -302,7 +314,9 @@ export default function WorkBlockTimer() {
                     outline: "none",
                   }}
                 />
-                <span style={{ fontSize: "48px", fontWeight: "bold", fontFamily: "monospace" }}>:00</span>
+                <span style={{ fontSize: "48px", fontWeight: "bold", fontFamily: "monospace" }}>
+                  :00
+                </span>
               </div>
               {/* Save/Cancel buttons */}
               <div style={{ display: "flex", gap: "8px" }}>

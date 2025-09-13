@@ -56,7 +56,8 @@ export default function Lobby() {
   const { user, isLoading: authLoading, isAuthenticated } = useSessionAuth();
 
   // WebSocket connection for real-time updates
-  const { isConnected, connectionCount, connectionError, onLobbyEvent, clearConnectionError } = useWebSocket();
+  const { isConnected, connectionCount, connectionError, onLobbyEvent, clearConnectionError } =
+    useWebSocket();
 
   // Initialize connection in background without blocking UI
   useEffect(() => {
@@ -232,7 +233,7 @@ export default function Lobby() {
           } else {
             setLobbyState("joined");
           }
-          
+
           // Clear any previous errors
           setError("");
         }
@@ -248,7 +249,7 @@ export default function Lobby() {
       const timeoutId = setTimeout(() => {
         validateLobby();
       }, 100); // 100ms delay to ensure UI renders first
-      
+
       return () => clearTimeout(timeoutId);
     }
   }, [authLoading, isAuthenticated, user?.userId]); // Only depend on auth state, not lobbyData to avoid loops
@@ -700,8 +701,8 @@ export default function Lobby() {
               borderRadius: "8px",
               fontFamily: BodyFont,
               fontSize: "1rem",
-              cursor: (loading || authLoading) ? "not-allowed" : "pointer",
-              opacity: (loading || authLoading) ? 0.6 : 1,
+              cursor: loading || authLoading ? "not-allowed" : "pointer",
+              opacity: loading || authLoading ? 0.6 : 1,
               transition: "all 0.2s ease",
               minWidth: "200px",
             }}
@@ -732,8 +733,8 @@ export default function Lobby() {
               borderRadius: "8px",
               fontFamily: BodyFont,
               fontSize: "1rem",
-              cursor: (loading || authLoading) ? "not-allowed" : "pointer",
-              opacity: (loading || authLoading) ? 0.6 : 1,
+              cursor: loading || authLoading ? "not-allowed" : "pointer",
+              opacity: loading || authLoading ? 0.6 : 1,
               transition: "all 0.2s ease",
               minWidth: "200px",
             }}
@@ -970,7 +971,9 @@ export default function Lobby() {
           {/* Connection status - show error or reconnecting status */}
           {(connectionError || !isConnected) && (
             <div style={{ marginTop: "8px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}
+              >
                 <div
                   style={{
                     width: "6px",
@@ -1050,9 +1053,9 @@ export default function Lobby() {
                 borderRadius: "6px",
                 fontFamily: BodyFont,
                 fontSize: "0.9rem",
-                cursor: (loading || authLoading) ? "not-allowed" : "pointer",
+                cursor: loading || authLoading ? "not-allowed" : "pointer",
                 transition: "all 0.2s ease",
-                opacity: (loading || authLoading) ? 0.6 : 1,
+                opacity: loading || authLoading ? 0.6 : 1,
               }}
               onMouseEnter={(e) => {
                 if (!loading && !authLoading) {
@@ -1080,9 +1083,9 @@ export default function Lobby() {
                 borderRadius: "6px",
                 fontFamily: BodyFont,
                 fontSize: "0.9rem",
-                cursor: (loading || authLoading) ? "not-allowed" : "pointer",
+                cursor: loading || authLoading ? "not-allowed" : "pointer",
                 transition: "all 0.2s ease",
-                opacity: (loading || authLoading) ? 0.6 : 1,
+                opacity: loading || authLoading ? 0.6 : 1,
               }}
               onMouseEnter={(e) => {
                 if (!loading && !authLoading) {

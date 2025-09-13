@@ -67,17 +67,26 @@ export function useWebSocket(): UseWebSocketReturn {
     return cleanup;
   }, [wsManager]);
 
-  const sendMessage = useCallback((message: Record<string, unknown>) => {
-    wsManager.sendMessage(message);
-  }, [wsManager]);
+  const sendMessage = useCallback(
+    (message: Record<string, unknown>) => {
+      wsManager.sendMessage(message);
+    },
+    [wsManager]
+  );
 
-  const onLobbyEvent = useCallback((handler: (event: LobbyEvent) => void) => {
-    return wsManager.addLobbyEventHandler(handler);
-  }, [wsManager]);
+  const onLobbyEvent = useCallback(
+    (handler: (event: LobbyEvent) => void) => {
+      return wsManager.addLobbyEventHandler(handler);
+    },
+    [wsManager]
+  );
 
-  const onGameEvent = useCallback((handler: (event: GameEvent) => void) => {
-    return wsManager.addGameEventHandler(handler);
-  }, [wsManager]);
+  const onGameEvent = useCallback(
+    (handler: (event: GameEvent) => void) => {
+      return wsManager.addGameEventHandler(handler);
+    },
+    [wsManager]
+  );
 
   const connect = useCallback(() => {
     wsManager.connect();
