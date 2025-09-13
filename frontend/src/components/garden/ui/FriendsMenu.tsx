@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import BaseModal from "./BaseModal";
+import { BaseModal } from "../../common";
 import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 
 interface FriendsMenuProps {

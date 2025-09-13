@@ -1,5 +1,5 @@
 import React, { ReactNode } from "react";
-import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
+import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../constants";
 
 interface BaseModalProps {
   isVisible: boolean;

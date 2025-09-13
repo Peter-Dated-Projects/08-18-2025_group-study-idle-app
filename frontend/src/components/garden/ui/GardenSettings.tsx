@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import BaseModal from "./BaseModal";
+import { BaseModal } from "../../common";
 import {
   HeaderFont,
   BodyFont,
@@ -60,7 +60,14 @@ export default function GardenSettings() {
   // ---------------------------------------------------------------------- //
   // Settings Icon
   const settingsIcon = (
-    <div className="absolute bottom-0 right-0 p-4">
+    <div
+      style={{
+        position: "absolute",
+        bottom: "15px",
+        right: "15px",
+        zIndex: 100,
+      }}
+    >
       <button
         onClick={() => setSettingsActive(true)}
         style={{
@@ -79,7 +86,7 @@ export default function GardenSettings() {
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.backgroundColor = HOVER_COLOR;
-          e.currentTarget.style.transform = "scale(1.1)";
+          e.currentTarget.style.transform = "scale(1.05)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.backgroundColor = BORDERFILL;
@@ -87,7 +94,7 @@ export default function GardenSettings() {
         }}
         title="Settings"
       >
-        <i className="fi fi-ss-settings"></i>
+        <i className="fi fi-ss-settings" style={{ transform: "translateY(2px)" }}></i>
       </button>
     </div>
   );
