@@ -573,6 +573,14 @@ export default function Lobby() {
     }
   };
 
+  const goBackToEmpty = () => {
+    // Simply go back to empty state without making any server requests
+    // This is used when backing out of the "join" state where no lobby has been joined yet
+    setLobbyState("empty");
+    setJoinCode("");
+    setError("");
+  };
+
   // Show login prompt only if definitely not authenticated (not during loading)
   if (!authLoading && !isAuthenticated) {
     return (
@@ -799,7 +807,7 @@ export default function Lobby() {
           }}
         >
           <button
-            onClick={leaveLobby}
+            onClick={goBackToEmpty}
             style={{
               alignSelf: "flex-start",
               backgroundColor: "transparent",

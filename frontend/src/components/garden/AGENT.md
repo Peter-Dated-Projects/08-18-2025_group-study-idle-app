@@ -35,7 +35,7 @@ UI components specific to the main garden application where users tend virtual p
 
 ### `/tools` Directory
 
-- Work block timer (Pomodoro)
+- Pomo block timer (Pomodoro)
 - Study group lobbies
 - Music synchronization
 - Group collaboration tools

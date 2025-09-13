@@ -11,19 +11,19 @@ import {
   BORDERFILL,
 } from "../../constants";
 
-type WorkBlockPhase = "work" | "idle";
+type PomoBlockPhase = "work" | "idle";
 
-interface WorkBlockSettings {
+interface PomoBlockSettings {
   workDuration: number; // in minutes
 }
 
-const defaultSettings: WorkBlockSettings = {
+const defaultSettings: PomoBlockSettings = {
   workDuration: 25,
 };
 
-export default function WorkBlockTimer() {
-  const [settings, setSettings] = useState<WorkBlockSettings>(defaultSettings);
-  const [currentPhase, setCurrentPhase] = useState<WorkBlockPhase>("idle");
+export default function PomoBlockTimer() {
+  const [settings, setSettings] = useState<PomoBlockSettings>(defaultSettings);
+  const [currentPhase, setCurrentPhase] = useState<PomoBlockPhase>("idle");
   const [timeLeft, setTimeLeft] = useState(settings.workDuration * 60); // in seconds
   const [isRunning, setIsRunning] = useState(false);
   const [completedSessions, setCompletedSessions] = useState(0);
@@ -145,7 +145,7 @@ export default function WorkBlockTimer() {
     }
   };
 
-  const getPhaseDisplay = (phase: WorkBlockPhase): string => {
+  const getPhaseDisplay = (phase: PomoBlockPhase): string => {
     switch (phase) {
       case "work":
         return "Focus Time";
@@ -154,7 +154,7 @@ export default function WorkBlockTimer() {
     }
   };
 
-  const getPhaseColor = (phase: WorkBlockPhase): string => {
+  const getPhaseColor = (phase: PomoBlockPhase): string => {
     switch (phase) {
       case "work":
         return ACCENT_COLOR;
@@ -163,7 +163,7 @@ export default function WorkBlockTimer() {
     }
   };
 
-  const updateSetting = (key: keyof WorkBlockSettings, totalMinutes: number) => {
+  const updateSetting = (key: keyof PomoBlockSettings, totalMinutes: number) => {
     setSettings((prev) => ({ ...prev, [key]: totalMinutes }));
 
     // Update current timer if we're idle and changing work duration

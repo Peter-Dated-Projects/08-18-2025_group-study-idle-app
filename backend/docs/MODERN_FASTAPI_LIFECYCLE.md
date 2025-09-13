@@ -7,19 +7,21 @@ This document explains the migration from deprecated FastAPI event handlers to t
 ## What Changed
 
 ### ❌ **Old Deprecated Approach**
+
 ```python
 @app.on_event("startup")  # DEPRECATED
 async def startup_event():
     # startup code
     pass
 
-@app.on_event("shutdown")  # DEPRECATED  
+@app.on_event("shutdown")  # DEPRECATED
 async def shutdown_event():
     # shutdown code
     pass
 ```
 
 ### ✅ **New Modern Approach**
+
 ```python
 from contextlib import asynccontextmanager
 
@@ -28,10 +30,10 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Application starting up...")
     # ... startup code ...
-    
+
     yield  # Application is running
-    
-    # Shutdown  
+
+    # Shutdown
     logger.info("Application shutting down...")
     # ... shutdown code ...
 
@@ -41,21 +43,25 @@ app = FastAPI(lifespan=lifespan)
 ## Benefits of the Modern Approach
 
 ### 1. **Better Resource Management**
+
 - The context manager ensures proper cleanup even if startup fails
 - More explicit control over the application lifecycle
 - Better integration with Python's async context management
 
 ### 2. **Future-Proof**
+
 - FastAPI recommends this approach for new applications
 - The old `@app.on_event()` decorators are deprecated and will be removed
 - Better aligned with modern Python async patterns
 
 ### 3. **Improved Error Handling**
+
 - Context managers provide better exception handling
 - Cleaner separation between startup and shutdown logic
 - More predictable cleanup behavior
 
 ### 4. **Built-in Background Task Management**
+
 - No need for external cron jobs or system-level schedulers
 - Background tasks run within the FastAPI process
 - Proper lifecycle management (start on app startup, stop on app shutdown)
@@ -64,12 +70,15 @@ app = FastAPI(lifespan=lifespan)
 ## Application Lifecycle
 
 ### Startup Sequence
+
 1. **Database Initialization**
+
    ```python
    create_tables()  # Ensure PostgreSQL tables exist
    ```
 
 2. **Background Task Start**
+
    ```python
    await background_task_manager.start_periodic_sync()
    ```
@@ -80,11 +89,13 @@ app = FastAPI(lifespan=lifespan)
    - Ready to accept requests
 
 ### Runtime
+
 - **FastAPI serves requests** normally
 - **Periodic sync runs** every hour in the background
 - **No external dependencies** on system cron or other schedulers
 
 ### Shutdown Sequence
+
 1. **Signal received** (Ctrl+C, SIGTERM, etc.)
 2. **Background tasks stopped**
    ```python
@@ -97,6 +108,7 @@ app = FastAPI(lifespan=lifespan)
 ### Why Not Cron Jobs?
 
 #### ❌ **Problems with Cron Jobs**
+
 - **External dependency**: Requires system-level configuration
 - **Deployment complexity**: Different setup for each environment
 - **Process overhead**: Starts new Python process every hour
@@ -105,6 +117,7 @@ app = FastAPI(lifespan=lifespan)
 - **Resource inefficiency**: Cold starts every execution
 
 #### ✅ **Benefits of Built-in Background Tasks**
+
 - **Application-integrated**: Runs within the FastAPI process
 - **Automatic lifecycle**: Starts with app, stops with app
 - **Shared resources**: Uses same database connections, Redis clients
@@ -131,6 +144,7 @@ FastAPI App
 ## Implementation Details
 
 ### Lifespan Context Manager
+
 ```python
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -142,9 +156,9 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Startup failed: {e}")
         # Don't fail - let app start without background tasks
-    
+
     yield  # App is running
-    
+
     # Shutdown: Clean up resources
     try:
         await background_task_manager.stop_periodic_sync()
@@ -154,12 +168,13 @@ async def lifespan(app: FastAPI):
 ```
 
 ### Background Task Manager
+
 ```python
 class BackgroundTaskManager:
     async def start_periodic_sync(self):
         """Start periodic sync as asyncio task"""
         self.sync_task = asyncio.create_task(self._run_periodic_sync())
-    
+
     async def stop_periodic_sync(self):
         """Stop and cleanup background task"""
         if self.sync_task:
@@ -170,6 +185,7 @@ class BackgroundTaskManager:
 ## Deployment Advantages
 
 ### Development
+
 ```bash
 # Single command starts everything
 python run_server.py
@@ -180,11 +196,12 @@ python run_server.py
 ```
 
 ### Production
+
 ```bash
 # Docker deployment
 docker run app  # Background tasks included
 
-# Kubernetes deployment  
+# Kubernetes deployment
 kubectl apply -f deployment.yaml  # Self-contained
 
 # Cloud Run deployment
@@ -192,6 +209,7 @@ gcloud run deploy  # No additional services needed
 ```
 
 ### Monitoring
+
 ```bash
 # Check background task status
 curl /api/periodic-sync/status
@@ -216,32 +234,35 @@ docker logs app-container
 
 ## Comparison: Old vs New
 
-| Aspect | Cron Job Approach | Built-in Background Tasks |
-|--------|------------------|-------------------------|
-| Setup | System-level cron configuration | Automatic with app startup |
-| Deployment | Multiple steps | Single deployment |
-| Monitoring | Separate log files | Integrated API endpoints |
-| Resource Usage | New process every hour | Persistent background task |
-| Development | Complex local setup | Simple `python run_server.py` |
-| Debugging | Scattered logs | Centralized logging |
-| Error Handling | Cron email notifications | Application-level handling |
-| Scaling | Manual cron on each instance | Automatic with app instances |
+| Aspect         | Cron Job Approach               | Built-in Background Tasks     |
+| -------------- | ------------------------------- | ----------------------------- |
+| Setup          | System-level cron configuration | Automatic with app startup    |
+| Deployment     | Multiple steps                  | Single deployment             |
+| Monitoring     | Separate log files              | Integrated API endpoints      |
+| Resource Usage | New process every hour          | Persistent background task    |
+| Development    | Complex local setup             | Simple `python run_server.py` |
+| Debugging      | Scattered logs                  | Centralized logging           |
+| Error Handling | Cron email notifications        | Application-level handling    |
+| Scaling        | Manual cron on each instance    | Automatic with app instances  |
 
 ## Best Practices
 
 ### For Development
+
 1. **Test locally** with `python run_server.py`
 2. **Monitor logs** for background task status
 3. **Use API endpoints** to check sync status
 4. **Handle failures gracefully** - app should start even if background tasks fail
 
 ### For Production
+
 1. **Monitor background task health** via `/api/periodic-sync/status`
 2. **Set up alerts** for sync failures
 3. **Use proper logging** levels and structured logs
 4. **Consider redundancy** - multiple app instances can run the same background task safely
 
 ### For Debugging
+
 1. **Check application logs** for startup/shutdown messages
 2. **Use status endpoints** to verify background task state
 3. **Manual sync triggers** for immediate testing

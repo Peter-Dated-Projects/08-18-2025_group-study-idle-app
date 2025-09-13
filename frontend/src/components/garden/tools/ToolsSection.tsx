@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import MusicSync from "./MusicSync";
 import Lobby from "./Lobby";
-import Pomodoro from "./WorkBlockTimer";
+import PomoBlockTimer from "./PomoBlockTimer";
 import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 
 interface Tab {
@@ -20,9 +20,9 @@ export default function ToolsSection() {
       component: <Lobby />,
     },
     {
-      id: "work-block",
-      label: "Work Blocks",
-      component: <Pomodoro />,
+      id: "pomo-block",
+      label: "Pomo Blocks",
+      component: <PomoBlockTimer />,
     },
     {
       id: "music",
