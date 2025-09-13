@@ -84,7 +84,13 @@ class WebSocketManager {
       this.ws.close();
     }
 
-    const wsUrl = `ws://localhost:8080/ws?user_id=${encodeURIComponent(this.userId)}`;
+    // Convert HTTP backend URL to WebSocket URL
+    const backendUrl =
+      process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || "http://localhost:8000";
+    const wsUrl =
+      backendUrl.replace(/^https?:\/\//, "ws://") +
+      `/ws?user_id=${encodeURIComponent(this.userId)}`;
+
     console.log("WebSocket: Connecting to", wsUrl);
 
     const ws = new WebSocket(wsUrl);
