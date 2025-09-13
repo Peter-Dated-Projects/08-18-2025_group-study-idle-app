@@ -185,40 +185,14 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Base class for all ORM models
 Base = declarative_base()
 
-class UserRelation(Base):
-    """
-    User relations model for storing friendships.
-    """
-    __tablename__ = "user_relations"
-    
-    user_id = Column(String, primary_key=True, index=True)  # User's ID
-    friend_ids = Column(ARRAY(String), default=list)  # List of friend user IDs
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-class StudyGroup(Base):
-    """
-    Study groups model for storing private study groups.
-    """
-    __tablename__ = "study_groups"
-    
-    id = Column(String, primary_key=True, index=True)  # 16-character unique UUID
-    creator_id = Column(String, nullable=False)  # User ID of the creator
-    member_ids = Column(ARRAY(String), default=list)  # List of member user IDs
-    group_name = Column(String(32), nullable=False)  # Group name (max 32 chars)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
 class UserStats(Base):
     """
-    User statistics model for tracking user activity and limits.
+    User statistics model. Legacy table, used to track if a user exists in the system.
+    Friend and group stats are now managed in ArangoDB.
     """
     __tablename__ = "user_stats"
     
     user_id = Column(String, primary_key=True, index=True)  # User's ID
-    group_count = Column(String, default="0")  # Number of groups user has joined (stored as string)
-    group_ids = Column(ARRAY(String), default=list)  # List of group IDs user is a member of
-    friend_count = Column(String, default="0")  # Number of friends user has
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

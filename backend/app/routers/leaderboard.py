@@ -90,12 +90,7 @@ async def update_pomodoro_count(request: PomoUpdateRequest, db: Session = Depend
         # Also ensure user has UserStats entry
         user_stats = db.query(UserStats).filter(UserStats.user_id == request.user_id).first()
         if not user_stats:
-            user_stats = UserStats(
-                user_id=request.user_id,
-                group_count="0",
-                group_ids=[],
-                friend_count="0"
-            )
+            user_stats = UserStats(user_id=request.user_id)
             db.add(user_stats)
         
         db.commit()
