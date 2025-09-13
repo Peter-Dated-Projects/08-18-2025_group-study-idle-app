@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { NOTION_API_VERSION } from "@/components/constants";
 import { getUserSession, simpleDecrypt } from "@/lib/firestore";
 import { fetchWithTokenRefresh } from "@/lib/notion-token-refresh";
+import { getPrimaryDataSourceId, queryDataSource } from "@/lib/notion-datasource-utils";
 
 interface NotionRichText {
   plain_text?: string;
@@ -35,6 +36,7 @@ interface NotionQueryBody {
   filter?: unknown;
   sorts?: unknown[];
   start_cursor?: string;
+  [key: string]: unknown; // Add index signature
 }
 
 interface NotionPagesResponse {
@@ -256,7 +258,11 @@ export async function GET(req: Request) {
 
     const database = await databaseResponse.json();
 
-    // Query database pages
+    // Get primary data source ID for the database
+    const dataSourceId = await getPrimaryDataSourceId(userId, databaseId);
+    console.log(`/api/notion/tasks GET: Using data source ID: ${dataSourceId}`);
+
+    // Query data source pages
     const queryBody: NotionQueryBody = {
       page_size: 100,
     };
@@ -265,17 +271,7 @@ export async function GET(req: Request) {
       queryBody.filter = filter;
     }
 
-    const pagesResponse = await fetchWithTokenRefresh(
-      userId,
-      `https://api.notion.com/v1/databases/${databaseId}/query`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(queryBody),
-      }
-    );
+    const pagesResponse = await queryDataSource(userId, dataSourceId, queryBody);
 
     if (!pagesResponse.ok) {
       const error = await pagesResponse.json();
@@ -464,18 +460,12 @@ export async function POST(request: Request) {
       queryBody.start_cursor = start_cursor;
     }
 
-    // Query database pages
-    const pagesResponse = await fetchWithTokenRefresh(
-      userId,
-      `https://api.notion.com/v1/databases/${database_id}/query`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(queryBody),
-      }
-    );
+    // Get primary data source ID for the database
+    const dataSourceId = await getPrimaryDataSourceId(userId, database_id);
+    console.log(`/api/notion/tasks POST: Using data source ID: ${dataSourceId}`);
+
+    // Query data source pages
+    const pagesResponse = await queryDataSource(userId, dataSourceId, queryBody);
 
     if (!pagesResponse.ok) {
       const error = await pagesResponse.json();

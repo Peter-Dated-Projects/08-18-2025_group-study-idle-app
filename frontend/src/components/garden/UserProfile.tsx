@@ -37,7 +37,7 @@ export default function UserProfile({ isVisible, onClose, user }: UserProfilePro
         left: 0,
         width: "100vw",
         height: "100vh",
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        backgroundColor: "rgba(0, 0, 0, 0.3)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

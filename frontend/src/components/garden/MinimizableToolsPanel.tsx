@@ -16,111 +16,46 @@ export default function MinimizableToolsPanel({
   if (isMinimized) {
     return (
       <div
-        style={{
-          position: "relative",
-          width: "100%",
-          height: "40px",
-          backgroundColor: BORDERFILL,
-          border: `2px solid ${BORDERLINE}`,
-          borderRadius: "4px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 10px",
-          cursor: "pointer",
-          transition: "all 0.2s ease",
-        }}
+        className="relative w-full h-10 border-2 border-gray-300 flex items-center justify-between px-2.5 transition-all duration-200"
         onClick={toggleMinimized}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = PANELFILL;
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = BORDERFILL;
-        }}
       >
-        <span style={{ color: FONTCOLOR, fontSize: "14px", fontWeight: "bold" }}>
-          Tools Section
-        </span>
+        <span className="text-gray-900 text-sm font-bold">Tools Section</span>
         <button
-          style={{
-            background: "none",
-            border: "none",
-            color: FONTCOLOR,
-            fontSize: "16px",
-            cursor: "pointer",
-            padding: "2px 6px",
-            borderRadius: "2px",
-            backgroundColor: PANELFILL,
-            transition: "all 0.2s ease",
-          }}
+          className="border-none text-gray-900 text-base px-1.5 py-0.5 rounded bg-gray-200 transition-all duration-200"
           onClick={(e) => {
             e.stopPropagation();
             toggleMinimized();
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = BORDERLINE;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = PANELFILL;
-          }}
         >
-          ▲
+          <i className="fa fa-chevron-up"></i>
         </button>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        position: "relative",
-        width: "100%",
-        height: "100%",
-        backgroundColor: PANELFILL,
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <div className="relative w-full h-full flex flex-col" style={{ backgroundColor: PANELFILL }}>
       {/* Header with minimize button */}
       <button
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          borderBottom: `2px solid ${BORDERLINE}`,
-          backgroundColor: BORDERFILL,
-          minHeight: "30px",
-          padding: "4px 10px",
-          cursor: "pointer", // Add cursor pointer for toggle functionality
-        }}
-        onClick={toggleMinimized} // Ensure toggle functionality is applied
+        className="flex items-center justify-between border-b-2 min-h-[30px] p-[4px_10px] cursor-pointer"
+        style={{ borderBottomColor: BORDERLINE, backgroundColor: BORDERFILL }}
+        onClick={toggleMinimized}
       >
-        <span style={{ color: FONTCOLOR, fontSize: "14px", fontWeight: "bold" }}>
+        <span className="text-sm font-bold" style={{ color: FONTCOLOR }}>
           Tools Section
         </span>
         <i
-          className="fa fa-chevron-down"
-          style={{
-            color: FONTCOLOR,
-            fontSize: "16px",
-            cursor: "pointer",
-            padding: "2px 6px",
-            borderRadius: "2px",
-            backgroundColor: BORDERLINE,
-            transition: "all 0.2s ease",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+          className="fa fa-chevron-down text-base cursor-pointer p-[2px_6px] rounded-sm transition-all duration-200 flex items-center justify-center"
+          style={{ color: FONTCOLOR, backgroundColor: BORDERLINE }}
           aria-label="Minimize"
         />
       </button>
 
       {/* Tools content */}
       <div
+        className="flex-1 flex flex-col"
         style={{
-          flex: 1,
-          overflow: "auto",
+          overflow: "hidden",
           backgroundColor: PANELFILL,
         }}
       >

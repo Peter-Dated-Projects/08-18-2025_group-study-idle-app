@@ -1,5 +1,8 @@
 import { getUserSession, updateUserSession, simpleEncrypt, simpleDecrypt } from "./firestore";
 
+// Use the centralized constant  
+const NOTION_API_VERSION = "2025-09-03";
+
 interface TokenRefreshResponse {
   access_token: string;
   token_type: string;
@@ -106,7 +109,7 @@ export async function fetchWithTokenRefresh(
     const headers = {
       ...options.headers,
       Authorization: `Bearer ${accessToken}`,
-      "Notion-Version": "2022-06-28",
+      "Notion-Version": NOTION_API_VERSION,
       "Content-Type": "application/json",
     };
 

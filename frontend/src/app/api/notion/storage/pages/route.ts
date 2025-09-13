@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getUserSession, getUserSessionDatabaseId } from "@/lib/firestore";
 import { fetchWithTokenRefresh } from "@/lib/notion-token-refresh";
+import { getPrimaryDataSourceId, queryDataSource } from "@/lib/notion-datasource-utils";
 
 interface NotionPage {
   id: string;
@@ -56,36 +57,39 @@ export async function GET(req: Request) {
 
   console.log(`/api/notion/storage/pages: Using database ID: ${databaseId}`);
 
-  const response = await fetchWithTokenRefresh(
-    userId,
-    `https://api.notion.com/v1/databases/${databaseId}/query`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        sorts: [
-          {
-            property: "Name",
-            direction: "descending",
-          },
-        ],
-      }),
-    }
-  );
+  try {
+    // Get the primary data source ID for this database
+    const dataSourceId = await getPrimaryDataSourceId(userId, databaseId);
+    console.log(`/api/notion/storage/pages: Using data source ID: ${dataSourceId}`);
 
-  const responseData = await response.json();
-  if (!response.ok) {
-    console.warn("/api/notion/storage/pages: Error fetching pages:", responseData);
+    // Query the data source instead of the database
+    const response = await queryDataSource(userId, dataSourceId, {
+      sorts: [
+        {
+          property: "Name",
+          direction: "descending",
+        },
+      ],
+    });
+
+    const responseData = await response.json();
+    if (!response.ok) {
+      console.warn("/api/notion/storage/pages: Error fetching pages:", responseData);
+      return NextResponse.json(
+        { error: "Failed to fetch pages", needsReauth: true },
+        { status: 500 }
+      );
+    }
+
+    // console.log("Fetched pages:", responseData.results);
+    return NextResponse.json(responseData);
+  } catch (error) {
+    console.error("/api/notion/storage/pages: Error:", error);
     return NextResponse.json(
       { error: "Failed to fetch pages", needsReauth: true },
       { status: 500 }
     );
   }
-
-  // console.log("Fetched pages:", responseData.results);
-  return NextResponse.json(responseData);
 }
 
 export interface NewPageDetails {
@@ -122,40 +126,52 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const newPage: Record<string, unknown> = {
-    parent: { database_id: databaseId },
-    properties: {
-      Name: {
-        title: [
-          {
-            text: {
-              content: requestBody.title,
+  try {
+    // Get the primary data source ID for this database
+    const dataSourceId = await getPrimaryDataSourceId(userId, databaseId);
+    console.log(`/api/notion/storage/pages: Creating page in data source: ${dataSourceId}`);
+
+    const newPage: Record<string, unknown> = {
+      parent: { data_source_id: dataSourceId }, // Updated to use data_source_id
+      properties: {
+        Name: {
+          title: [
+            {
+              text: {
+                content: requestBody.title,
+              },
             },
-          },
-        ],
+          ],
+        },
       },
-    },
-  };
-  if (requestBody.icon_emoji) {
-    newPage.icon = {
-      emoji: requestBody.icon_emoji,
     };
-  }
+    if (requestBody.icon_emoji) {
+      newPage.icon = {
+        emoji: requestBody.icon_emoji,
+      };
+    }
 
-  const response = await fetchWithTokenRefresh(userId, "https://api.notion.com/v1/pages", {
-    method: "POST",
-    body: JSON.stringify(newPage),
-  });
+    const response = await fetchWithTokenRefresh(userId, "https://api.notion.com/v1/pages", {
+      method: "POST",
+      body: JSON.stringify(newPage),
+    });
 
-  if (!response.ok) {
-    console.error("/api/notion/storage/pages: Error creating page:", response.statusText);
+    if (!response.ok) {
+      console.error("/api/notion/storage/pages: Error creating page:", response.statusText);
+      return NextResponse.json(
+        { error: "Failed to create page", needsReauth: true },
+        { status: 500 }
+      );
+    }
+
+    // Notify app to update sesions
+    const responseData = await response.json();
+    return NextResponse.json({ ...responseData, updateSessions: true, updateTasks: false });
+  } catch (error) {
+    console.error("/api/notion/storage/pages: Error creating page:", error);
     return NextResponse.json(
       { error: "Failed to create page", needsReauth: true },
       { status: 500 }
     );
   }
-
-  // Notify app to update sesions
-  const responseData = await response.json();
-  return NextResponse.json({ ...responseData, updateSessions: true, updateTasks: false });
 }

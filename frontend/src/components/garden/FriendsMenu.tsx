@@ -131,7 +131,7 @@ export default function FriendsMenu({ isVisible, onClose, userId }: FriendsMenuP
         left: 0,
         width: "100vw",
         height: "100vh",
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        backgroundColor: "rgba(0, 0, 0, 0.3)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

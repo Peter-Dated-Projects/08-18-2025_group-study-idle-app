@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import MusicSync from "./MusicSync";
-import Instructions from "./Instructions";
 import Lobby from "./Lobby";
-import Pomodoro from "./Pomodoro";
+import Pomodoro from "./WorkBlockTimer";
 import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 
 interface Tab {
@@ -12,22 +11,17 @@ interface Tab {
 }
 
 export default function ToolsSection() {
-  const [activeTab, setActiveTab] = useState("instructions");
+  const [activeTab, setActiveTab] = useState("lobby");
 
   const tabs: Tab[] = [
-    {
-      id: "instructions",
-      label: "Instructions",
-      component: <Instructions />,
-    },
     {
       id: "lobby",
       label: "Study Lobby",
       component: <Lobby />,
     },
     {
-      id: "pomodoro",
-      label: "Pomo!",
+      id: "work-block",
+      label: "Work Blocks",
       component: <Pomodoro />,
     },
     {
@@ -42,16 +36,14 @@ export default function ToolsSection() {
       style={{
         position: "relative",
         width: "100%",
+        height: "100%",
         backgroundColor: PANELFILL,
         display: "flex",
         flexDirection: "column",
-        border: `2px solid ${BORDERLINE}`,
-        borderBottomLeftRadius: "8px",
-        borderBottomRightRadius: "8px",
         overflow: "hidden",
       }}
     >
-      {/* Header with tabs */}
+      {/* Header with tabs - this stays fixed */}
       <div
         style={{
           display: "flex",
@@ -59,6 +51,7 @@ export default function ToolsSection() {
           borderBottom: `2px solid ${BORDERLINE}`,
           backgroundColor: BORDERFILL,
           minHeight: "35px",
+          flexShrink: 0, // Prevent this from shrinking
         }}
       >
         {/* Tabs */}
@@ -69,15 +62,14 @@ export default function ToolsSection() {
               onClick={() => setActiveTab(tab.id)}
               style={{
                 backgroundColor: activeTab === tab.id ? PANELFILL : "transparent",
-                border: "none",
                 color: FONTCOLOR,
                 padding: "8px 12px",
                 cursor: "pointer",
                 fontSize: "13px",
-                borderBottom: activeTab === tab.id ? `2px solid ${FONTCOLOR}` : "none",
-                borderRight: index < tabs.length - 1 ? `1px solid ${BORDERLINE}` : "none",
                 transition: "all 0.2s ease",
                 fontWeight: activeTab === tab.id ? "bold" : "normal",
+                borderLeft: index === 0 ? "none" : `1px solid ${BORDERLINE}`,
+                borderRight: index === tabs.length - 1 ? "none" : `1px solid ${BORDERLINE}`,
               }}
               onMouseEnter={(e) => {
                 if (activeTab !== tab.id) {
@@ -98,16 +90,13 @@ export default function ToolsSection() {
         </div>
       </div>
 
-      {/* Tab content */}
+      {/* Tab content - this scrolls */}
       <div
+        className="flex-1"
         style={{
-          flex: 1,
-          overflow: "auto",
           backgroundColor: PANELFILL,
-          border: `1px solid ${BORDERLINE}`,
-          borderTop: "none",
-          borderBottomLeftRadius: "6px",
-          borderBottomRightRadius: "6px",
+          overflow: "auto",
+          minHeight: 0, // Allow this to shrink below its content height
         }}
       >
         {tabs.find((tab) => tab.id === activeTab)?.component}

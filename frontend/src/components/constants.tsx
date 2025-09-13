@@ -44,7 +44,7 @@ export const SETTINGS_HEADER = "/ui/settings_header.png";
 export const AVATAR_BOX = "/ui/avatar-box.png";
 
 // env variables
-export const NOTION_API_VERSION = process.env.NOTION_API_VERSION!;
+export const NOTION_API_VERSION = process.env.NOTION_API_VERSION || "2025-09-03"; // Updated to latest version with fallback
 
 // Typography system
 export const HeaderFont = "FallingSky"; // Updated to use custom font

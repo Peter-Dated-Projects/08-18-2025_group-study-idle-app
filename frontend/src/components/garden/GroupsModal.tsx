@@ -212,7 +212,7 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
           left: 0,
           width: "100vw",
           height: "100vh",
-          backgroundColor: "rgba(0, 0, 0, 0.8)",
+          backgroundColor: "rgba(0, 0, 0, 0.3)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -235,7 +235,7 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
         left: 0,
         width: "100vw",
         height: "100vh",
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        backgroundColor: "rgba(0, 0, 0, 0.3)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -339,11 +339,13 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
               style={{
                 flex: 1,
                 padding: "10px",
-                backgroundColor: (userStats && parseInt(userStats.group_count) >= 5) ? "#666" : "#4CAF50",
+                backgroundColor:
+                  userStats && parseInt(userStats.group_count) >= 5 ? "#666" : "#4CAF50",
                 color: "white",
                 border: "none",
                 borderRadius: "4px",
-                cursor: (userStats && parseInt(userStats.group_count) >= 5) ? "not-allowed" : "pointer",
+                cursor:
+                  userStats && parseInt(userStats.group_count) >= 5 ? "not-allowed" : "pointer",
                 fontSize: "12px",
                 fontWeight: "bold",
               }}
@@ -357,11 +359,13 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
               style={{
                 flex: 1,
                 padding: "10px",
-                backgroundColor: (userStats && parseInt(userStats.group_count) >= 5) ? "#666" : "#2196F3",
+                backgroundColor:
+                  userStats && parseInt(userStats.group_count) >= 5 ? "#666" : "#2196F3",
                 color: "white",
                 border: "none",
                 borderRadius: "4px",
-                cursor: (userStats && parseInt(userStats.group_count) >= 5) ? "not-allowed" : "pointer",
+                cursor:
+                  userStats && parseInt(userStats.group_count) >= 5 ? "not-allowed" : "pointer",
                 fontSize: "12px",
                 fontWeight: "bold",
               }}
@@ -506,7 +510,14 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
                         marginBottom: "8px",
                       }}
                     >
-                      <h4 style={{ margin: 0, color: FONTCOLOR, fontSize: "14px", fontWeight: "bold" }}>
+                      <h4
+                        style={{
+                          margin: 0,
+                          color: FONTCOLOR,
+                          fontSize: "14px",
+                          fontWeight: "bold",
+                        }}
+                      >
                         {group.group_name}
                       </h4>
                       {group.creator_id === user.userId && (
@@ -526,9 +537,15 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
                     </div>
 
                     <div style={{ fontSize: "11px", color: FONTCOLOR, marginBottom: "8px" }}>
-                      <div><strong>Group ID:</strong> {group.id}</div>
-                      <div><strong>Members:</strong> {group.member_ids.length}</div>
-                      <div><strong>Created:</strong> {new Date(group.created_at).toLocaleDateString()}</div>
+                      <div>
+                        <strong>Group ID:</strong> {group.id}
+                      </div>
+                      <div>
+                        <strong>Members:</strong> {group.member_ids.length}
+                      </div>
+                      <div>
+                        <strong>Created:</strong> {new Date(group.created_at).toLocaleDateString()}
+                      </div>
                     </div>
 
                     <div style={{ display: "flex", gap: "8px" }}>

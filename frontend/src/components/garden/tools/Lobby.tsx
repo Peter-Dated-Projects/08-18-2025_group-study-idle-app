@@ -56,9 +56,15 @@ export default function Lobby() {
   const { user, isLoading: authLoading, isAuthenticated } = useSessionAuth();
 
   // WebSocket connection for real-time updates
-  const { isConnected, connectionCount, onLobbyEvent } = useWebSocket();
+  const { isConnected, connectionCount, connectionError, onLobbyEvent, clearConnectionError } = useWebSocket();
 
-  // Log WebSocket connection status changes
+  // Initialize connection in background without blocking UI
+  useEffect(() => {
+    // Connection happens automatically via useWebSocket hook
+    // No need to show connection status to user unless there's an issue
+  }, []);
+
+  // Log WebSocket connection status changes (for debugging only)
   useEffect(() => {
     console.log("🔌 Lobby: WebSocket connection status", {
       isConnected,
@@ -175,6 +181,7 @@ export default function Lobby() {
   }, [lobbyData, user?.userId, onLobbyEvent]);
 
   // Validate lobby on component mount/refresh (for non-hosts)
+  // This runs in background without blocking UI
   useEffect(() => {
     const validateLobby = async () => {
       if (!lobbyData || !user?.userId || !isAuthenticated) return;
@@ -182,7 +189,7 @@ export default function Lobby() {
       // Only validate for non-hosts
       if (lobbyState === "hosting" || lobbyData.host === user.userId) return;
 
-      console.log("Validating lobby on refresh/mount for non-host user...");
+      console.log("🔍 Lobby: Background validation for non-host user...");
 
       try {
         const response = await fetch(`/api/hosting/status?lobby_id=${lobbyData.code}`, {
@@ -191,12 +198,9 @@ export default function Lobby() {
         });
 
         if (!response.ok) {
-          // Network error or server error
-          console.log("Lobby validation failed due to network/server error, clearing local data");
-          setError("The lobby you were in is no longer available");
-          setLobbyData(null);
-          setLobbyState("empty");
-          clearLobbyData();
+          // Network error or server error - show error but don't immediately clear data
+          console.log("🔍 Lobby: Validation failed due to network/server error");
+          setError("Unable to verify lobby status. Please check your connection.");
           return;
         }
 
@@ -204,7 +208,7 @@ export default function Lobby() {
 
         // Check if lobby exists and user is still a member
         if (!statusData.lobby_exists || !statusData.is_member) {
-          console.log("Lobby validation failed - lobby doesn't exist or user is not a member");
+          console.log("🔍 Lobby: Validation failed - lobby doesn't exist or user not a member");
           setError("The lobby you were in is no longer available");
           setLobbyData(null);
           setLobbyState("empty");
@@ -214,7 +218,7 @@ export default function Lobby() {
 
         // Update lobby data with current state from server
         if (statusData.success) {
-          console.log("Lobby validation successful, updating local data");
+          console.log("🔍 Lobby: Validation successful, updating local data");
           setLobbyData({
             code: statusData.code,
             host: statusData.host,
@@ -228,17 +232,24 @@ export default function Lobby() {
           } else {
             setLobbyState("joined");
           }
+          
+          // Clear any previous errors
+          setError("");
         }
       } catch (err) {
-        console.error("Error validating lobby:", err);
-        setError("Failed to validate lobby status");
+        console.error("🔍 Lobby: Error during background validation:", err);
+        setError("Unable to verify lobby status. Some features may not work properly.");
         // Don't clear data on network errors, user can retry
       }
     };
 
-    // Only run validation after authentication is complete and we have lobby data
+    // Run validation in background after a short delay to let UI render first
     if (!authLoading && lobbyData) {
-      validateLobby();
+      const timeoutId = setTimeout(() => {
+        validateLobby();
+      }, 100); // 100ms delay to ensure UI renders first
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [authLoading, isAuthenticated, user?.userId]); // Only depend on auth state, not lobbyData to avoid loops
 
@@ -561,37 +572,8 @@ export default function Lobby() {
     }
   };
 
-  // Show loading while checking authentication
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          padding: "20px",
-          backgroundColor: PANELFILL,
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <p
-            style={{
-              fontFamily: BodyFont,
-              color: SECONDARY_TEXT,
-              fontSize: "1rem",
-            }}
-          >
-            Checking authentication...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show login prompt if not authenticated
-  if (!isAuthenticated) {
+  // Show login prompt only if definitely not authenticated (not during loading)
+  if (!authLoading && !isAuthenticated) {
     return (
       <div
         style={{
@@ -709,7 +691,7 @@ export default function Lobby() {
 
           <button
             onClick={createLobby}
-            disabled={loading}
+            disabled={loading || authLoading}
             style={{
               backgroundColor: ACCENT_COLOR,
               color: "white",
@@ -718,13 +700,13 @@ export default function Lobby() {
               borderRadius: "8px",
               fontFamily: BodyFont,
               fontSize: "1rem",
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.6 : 1,
+              cursor: (loading || authLoading) ? "not-allowed" : "pointer",
+              opacity: (loading || authLoading) ? 0.6 : 1,
               transition: "all 0.2s ease",
               minWidth: "200px",
             }}
             onMouseEnter={(e) => {
-              if (!loading) {
+              if (!loading && !authLoading) {
                 e.currentTarget.style.transform = "translateY(-1px)";
                 e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.1)";
               }
@@ -736,12 +718,12 @@ export default function Lobby() {
               }
             }}
           >
-            {loading ? "Creating..." : "Create Lobby"}
+            {loading ? "Creating..." : authLoading ? "Loading..." : "Create Lobby"}
           </button>
 
           <button
             onClick={() => setLobbyState("join")}
-            disabled={loading}
+            disabled={loading || authLoading}
             style={{
               backgroundColor: "transparent",
               color: ACCENT_COLOR,
@@ -750,8 +732,8 @@ export default function Lobby() {
               borderRadius: "8px",
               fontFamily: BodyFont,
               fontSize: "1rem",
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.6 : 1,
+              cursor: (loading || authLoading) ? "not-allowed" : "pointer",
+              opacity: (loading || authLoading) ? 0.6 : 1,
               transition: "all 0.2s ease",
               minWidth: "200px",
             }}
@@ -985,36 +967,51 @@ export default function Lobby() {
           >
             Code: <span style={{ fontWeight: "bold", color: ACCENT_COLOR }}>{lobbyData?.code}</span>
           </p>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "4px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <div
-                style={{
-                  width: "8px",
-                  height: "8px",
-                  borderRadius: "50%",
-                  backgroundColor: isConnected ? "#10b981" : "#ef4444",
-                }}
-              />
-              <span
-                style={{
-                  fontFamily: BodyFont,
-                  color: SECONDARY_TEXT,
-                  fontSize: "0.8rem",
-                }}
-              >
-                {isConnected ? "Connected" : "Disconnected"}
-              </span>
+          {/* Connection status - show error or reconnecting status */}
+          {(connectionError || !isConnected) && (
+            <div style={{ marginTop: "8px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                <div
+                  style={{
+                    width: "6px",
+                    height: "6px",
+                    borderRadius: "50%",
+                    backgroundColor: connectionError ? "#ef4444" : "#f59e0b",
+                  }}
+                />
+                <span
+                  style={{
+                    fontFamily: BodyFont,
+                    color: connectionError ? "#ef4444" : "#f59e0b",
+                    fontSize: "0.7rem",
+                  }}
+                >
+                  {connectionError || "Reconnecting..."}
+                </span>
+              </div>
+              {connectionError && (
+                <button
+                  onClick={() => {
+                    clearConnectionError();
+                    window.location.reload();
+                  }}
+                  style={{
+                    backgroundColor: ACCENT_COLOR,
+                    color: "white",
+                    border: "none",
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                    fontFamily: BodyFont,
+                    fontSize: "0.7rem",
+                    cursor: "pointer",
+                    marginTop: "4px",
+                  }}
+                >
+                  Refresh Page
+                </button>
+              )}
             </div>
-            <span
-              style={{
-                fontFamily: BodyFont,
-                color: SECONDARY_TEXT,
-                fontSize: "0.8rem",
-              }}
-            >
-              {connectionCount} total users online
-            </span>
-          </div>
+          )}
         </div>
 
         {lobbyState === "hosting" ? (
@@ -1044,7 +1041,7 @@ export default function Lobby() {
           <div style={{ display: "flex", gap: "8px" }}>
             <button
               onClick={refreshLobby}
-              disabled={loading}
+              disabled={loading || authLoading}
               style={{
                 backgroundColor: "transparent",
                 color: ACCENT_COLOR,
@@ -1053,12 +1050,12 @@ export default function Lobby() {
                 borderRadius: "6px",
                 fontFamily: BodyFont,
                 fontSize: "0.9rem",
-                cursor: loading ? "not-allowed" : "pointer",
+                cursor: (loading || authLoading) ? "not-allowed" : "pointer",
                 transition: "all 0.2s ease",
-                opacity: loading ? 0.6 : 1,
+                opacity: (loading || authLoading) ? 0.6 : 1,
               }}
               onMouseEnter={(e) => {
-                if (!loading) {
+                if (!loading && !authLoading) {
                   e.currentTarget.style.backgroundColor = ACCENT_COLOR;
                   e.currentTarget.style.color = "white";
                 }
@@ -1074,7 +1071,7 @@ export default function Lobby() {
             </button>
             <button
               onClick={leaveLobby}
-              disabled={loading}
+              disabled={loading || authLoading}
               style={{
                 backgroundColor: "transparent",
                 color: SECONDARY_TEXT,
@@ -1083,12 +1080,12 @@ export default function Lobby() {
                 borderRadius: "6px",
                 fontFamily: BodyFont,
                 fontSize: "0.9rem",
-                cursor: loading ? "not-allowed" : "pointer",
+                cursor: (loading || authLoading) ? "not-allowed" : "pointer",
                 transition: "all 0.2s ease",
-                opacity: loading ? 0.6 : 1,
+                opacity: (loading || authLoading) ? 0.6 : 1,
               }}
               onMouseEnter={(e) => {
-                if (!loading) {
+                if (!loading && !authLoading) {
                   e.currentTarget.style.backgroundColor = BORDERLINE;
                 }
               }}

@@ -65,7 +65,7 @@ export default function GardenIcons({}: GardenIconsProps) {
           }}
           title="Friends"
         >
-          <i className="fas fa-users"></i>
+          <i className="fas fa-user-friends"></i>
         </button>
 
         {/* Groups Icon */}
@@ -95,7 +95,7 @@ export default function GardenIcons({}: GardenIconsProps) {
           }}
           title="Groups"
         >
-          <i className="fas fa-layer-group"></i>
+          <i className="fas fa-users-cog"></i>
         </button>
 
         {/* User Profile Icon */}
@@ -125,7 +125,7 @@ export default function GardenIcons({}: GardenIconsProps) {
           }}
           title="User Profile"
         >
-          <i className="fas fa-user"></i>
+          <i className="fas fa-user-circle"></i>
         </button>
       </div>
 
@@ -136,10 +136,7 @@ export default function GardenIcons({}: GardenIconsProps) {
         userId={user.userId}
       />
 
-      <GroupsModal
-        isVisible={showGroups}
-        onClose={() => setShowGroups(false)}
-      />
+      <GroupsModal isVisible={showGroups} onClose={() => setShowGroups(false)} />
 
       <UserProfile
         isVisible={showUserProfile}

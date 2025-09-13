@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getUserSession, NotionTokenData } from "@/lib/firestore";
 
+// Use the centralized constant
+const NOTION_API_VERSION = "2025-09-03";
+
 interface NotionApiOptions {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
   body?: Record<string, unknown>;
@@ -77,7 +80,7 @@ export async function makeNotionApiRequest(options: NotionApiOptions): Promise<N
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
-        "Notion-Version": "2022-06-28",
+        "Notion-Version": NOTION_API_VERSION,
       },
     };
 
