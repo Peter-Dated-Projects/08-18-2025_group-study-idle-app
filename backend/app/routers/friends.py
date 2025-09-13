@@ -95,3 +95,17 @@ async def get_friends_list(
     except Exception as e:
         logger.error(f"Error getting friends list: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/friends-of-friends/{user_id}", response_model=FriendsListResponse)
+async def get_friends_of_friends(
+    user_id: str,
+    friend_service: FriendService = Depends(get_friend_service)
+):
+    """Get user's friends-of-friends (second-degree connections)."""
+    try:
+        friends_of_friends = friend_service.get_friends_of_friends(user_id)
+        return FriendsListResponse(success=True, friends=friends_of_friends)
+        
+    except Exception as e:
+        logger.error(f"Error getting friends-of-friends: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")

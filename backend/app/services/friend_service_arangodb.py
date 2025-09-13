@@ -88,6 +88,28 @@ class FriendService:
         cursor = self.db.aql.execute(aql_query)
         return [friend_id for friend_id in cursor]
 
+    def get_friends_of_friends(self, user_id: str) -> list[str]:
+        """
+        Gets a list of friends-of-friends (second-degree connections) for a user.
+        Excludes the user themselves and their direct friends.
+        Returns a list of user IDs who are friends of the user's friends but not direct friends.
+        """
+        if not self.users.has(user_id):
+            self._ensure_user_exists(user_id)
+            return []
+
+        aql_query = f"""
+        FOR friend_of_friend IN 2..2 OUTBOUND '{USERS_COLLECTION}/{user_id}' GRAPH '{FRIENDS_GRAPH}'
+            FILTER friend_of_friend.user_id != '{user_id}'
+            FILTER friend_of_friend._id NOT IN (
+                FOR direct_friend IN 1..1 OUTBOUND '{USERS_COLLECTION}/{user_id}' GRAPH '{FRIENDS_GRAPH}'
+                    RETURN direct_friend._id
+            )
+            RETURN DISTINCT friend_of_friend.user_id
+        """
+        cursor = self.db.aql.execute(aql_query)
+        return [friend_of_friend_id for friend_of_friend_id in cursor]
+
 # Create a singleton instance of the service
 friend_service = FriendService()
 
