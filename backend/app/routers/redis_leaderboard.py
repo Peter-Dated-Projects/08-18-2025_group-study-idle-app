@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 from ..services.redis_leaderboard_service import redis_leaderboard_service
+from ..services.username_resolution_service import get_username_resolution_service, UsernameResolutionService
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ class UserStatsResponse(BaseModel):
 
 class LeaderboardEntryResponse(BaseModel):
     user_id: str
+    display_name: Optional[str] = None
     score: int
     rank: int
     daily_pomo: int = 0
@@ -157,7 +159,8 @@ async def get_user_stats(user_id: str):
 @router.get("/{period}", response_model=LeaderboardResponse, dependencies=[Depends(check_redis_connection)])
 async def get_leaderboard(
     period: str, 
-    limit: int = Query(default=10, ge=1, le=100, description="Number of entries to return (1-100)")
+    limit: int = Query(default=10, ge=1, le=100, description="Number of entries to return (1-100)"),
+    username_service: UsernameResolutionService = Depends(get_username_resolution_service)
 ):
     """
     Get leaderboard for specified period from Redis cache.
@@ -177,19 +180,27 @@ async def get_leaderboard(
         # Get leaderboard from Redis cache
         entries = redis_leaderboard_service.get_leaderboard(period, limit)
         
-        # Convert to response format
-        response_entries = [
-            LeaderboardEntryResponse(
-                user_id=entry.user_id,
-                score=entry.score,
-                rank=entry.rank,
-                daily_pomo=entry.daily_pomo,
-                weekly_pomo=entry.weekly_pomo,
-                monthly_pomo=entry.monthly_pomo,
-                yearly_pomo=entry.yearly_pomo
-            )
-            for entry in entries
-        ]
+        # Get user information for all entries using unified username resolution
+        user_ids = [entry.user_id for entry in entries]
+        resolved_users = username_service.resolve_usernames(user_ids)
+        
+        # Convert to response format with resolved user information
+        response_entries = []
+        for entry in entries:
+            resolved_user = resolved_users.get(entry.user_id)
+            if resolved_user:  # Only include entries for users that exist in Firestore
+                response_entries.append(LeaderboardEntryResponse(
+                    user_id=entry.user_id,
+                    display_name=resolved_user.display_name,
+                    score=entry.score,
+                    rank=entry.rank,
+                    daily_pomo=entry.daily_pomo,
+                    weekly_pomo=entry.weekly_pomo,
+                    monthly_pomo=entry.monthly_pomo,
+                    yearly_pomo=entry.yearly_pomo
+                ))
+            else:
+                logger.warning(f"Excluding leaderboard entry for user {entry.user_id} - user not found in Firestore")
         
         return LeaderboardResponse(
             success=True,

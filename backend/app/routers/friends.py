@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 from ..services.friend_service_arangodb import get_friend_service, FriendService
-from ..services.user_service_firestore import get_user_service, UserService
+from ..services.username_resolution_service import get_username_resolution_service, UsernameResolutionService
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -96,9 +96,9 @@ async def remove_friend(
 async def get_friends_list(
     user_id: str,
     friend_service: FriendService = Depends(get_friend_service),
-    user_service: UserService = Depends(get_user_service)
+    username_service: UsernameResolutionService = Depends(get_username_resolution_service)
 ):
-    """Get user's friends list with detailed user information from Firestore."""
+    """Get user's friends list with detailed user information using unified username resolution."""
     try:
         # Get friend IDs from ArangoDB
         friend_ids = friend_service.get_friends(user_id)
@@ -106,30 +106,24 @@ async def get_friends_list(
         if not friend_ids:
             return FriendsListResponse(success=True, friends=[])
         
-        # Fetch user information from Firestore for all friends
-        if user_service.is_available():
-            user_info_map = user_service.get_users_info(friend_ids)
-            
-            # Build FriendInfo objects with Firestore data
-            friends_with_info = []
-            for friend_id in friend_ids:
-                user_info = user_info_map.get(friend_id, {})
+        # Use username resolution service for batch user lookup
+        resolved_users = username_service.resolve_usernames(friend_ids)
+        
+        # Build FriendInfo objects with resolved user data
+        friends_with_info = []
+        for friend_id in friend_ids:
+            resolved_user = resolved_users.get(friend_id)
+            if resolved_user:
                 friend_info = FriendInfo(
                     friend_id=friend_id,
-                    display_name=user_info.get('display_name'),
-                    email=user_info.get('email'),
-                    photo_url=user_info.get('photo_url'),
-                    created_at=user_info.get('created_at'),
-                    last_login=user_info.get('last_login'),
-                    provider=user_info.get('provider')
+                    display_name=resolved_user.display_name,
+                    email=resolved_user.email,
+                    photo_url=resolved_user.photo_url,
+                    created_at=resolved_user.created_at,
+                    last_login=resolved_user.last_login,
+                    provider=resolved_user.provider
                 )
                 friends_with_info.append(friend_info)
-        else:
-            # Fallback: if Firestore is not available, return minimal info
-            logger.warning("Firestore service not available, returning minimal friend info")
-            friends_with_info = [
-                FriendInfo(friend_id=friend_id) for friend_id in friend_ids
-            ]
         
         return FriendsListResponse(success=True, friends=friends_with_info)
         
@@ -141,7 +135,7 @@ async def get_friends_list(
 async def get_friends_of_friends(
     user_id: str,
     friend_service: FriendService = Depends(get_friend_service),
-    user_service: UserService = Depends(get_user_service)
+    username_service: UsernameResolutionService = Depends(get_username_resolution_service)
 ):
     """Get user's friends-of-friends (second-degree connections) with detailed user information."""
     try:
@@ -151,30 +145,24 @@ async def get_friends_of_friends(
         if not friend_of_friend_ids:
             return FriendsListResponse(success=True, friends=[])
         
-        # Fetch user information from Firestore for all friends-of-friends
-        if user_service.is_available():
-            user_info_map = user_service.get_users_info(friend_of_friend_ids)
-            
-            # Build FriendInfo objects with Firestore data
-            friends_with_info = []
-            for friend_id in friend_of_friend_ids:
-                user_info = user_info_map.get(friend_id, {})
+        # Use username resolution service for batch user lookup
+        resolved_users = username_service.resolve_usernames(friend_of_friend_ids)
+        
+        # Build FriendInfo objects with resolved user data
+        friends_with_info = []
+        for friend_id in friend_of_friend_ids:
+            resolved_user = resolved_users.get(friend_id)
+            if resolved_user:
                 friend_info = FriendInfo(
                     friend_id=friend_id,
-                    display_name=user_info.get('display_name'),
-                    email=user_info.get('email'),
-                    photo_url=user_info.get('photo_url'),
-                    created_at=user_info.get('created_at'),
-                    last_login=user_info.get('last_login'),
-                    provider=user_info.get('provider')
+                    display_name=resolved_user.display_name,
+                    email=resolved_user.email,
+                    photo_url=resolved_user.photo_url,
+                    created_at=resolved_user.created_at,
+                    last_login=resolved_user.last_login,
+                    provider=resolved_user.provider
                 )
                 friends_with_info.append(friend_info)
-        else:
-            # Fallback: if Firestore is not available, return minimal info
-            logger.warning("Firestore service not available, returning minimal friend info")
-            friends_with_info = [
-                FriendInfo(friend_id=friend_id) for friend_id in friend_of_friend_ids
-            ]
         
         return FriendsListResponse(success=True, friends=friends_with_info)
         

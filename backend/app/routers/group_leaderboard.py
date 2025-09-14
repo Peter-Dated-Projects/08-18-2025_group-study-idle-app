@@ -11,6 +11,7 @@ from typing import List, Dict, Any
 
 from ..utils.redis_utils import RedisClient
 from ..services.redis_leaderboard_service import RedisLeaderboardService
+from ..services.username_resolution_service import get_username_resolution_service, UsernameResolutionService
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -25,7 +26,8 @@ leaderboard_service = RedisLeaderboardService()
 async def get_group_leaderboard_top(
     period: str = Query(default="daily", regex="^(daily|weekly|monthly|yearly)$"),
     limit: int = Query(default=10, ge=1, le=100),
-    redis_client: RedisClient = Depends(lambda: RedisClient())
+    redis_client: RedisClient = Depends(lambda: RedisClient()),
+    username_service: UsernameResolutionService = Depends(get_username_resolution_service)
 ):
     """
     Get top rankings for a group leaderboard period using Redis ZSETs for efficient ranking.
@@ -40,20 +42,31 @@ async def get_group_leaderboard_top(
         if not top_users:
             return []
         
-        # Return users with rank, user_id, score, and full stats
+        # Get user information for all users in leaderboard using unified username resolution
+        user_ids = [user_entry.user_id for user_entry in top_users]
+        resolved_users = username_service.resolve_usernames(user_ids)
+        
+        # Return users with rank, user_id, display_name, score, and full stats
         result = []
-        for i, user_entry in enumerate(top_users):
-            result.append({
-                "rank": i + 1,
-                "user_id": user_entry.user_id,
-                "score": getattr(user_entry, f"{period}_pomo"),
-                "stats": {
-                    "daily_pomo": user_entry.daily_pomo,
-                    "weekly_pomo": user_entry.weekly_pomo, 
-                    "monthly_pomo": user_entry.monthly_pomo,
-                    "yearly_pomo": user_entry.yearly_pomo
-                }
-            })
+        rank = 1
+        for user_entry in top_users:
+            resolved_user = resolved_users.get(user_entry.user_id)
+            if resolved_user:  # Only include users that exist in Firestore
+                result.append({
+                    "rank": rank,
+                    "user_id": user_entry.user_id,
+                    "display_name": resolved_user.display_name,
+                    "score": getattr(user_entry, f"{period}_pomo"),
+                    "stats": {
+                        "daily_pomo": user_entry.daily_pomo,
+                        "weekly_pomo": user_entry.weekly_pomo, 
+                        "monthly_pomo": user_entry.monthly_pomo,
+                        "yearly_pomo": user_entry.yearly_pomo
+                    }
+                })
+                rank += 1
+            else:
+                logger.warning(f"Excluding leaderboard entry for user {user_entry.user_id} - user not found in Firestore")
         
         return result
         
@@ -117,7 +130,8 @@ async def get_group_leaderboard_around_user(
     user_id: str,
     period: str = Query(default="daily", regex="^(daily|weekly|monthly|yearly)$"),
     range_size: int = Query(default=5, ge=1, le=20),
-    redis_client: RedisClient = Depends(lambda: RedisClient())
+    redis_client: RedisClient = Depends(lambda: RedisClient()),
+    username_service: UsernameResolutionService = Depends(get_username_resolution_service)
 ):
     """
     Get leaderboard rankings around a specific user using efficient Redis ZSET range operations.
@@ -133,18 +147,31 @@ async def get_group_leaderboard_around_user(
         if user_rank is None:
             # User not in leaderboard, return top users instead
             top_users = leaderboard_service.get_leaderboard(period, range_size * 2)
+            
+            # Get user information for top users using unified username resolution
+            user_ids = [user_entry.user_id for user_entry in top_users]
+            resolved_users = username_service.resolve_usernames(user_ids)
+            
+            users_around = []
+            rank = 1
+            for user_entry in top_users:
+                resolved_user = resolved_users.get(user_entry.user_id)
+                if resolved_user:  # Only include users that exist in Firestore
+                    users_around.append({
+                        "rank": rank,
+                        "user_id": user_entry.user_id,
+                        "display_name": resolved_user.display_name,
+                        "score": getattr(user_entry, f"{period}_pomo")
+                    })
+                    rank += 1
+                else:
+                    logger.warning(f"Excluding leaderboard entry for user {user_entry.user_id} - user not found in Firestore")
+            
             return {
                 "user_id": user_id,
                 "user_rank": None,
                 "period": period,
-                "users_around": [
-                    {
-                        "rank": i + 1,
-                        "user_id": user_entry.user_id,
-                        "score": getattr(user_entry, f"{period}_pomo")
-                    }
-                    for i, user_entry in enumerate(top_users)
-                ]
+                "users_around": users_around
             }
         
         # Calculate range around user
@@ -159,15 +186,26 @@ async def get_group_leaderboard_around_user(
             withscores=True
         )
         
-        # Format result with ranks and scores
+        # Get user information for all users in range using unified username resolution
+        user_ids_in_range = [uid for uid, score in users_in_range]
+        resolved_users = username_service.resolve_usernames(user_ids_in_range)
+        
+        # Format result with ranks, scores, and display names
         result_users = []
-        for i, (uid, score) in enumerate(users_in_range):
-            result_users.append({
-                "rank": start_rank + i + 1,
-                "user_id": uid,
-                "score": int(score),
-                "is_target": uid == user_id
-            })
+        rank_counter = start_rank + 1
+        for uid, score in users_in_range:
+            resolved_user = resolved_users.get(uid)
+            if resolved_user:  # Only include users that exist in Firestore
+                result_users.append({
+                    "rank": rank_counter,
+                    "user_id": uid,
+                    "display_name": resolved_user.display_name,
+                    "score": int(score),
+                    "is_target": uid == user_id
+                })
+                rank_counter += 1
+            else:
+                logger.warning(f"Excluding leaderboard entry for user {uid} - user not found in Firestore")
         
         return {
             "user_id": user_id,
@@ -186,7 +224,8 @@ async def get_group_leaderboard_around_user(
 async def compare_group_members(
     user_ids: str = Query(..., description="Comma-separated list of user IDs to compare"),
     period: str = Query(default="daily", regex="^(daily|weekly|monthly|yearly)$"),
-    redis_client: RedisClient = Depends(lambda: RedisClient())
+    redis_client: RedisClient = Depends(lambda: RedisClient()),
+    username_service: UsernameResolutionService = Depends(get_username_resolution_service)
 ):
     """
     Compare multiple group members' rankings and scores using efficient Redis ZSET operations.
@@ -207,26 +246,34 @@ async def compare_group_members(
         leaderboard_key = leaderboard_service._get_leaderboard_key(period)
         total_users = redis_client.client.zcard(leaderboard_key)
         
+        # Get user information for all users using unified username resolution
+        resolved_users = username_service.resolve_usernames(user_id_list)
+        
         # Get rank and score for each user efficiently
         comparison_results = []
         for user_id in user_id_list:
-            rank = redis_client.client.zrevrank(leaderboard_key, user_id)
-            score = redis_client.client.zscore(leaderboard_key, user_id)
-            
-            # Get full user stats
-            user_stats = leaderboard_service.get_user_details(user_id)
-            
-            comparison_results.append({
-                "user_id": user_id,
-                "rank": rank + 1 if rank is not None else None,
-                "score": int(score) if score else 0,
-                "stats": user_stats if user_stats else {
-                    "daily_pomo": 0,
-                    "weekly_pomo": 0,
-                    "monthly_pomo": 0,
-                    "yearly_pomo": 0
-                }
-            })
+            resolved_user = resolved_users.get(user_id)
+            if resolved_user:  # Only include users that exist in Firestore
+                rank = redis_client.client.zrevrank(leaderboard_key, user_id)
+                score = redis_client.client.zscore(leaderboard_key, user_id)
+                
+                # Get full user stats
+                user_stats = leaderboard_service.get_user_details(user_id)
+                
+                comparison_results.append({
+                    "user_id": user_id,
+                    "display_name": resolved_user.display_name,
+                    "rank": rank + 1 if rank is not None else None,
+                    "score": int(score) if score else 0,
+                    "stats": user_stats if user_stats else {
+                        "daily_pomo": 0,
+                        "weekly_pomo": 0,
+                        "monthly_pomo": 0,
+                        "yearly_pomo": 0
+                    }
+                })
+            else:
+                logger.warning(f"Excluding user {user_id} from comparison - user not found in Firestore")
         
         # Sort by rank (None ranks go to end)
         comparison_results.sort(key=lambda x: x["rank"] if x["rank"] is not None else float('inf'))
@@ -235,7 +282,7 @@ async def compare_group_members(
             "period": period,
             "total_users": total_users,
             "compared_users": comparison_results,
-            "comparison_count": len(user_id_list)
+            "comparison_count": len(comparison_results)  # Count of users actually found in Firestore
         }
         
     except HTTPException:

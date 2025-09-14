@@ -14,12 +14,12 @@ load_dotenv(env_file)
 
 # Import routers - handle both direct execution and module import
 try:
-    from .routers import health, websockets, lobbies, friends, groups, leaderboard, redis_leaderboard, group_leaderboard, periodic_sync, periodic_reset
+    from .routers import health, websockets, lobbies, friends, groups, leaderboard, redis_leaderboard, group_leaderboard, periodic_sync, periodic_reset, users, user_stats, username_resolution
     from .utils.redis_json_utils import ping_redis_json
     from .models.database import create_tables
 except ImportError:
     # Direct execution from app directory
-    from routers import health, websockets, lobbies, friends, groups, leaderboard, redis_leaderboard, group_leaderboard, periodic_sync, periodic_reset
+    from routers import health, websockets, lobbies, friends, groups, leaderboard, redis_leaderboard, group_leaderboard, periodic_sync, periodic_reset, users, user_stats, username_resolution
     from utils.redis_json_utils import ping_redis_json
     from models.database import create_tables
 
@@ -105,11 +105,14 @@ def create_app() -> FastAPI:
     # Include other routers
     app.include_router(health.router)
     app.include_router(websockets.router)
+    app.include_router(users.router)  # User information endpoints with Redis caching
+    app.include_router(user_stats.router)  # User statistics
     app.include_router(friends.router)
     app.include_router(groups.router)
     app.include_router(leaderboard.router)
     app.include_router(redis_leaderboard.router)  # Redis-cached leaderboard for frontend
     app.include_router(group_leaderboard.router)  # Group-specific leaderboards via Redis
+    app.include_router(username_resolution.router)  # Username resolution service management
     app.include_router(periodic_sync.router)  # Periodic sync management
     app.include_router(periodic_reset.router)  # Periodic reset management
 

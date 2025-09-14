@@ -9,7 +9,7 @@ export async function GET(request: NextRequest, { params }: { params: { groupId:
     const period = searchParams.get("period") || "daily";
     const limit = parseInt(searchParams.get("limit") || "10");
 
-    const groupId = params.groupId;
+    const { groupId } = await params;
 
     // First, get group details to get member IDs
     const groupResponse = await fetch(`${backendURL}/api/groups/details/${groupId}`, {
@@ -66,6 +66,7 @@ export async function GET(request: NextRequest, { params }: { params: { groupId:
       .map((entry: any, index: number) => ({
         rank: index + 1, // Group rank
         user_id: entry.user_id,
+        display_name: entry.display_name,
         score: entry.score || 0,
         global_rank: entry.rank, // Global rank from Redis
         stats: {

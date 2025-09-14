@@ -200,10 +200,10 @@ class PeriodicSyncService:
             for user in postgres_users:
                 users[user.user_id] = {
                     "user_id": user.user_id,
-                    "daily_pomo": user.daily_pomo,
-                    "weekly_pomo": user.weekly_pomo,
-                    "monthly_pomo": user.monthly_pomo,
-                    "yearly_pomo": user.yearly_pomo,
+                    "daily_pomo": user.daily_pomo_duration,
+                    "weekly_pomo": user.weekly_pomo_duration,
+                    "monthly_pomo": user.monthly_pomo_duration,
+                    "yearly_pomo": user.yearly_pomo_duration,
                     "updated_at": user.updated_at.isoformat() if user.updated_at else None
                 }
             
@@ -257,10 +257,10 @@ class PeriodicSyncService:
         """Create a new user in PostgreSQL from Redis data."""
         user = PomoLeaderboard(
             user_id=user_id,
-            daily_pomo=redis_data.get("daily_pomo", 0),
-            weekly_pomo=redis_data.get("weekly_pomo", 0),
-            monthly_pomo=redis_data.get("monthly_pomo", 0),
-            yearly_pomo=redis_data.get("yearly_pomo", 0),
+            daily_pomo_duration=redis_data.get("daily_pomo", 0),
+            weekly_pomo_duration=redis_data.get("weekly_pomo", 0),
+            monthly_pomo_duration=redis_data.get("monthly_pomo", 0),
+            yearly_pomo_duration=redis_data.get("yearly_pomo", 0),
             updated_at=datetime.utcnow()
         )
         
@@ -271,10 +271,10 @@ class PeriodicSyncService:
         user = session.query(PomoLeaderboard).filter_by(user_id=user_id).first()
         
         if user:
-            user.daily_pomo = redis_data.get("daily_pomo", 0)
-            user.weekly_pomo = redis_data.get("weekly_pomo", 0)
-            user.monthly_pomo = redis_data.get("monthly_pomo", 0)
-            user.yearly_pomo = redis_data.get("yearly_pomo", 0)
+            user.daily_pomo_duration = redis_data.get("daily_pomo", 0)
+            user.weekly_pomo_duration = redis_data.get("weekly_pomo", 0)
+            user.monthly_pomo_duration = redis_data.get("monthly_pomo", 0)
+            user.yearly_pomo_duration = redis_data.get("yearly_pomo", 0)
             user.updated_at = datetime.utcnow()
     
     def _delete_postgres_user(self, session: Session, user_id: str):

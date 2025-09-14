@@ -5,7 +5,7 @@ const backendURL = BACKEND_URL;
 
 export async function GET(request: NextRequest, { params }: { params: { period: string } }) {
   try {
-    const { period } = params;
+    const { period } = await params;
     const { searchParams } = new URL(request.url);
     const limit = searchParams.get("limit") || "10";
 
@@ -22,8 +22,8 @@ export async function GET(request: NextRequest, { params }: { params: { period: 
       );
     }
 
-    // Make request to FastAPI backend
-    const response = await fetch(`${backendURL}/api/leaderboard/${period}?limit=${limit}`, {
+    // Make request to FastAPI backend using Redis leaderboard endpoint
+    const response = await fetch(`${backendURL}/api/redis-leaderboard/${period}?limit=${limit}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -38,7 +38,17 @@ export async function GET(request: NextRequest, { params }: { params: { period: 
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+
+    // Transform the backend response to match expected frontend format
+    const transformedData = {
+      success: data.success,
+      leaderboard: data.entries || [], // Backend uses 'entries', frontend expects 'leaderboard'
+      period: data.period,
+      total_entries: data.total_entries,
+      cached: data.cached,
+    };
+
+    return NextResponse.json(transformedData);
   } catch (error) {
     console.error("Error fetching leaderboard:", error);
     return NextResponse.json(

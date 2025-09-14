@@ -9,6 +9,7 @@ from typing import Optional
 
 from app.services.periodic_sync_service import periodic_sync_service
 from app.services.periodic_reset_service import periodic_reset_service
+from app.services.user_cache_service import get_user_cache_service
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class BackgroundTaskManager:
         """Initialize the task manager."""
         self.sync_task: Optional[asyncio.Task] = None
         self.reset_task: Optional[asyncio.Task] = None
+        self.cache_cleanup_task: Optional[asyncio.Task] = None
         self.is_running = False
         
     async def start_periodic_sync(self):
@@ -34,8 +36,9 @@ class BackgroundTaskManager:
         # Create and store the background tasks
         self.sync_task = asyncio.create_task(self._run_periodic_sync())
         self.reset_task = asyncio.create_task(self._run_periodic_resets())
+        self.cache_cleanup_task = asyncio.create_task(self._run_cache_cleanup())
         
-        return [self.sync_task, self.reset_task]
+        return [self.sync_task, self.reset_task, self.cache_cleanup_task]
     
     async def stop_periodic_sync(self):
         """Stop all background tasks."""
@@ -56,6 +59,8 @@ class BackgroundTaskManager:
             tasks_to_cancel.append(self.sync_task)
         if self.reset_task and not self.reset_task.done():
             tasks_to_cancel.append(self.reset_task)
+        if self.cache_cleanup_task and not self.cache_cleanup_task.done():
+            tasks_to_cancel.append(self.cache_cleanup_task)
         
         for task in tasks_to_cancel:
             task.cancel()
@@ -66,6 +71,7 @@ class BackgroundTaskManager:
         
         self.sync_task = None
         self.reset_task = None
+        self.cache_cleanup_task = None
     
     async def _run_periodic_sync(self):
         """Internal method to run the periodic sync loop."""
@@ -99,6 +105,38 @@ class BackgroundTaskManager:
         finally:
             logger.info("Periodic reset background task ended")
     
+    async def _run_cache_cleanup(self):
+        """Internal method to run the periodic cache cleanup loop."""
+        try:
+            logger.info("Cache cleanup background task started")
+            
+            cache_service = get_user_cache_service()
+            
+            while self.is_running:
+                try:
+                    # Run cleanup every 30 minutes
+                    await asyncio.sleep(1800)  # 30 minutes
+                    
+                    if not self.is_running:
+                        break
+                    
+                    logger.info("Running periodic user cache cleanup")
+                    cleanup_stats = cache_service.cleanup_expired_users()
+                    logger.info(f"Cache cleanup completed: {cleanup_stats}")
+                    
+                except Exception as e:
+                    logger.error(f"Error during cache cleanup: {e}")
+                    # Continue running even if one cleanup fails
+                    await asyncio.sleep(300)  # Wait 5 minutes before retrying
+            
+        except asyncio.CancelledError:
+            logger.info("Cache cleanup background task was cancelled")
+            raise
+        except Exception as e:
+            logger.error(f"Cache cleanup background task failed: {e}")
+        finally:
+            logger.info("Cache cleanup background task ended")
+    
     def get_status(self) -> dict:
         """Get the status of background tasks."""
         return {
@@ -107,6 +145,8 @@ class BackgroundTaskManager:
             "sync_task_done": self.sync_task.done() if self.sync_task else None,
             "reset_task_exists": self.reset_task is not None,
             "reset_task_done": self.reset_task.done() if self.reset_task else None,
+            "cache_cleanup_task_exists": self.cache_cleanup_task is not None,
+            "cache_cleanup_task_done": self.cache_cleanup_task.done() if self.cache_cleanup_task else None,
             "sync_service_status": periodic_sync_service.get_sync_status(),
             "reset_service_status": periodic_reset_service.get_reset_status()
         }

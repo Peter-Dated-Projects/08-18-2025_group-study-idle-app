@@ -257,7 +257,8 @@ export default function FriendsMenu({ isVisible, onClose, userId }: FriendsMenuP
                       fontWeight: "bold",
                     }}
                   >
-                    {friend.display_name || friend.friend_id}
+                    {/* {friend.display_name || friend.friend_id} */}
+                    Display Name: {friend.display_name}
                   </div>
                   <div
                     style={{

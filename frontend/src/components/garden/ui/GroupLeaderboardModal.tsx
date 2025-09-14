@@ -16,6 +16,7 @@ import { useSessionAuth } from "@/hooks/useSessionAuth";
 interface GroupLeaderboardEntry {
   rank: number;
   user_id: string;
+  display_name?: string | null;
   score: number;
   stats: {
     daily_pomo_duration: number;
@@ -377,7 +378,7 @@ export default function GroupLeaderboardModal({ isVisible, onClose }: GroupLeade
                               fontFamily: BodyFont,
                             }}
                           >
-                            {entry.user_id}
+                            {entry.display_name || entry.user_id}
                             {isCurrentUser && (
                               <span
                                 style={{
@@ -390,6 +391,16 @@ export default function GroupLeaderboardModal({ isVisible, onClose }: GroupLeade
                                 (You)
                               </span>
                             )}
+                          </div>
+                          <div
+                            style={{
+                              color: SECONDARY_TEXT,
+                              fontSize: "11px",
+                              fontFamily: "monospace",
+                              marginTop: "2px",
+                            }}
+                          >
+                            ID: {entry.user_id}
                           </div>
                           <div
                             style={{

@@ -7,7 +7,7 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
   try {
     const { userId } = await params;
 
-    const response = await fetch(`${backendURL}/api/friends/list/${userId}`, {
+    const response = await fetch(`${backendURL}/api/users/info/${userId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -18,7 +18,14 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
 
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error("Error getting friends list:", error);
-    return NextResponse.json({ success: false, friends: [] }, { status: 500 });
+    console.error("Error getting user info:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        user: null,
+        error: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }

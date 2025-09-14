@@ -5,7 +5,7 @@ const backendURL = BACKEND_URL;
 
 export async function GET(request: NextRequest, { params }: { params: { userId: string } }) {
   try {
-    const { userId } = params;
+    const { userId } = await params;
 
     const response = await fetch(`${backendURL}/api/groups/user/${userId}`, {
       method: "GET",

@@ -160,6 +160,7 @@ class CacheManager {
 
   /**
    * Generic method to get cached data immediately and refresh in background
+   * Always triggers background refresh regardless of data age
    */
   async getCachedWithRefresh<T>(
     cacheKey: string,
@@ -169,21 +170,15 @@ class CacheManager {
       forceRefresh?: boolean;
     } = {}
   ): Promise<T> {
-    const { maxAge = 5 * 60 * 1000, forceRefresh = false } = options;
+    const { forceRefresh = false } = options;
 
     // Get cached data first
     const cached = this.getCache<T>(cacheKey);
-    const isFresh = this.isCacheFresh(cacheKey, maxAge);
 
-    // Return cached data immediately if available and fresh (unless forced refresh)
-    if (cached && isFresh && !forceRefresh) {
-      return cached;
-    }
-
-    // If we have cached data but it's stale, return it immediately
-    // but start background refresh
+    // If we have cached data and not forcing immediate refresh,
+    // return cached data immediately and ALWAYS start background refresh
     if (cached && !forceRefresh) {
-      // Start background refresh without waiting
+      // Always start background refresh to ensure data is updated
       this.backgroundRefresh(cacheKey, fetchFunction);
       return cached;
     }

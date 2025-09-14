@@ -3,6 +3,7 @@ import { BaseModal } from "../../common";
 import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
 import { useCachedUserGroups, useCacheActions } from "@/hooks/useCachedData";
+import { useUsersInfo } from "@/utils/userInfo";
 import type { Group } from "@/utils/cacheManager";
 
 interface GroupsModalProps {
@@ -21,6 +22,18 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
     refresh: refreshGroups,
   } = useCachedUserGroups(user?.userId || null);
   const { invalidateGroups } = useCacheActions(user?.userId || null);
+
+  // Get all member IDs from all groups for batch user info fetching
+  const allMemberIds = React.useMemo(() => {
+    const memberSet = new Set<string>();
+    groups.forEach((group) => {
+      group.member_ids.forEach((memberId) => memberSet.add(memberId));
+    });
+    return Array.from(memberSet);
+  }, [groups]);
+
+  // Fetch user information for all members
+  const { loading: usersLoading, getDisplayName } = useUsersInfo(allMemberIds);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -474,7 +487,26 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
                       <strong>Group ID:</strong> {group.group_id}
                     </div>
                     <div key={`${group.group_id}-members`}>
-                      <strong>Members:</strong> {group.member_ids.length}
+                      <strong>Members ({group.member_ids.length}):</strong>
+                      {usersLoading ? (
+                        <span style={{ marginLeft: "5px", opacity: 0.7 }}>Loading names...</span>
+                      ) : (
+                        <div style={{ marginTop: "4px", marginLeft: "10px" }}>
+                          {group.member_ids.slice(0, 5).map((memberId, index) => (
+                            <div key={memberId} style={{ marginBottom: "2px" }}>
+                              • {getDisplayName(memberId)}
+                              {memberId === user?.userId && (
+                                <span style={{ color: "#4CAF50", marginLeft: "5px" }}>(You)</span>
+                              )}
+                            </div>
+                          ))}
+                          {group.member_ids.length > 5 && (
+                            <div style={{ marginTop: "2px", fontStyle: "italic", opacity: 0.7 }}>
+                              ... and {group.member_ids.length - 5} more
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div key={`${group.group_id}-created`}>
                       <strong>Created:</strong> {new Date(group.created_at).toLocaleDateString()}
