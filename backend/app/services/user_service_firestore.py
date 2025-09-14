@@ -356,7 +356,7 @@ class UserService:
                         if user_account_info and isinstance(user_account_info, dict):
                             display_name = user_account_info.get('userName')
                             email = user_account_info.get('email')
-                            created_at = user_account_info.get('created_at')
+                            created_at = self._convert_datetime_to_string(user_account_info.get('created_at'))
                         else:
                             display_name = None
                             email = None
@@ -368,7 +368,7 @@ class UserService:
                             'email': email,
                             'photo_url': None,  # Not stored in this structure
                             'created_at': created_at,
-                            'last_login': user_session_data.get('updated_at'),
+                            'last_login': self._convert_datetime_to_string(user_session_data.get('updated_at')),
                             'provider': 'firebase'  # Since this is Firebase Auth
                         }
                         
