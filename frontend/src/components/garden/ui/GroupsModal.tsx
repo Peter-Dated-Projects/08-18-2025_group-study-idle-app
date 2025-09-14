@@ -2,23 +2,8 @@ import React, { useState, useEffect } from "react";
 import { BaseModal } from "../../common";
 import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
-
-interface Group {
-  id: string;
-  creator_id: string;
-  member_ids: string[];
-  group_name: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface UserStats {
-  user_id: string;
-  group_count: string;
-  group_ids: string[];
-  friend_count: string;
-  pomo_count: string;
-}
+import { useCachedUserGroups, useCacheActions } from "@/hooks/useCachedData";
+import type { Group } from "@/utils/cacheManager";
 
 interface GroupsModalProps {
   isVisible: boolean;
@@ -27,8 +12,16 @@ interface GroupsModalProps {
 
 export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
   const { user } = useSessionAuth();
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [userStats, setUserStats] = useState<UserStats | null>(null);
+
+  // Use cached groups data
+  const {
+    groups,
+    loading: groupsLoading,
+    error: groupsError,
+    refresh: refreshGroups,
+  } = useCachedUserGroups(user?.userId || null);
+  const { invalidateGroups } = useCacheActions(user?.userId || null);
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
@@ -50,38 +43,12 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
     }, 3000);
   };
 
-  // Fetch user's groups
-  const fetchGroups = async () => {
-    if (!user?.userId) return;
-
-    try {
-      const response = await fetch(`/api/groups/user/${user.userId}`);
-      const data = await response.json();
-
-      if (data.success) {
-        setGroups(data.groups);
-      }
-    } catch (error) {
-      console.error("Error fetching groups:", error);
-      showMessage("Failed to load groups", "error");
+  // Display cached data loading error if present
+  useEffect(() => {
+    if (groupsError) {
+      showMessage(groupsError, "error");
     }
-  };
-
-  // Fetch user stats
-  const fetchUserStats = async () => {
-    if (!user?.userId) return;
-
-    try {
-      const response = await fetch(`/api/user-stats/${user.userId}`);
-      const data = await response.json();
-
-      if (data.success && data.stats) {
-        setUserStats(data.stats);
-      }
-    } catch (error) {
-      console.error("Error fetching user stats:", error);
-    }
-  };
+  }, [groupsError]);
 
   // Create group
   const createGroup = async () => {
@@ -109,8 +76,9 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
         showMessage("Group created successfully!", "success");
         setNewGroupName("");
         setShowCreateForm(false);
-        fetchGroups();
-        fetchUserStats();
+        // Invalidate cache and refresh groups
+        invalidateGroups();
+        refreshGroups();
       } else {
         showMessage(data.message || "Failed to create group", "error");
       }
@@ -148,8 +116,9 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
         showMessage("Joined group successfully!", "success");
         setJoinGroupId("");
         setShowJoinForm(false);
-        fetchGroups();
-        fetchUserStats();
+        // Invalidate cache and refresh groups
+        invalidateGroups();
+        refreshGroups();
       } else {
         showMessage(data.message || "Failed to join group", "error");
       }
@@ -182,8 +151,9 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
 
       if (data.success) {
         showMessage("Left group successfully!", "success");
-        fetchGroups();
-        fetchUserStats();
+        // Invalidate cache and refresh groups
+        invalidateGroups();
+        refreshGroups();
       } else {
         showMessage(data.message || "Failed to leave group", "error");
       }
@@ -195,18 +165,22 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
     }
   };
 
-  useEffect(() => {
-    if (isVisible && user?.userId) {
-      fetchGroups();
-      fetchUserStats();
-    }
-  }, [isVisible, user?.userId]);
+  // Groups data is automatically loaded by the hook
+  // No need for manual fetchGroups call
 
   if (!isVisible) return null;
 
   if (!user) {
     return (
-      <BaseModal isVisible={isVisible} onClose={onClose} title="Groups" constrainToCanvas={true}>
+      <BaseModal
+        isVisible={isVisible}
+        onClose={onClose}
+        title="👥 Groups"
+        width="650px"
+        maxHeight="700px"
+        constrainToCanvas={true}
+        zIndex={2000}
+      >
         <div style={{ padding: "20px", textAlign: "center", color: FONTCOLOR }}>
           Please log in to access groups.
         </div>
@@ -215,7 +189,15 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
   }
 
   return (
-    <BaseModal isVisible={isVisible} onClose={onClose} title="Groups" constrainToCanvas={true}>
+    <BaseModal
+      isVisible={isVisible}
+      onClose={onClose}
+      title="👥 Groups"
+      width="650px"
+      maxHeight="700px"
+      constrainToCanvas={true}
+      zIndex={2000}
+    >
       {/* Message Display */}
       {message && (
         <div
@@ -239,36 +221,40 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
           gap: "15px",
         }}
       >
-        {/* User Stats */}
-        {userStats && (
-          <div
-            style={{
-              padding: "12px",
-              backgroundColor: BORDERFILL,
-              border: `1px solid ${BORDERLINE}`,
-              borderRadius: "6px",
-              color: FONTCOLOR,
-              fontSize: "14px",
-            }}
-          >
-            <strong>Groups: {userStats.group_count}/5</strong> (Maximum 5 groups per user)
-          </div>
-        )}
+        {/* Group Count Display */}
+        <div
+          style={{
+            padding: "12px",
+            backgroundColor: BORDERFILL,
+            border: `1px solid ${BORDERLINE}`,
+            borderRadius: "6px",
+            color: FONTCOLOR,
+            fontSize: "14px",
+          }}
+        >
+          <strong>Groups: {groups.length}/5</strong> (Maximum 5 groups per user)
+        </div>
 
         {/* Action Buttons */}
         <div style={{ display: "flex", gap: "10px" }}>
           <button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            disabled={loading || (userStats ? parseInt(userStats.group_count) >= 5 : false)}
+            onClick={() => {
+              if (showCreateForm) {
+                setShowCreateForm(false);
+              } else {
+                setShowCreateForm(true);
+                setShowJoinForm(false); // Close join form if open
+              }
+            }}
+            disabled={loading || groups.length >= 5}
             style={{
               flex: 1,
               padding: "10px",
-              backgroundColor:
-                userStats && parseInt(userStats.group_count) >= 5 ? "#666" : "#4CAF50",
+              backgroundColor: groups.length >= 5 ? "#666" : "#4CAF50",
               color: "white",
               border: "none",
               borderRadius: "4px",
-              cursor: userStats && parseInt(userStats.group_count) >= 5 ? "not-allowed" : "pointer",
+              cursor: groups.length >= 5 ? "not-allowed" : "pointer",
               fontSize: "12px",
               fontWeight: "bold",
             }}
@@ -277,17 +263,23 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
           </button>
 
           <button
-            onClick={() => setShowJoinForm(!showJoinForm)}
-            disabled={loading || (userStats ? parseInt(userStats.group_count) >= 5 : false)}
+            onClick={() => {
+              if (showJoinForm) {
+                setShowJoinForm(false);
+              } else {
+                setShowJoinForm(true);
+                setShowCreateForm(false); // Close create form if open
+              }
+            }}
+            disabled={loading || groups.length >= 5}
             style={{
               flex: 1,
               padding: "10px",
-              backgroundColor:
-                userStats && parseInt(userStats.group_count) >= 5 ? "#666" : "#2196F3",
+              backgroundColor: groups.length >= 5 ? "#666" : "#2196F3",
               color: "white",
               border: "none",
               borderRadius: "4px",
-              cursor: userStats && parseInt(userStats.group_count) >= 5 ? "not-allowed" : "pointer",
+              cursor: groups.length >= 5 ? "not-allowed" : "pointer",
               fontSize: "12px",
               fontWeight: "bold",
             }}
@@ -396,9 +388,28 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
         <div>
           <h3 style={{ margin: "0 0 15px 0", color: FONTCOLOR, fontSize: "16px" }}>
             Your Groups ({groups.length})
+            {groupsLoading && (
+              <span style={{ fontSize: "12px", color: "#999", marginLeft: "10px" }}>
+                Refreshing...
+              </span>
+            )}
           </h3>
 
-          {groups.length === 0 ? (
+          {groupsLoading && groups.length === 0 ? (
+            <div
+              style={{
+                padding: "20px",
+                textAlign: "center",
+                color: FONTCOLOR,
+                backgroundColor: BORDERFILL,
+                border: `1px solid ${BORDERLINE}`,
+                borderRadius: "6px",
+                fontSize: "12px",
+              }}
+            >
+              Loading your groups...
+            </div>
+          ) : groups.length === 0 ? (
             <div
               style={{
                 padding: "20px",
@@ -416,7 +427,7 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {groups.map((group) => (
                 <div
-                  key={group.id}
+                  key={group.group_id}
                   style={{
                     padding: "12px",
                     backgroundColor: BORDERFILL,
@@ -459,20 +470,20 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
                   </div>
 
                   <div style={{ fontSize: "11px", color: FONTCOLOR, marginBottom: "8px" }}>
-                    <div>
-                      <strong>Group ID:</strong> {group.id}
+                    <div key={`${group.group_id}-id`}>
+                      <strong>Group ID:</strong> {group.group_id}
                     </div>
-                    <div>
+                    <div key={`${group.group_id}-members`}>
                       <strong>Members:</strong> {group.member_ids.length}
                     </div>
-                    <div>
+                    <div key={`${group.group_id}-created`}>
                       <strong>Created:</strong> {new Date(group.created_at).toLocaleDateString()}
                     </div>
                   </div>
 
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button
-                      onClick={() => navigator.clipboard.writeText(group.id)}
+                      onClick={() => navigator.clipboard.writeText(group.group_id)}
                       style={{
                         flex: 1,
                         padding: "6px 8px",
@@ -489,7 +500,7 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
                     </button>
 
                     <button
-                      onClick={() => leaveGroup(group.id)}
+                      onClick={() => leaveGroup(group.group_id)}
                       disabled={loading}
                       style={{
                         flex: 1,

@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from app.models.database import SessionLocal, PomoLeaderboard, UserStats
+from app.models.database import SessionLocal, PomoLeaderboard
 
 logger = logging.getLogger(__name__)
 
@@ -175,62 +175,18 @@ class LeaderboardDefaultHandler:
     
     def sync_from_user_stats(self) -> Dict[str, int]:
         """
-        Sync leaderboard entries from the user_stats table.
-        Creates leaderboard entries for users who exist in user_stats but not in pomo_leaderboard.
-        
-        Returns:
-            Dict with sync statistics
+        DEPRECATED: This method previously synced leaderboard entries from the user_stats table.
+        Since user_stats is deprecated and user management moved to ArangoDB, this method
+        now returns empty stats and performs no operation.
         """
-        session = SessionLocal()
-        stats = {
+        logger.info("sync_from_user_stats called but user_stats table is deprecated - skipping")
+        return {
             "user_stats_count": 0,
             "leaderboard_count": 0,
-            "created": 0,
-            "errors": 0
+            "missing_count": 0,
+            "created_count": 0,
+            "error_count": 0
         }
-        
-        try:
-            # Get all user IDs from user_stats
-            user_stats_ids = set(
-                user_id for user_id, in session.query(UserStats.user_id).all()
-            )
-            stats["user_stats_count"] = len(user_stats_ids)
-            
-            # Get all user IDs from pomo_leaderboard
-            leaderboard_ids = set(
-                user_id for user_id, in session.query(PomoLeaderboard.user_id).all()
-            )
-            stats["leaderboard_count"] = len(leaderboard_ids)
-            
-            # Find users missing from leaderboard
-            missing_from_leaderboard = user_stats_ids - leaderboard_ids
-            
-            logger.info(f"Found {len(missing_from_leaderboard)} users missing from leaderboard")
-            
-            # Create leaderboard entries for missing users
-            for user_id in missing_from_leaderboard:
-                try:
-                    new_entry = PomoLeaderboard(
-                        user_id=user_id,
-                        **self.default_values
-                    )
-                    session.add(new_entry)
-                    stats["created"] += 1
-                except Exception as e:
-                    logger.error(f"Failed to create leaderboard entry for {user_id}: {e}")
-                    stats["errors"] += 1
-            
-            session.commit()
-            logger.info(f"Sync from user_stats completed: {stats}")
-            
-        except Exception as e:
-            session.rollback()
-            logger.error(f"Sync from user_stats failed: {e}")
-            raise
-        finally:
-            session.close()
-        
-        return stats
     
     def validate_all_entries(self) -> Dict[str, int]:
         """

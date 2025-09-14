@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { BACKEND_URL } from "@/config/api";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
+const backendURL = BACKEND_URL;
 
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const response = await fetch(`${BACKEND_URL}/api/groups/update`, {
+    const response = await fetch(`${backendURL}/api/groups/update`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -27,7 +28,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const response = await fetch(`${BACKEND_URL}/api/groups/delete`, {
+    const response = await fetch(`${backendURL}/api/groups/delete`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",

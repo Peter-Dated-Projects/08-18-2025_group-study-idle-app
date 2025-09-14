@@ -4,7 +4,7 @@ Handles group creation, joining, leaving, and management functionality.
 """
 import logging
 from fastapi import APIRouter, HTTPException, Depends, status
-from pydantic import BaseModel, validator, Field
+from pydantic import BaseModel, validator
 from typing import List, Optional
 from datetime import datetime
 
@@ -62,12 +62,12 @@ class DeleteGroupRequest(BaseModel):
     user_id: str  # Only creator can delete
 
 class GroupResponse(BaseModel):
-    group_id: str = Field(..., alias='_key')
+    group_id: str
     creator_id: str
     member_ids: List[str]
     group_name: str
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         allow_population_by_field_name = True
@@ -97,13 +97,15 @@ async def create_group(
     """Create a new study group."""
     try:
         group_doc = group_service.create_group(request.creator_id, request.group_name)
-        group_doc['member_ids'] = [request.creator_id] # Creator is the first member
+        
+        # Get clean group data using get_group method which returns consistent format
+        clean_group = group_service.get_group(group_doc.get("group_id") or group_doc.get("_key"))
         
         group_count = group_service.get_user_group_count(request.creator_id)
         return GroupCreateResponse(
             success=True,
             message=f"Group created successfully! You are now the group leader. ({group_count}/5 groups)",
-            group=GroupResponse.parse_obj(group_doc)
+            group=clean_group
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -193,10 +195,12 @@ async def get_user_groups(
 ):
     """Get all groups that a user is a member of."""
     try:
+        logger.info(f"Getting groups for user: {user_id}")
         groups = group_service.get_user_groups(user_id)
+        logger.info(f"Found {len(groups)} groups for user {user_id}")
         return GroupListResponse(success=True, groups=groups)
     except Exception as e:
-        logger.error(f"Error getting user groups: {e}")
+        logger.error(f"Error getting user groups for {user_id}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 @router.get("/details/{group_id}", response_model=GroupResponse)

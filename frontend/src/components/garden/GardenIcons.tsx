@@ -3,6 +3,8 @@ import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../constants";
 import FriendsMenu from "./ui/FriendsMenu";
 import UserProfile from "./UserProfile";
 import GroupsModal from "./ui/GroupsModal";
+import GlobalLeaderboardModal from "./ui/GlobalLeaderboardModal";
+import GroupLeaderboardModal from "./ui/GroupLeaderboardModal";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
 
 interface GardenIconsProps {
@@ -14,6 +16,8 @@ export default function GardenIcons({}: GardenIconsProps) {
   const [showFriendsMenu, setShowFriendsMenu] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [showGroups, setShowGroups] = useState(false);
+  const [showGlobalLeaderboard, setShowGlobalLeaderboard] = useState(false);
+  const [showGroupLeaderboard, setShowGroupLeaderboard] = useState(false);
 
   if (!user) return null;
 
@@ -35,7 +39,7 @@ export default function GardenIcons({}: GardenIconsProps) {
           right: "15px",
           display: "flex",
           gap: "10px",
-          zIndex: 100,
+          zIndex: 1000,
         }}
       >
         {/* Friends Icon */}
@@ -98,6 +102,82 @@ export default function GardenIcons({}: GardenIconsProps) {
           <i className="fas fa-users-cog"></i>
         </button>
 
+        {/* Global Leaderboard Button */}
+        <button
+          onClick={() => {
+            console.log("Global Leaderboard clicked");
+            setShowGlobalLeaderboard(true);
+          }}
+          style={{
+            width: "50px",
+            height: "50px",
+            backgroundColor: BORDERFILL,
+            border: `3px solid ${BORDERLINE}`,
+            borderRadius: "8px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: "20px",
+            color: FONTCOLOR,
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = PANELFILL;
+            e.currentTarget.style.transform = "scale(1.05)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = BORDERFILL;
+            e.currentTarget.style.transform = "scale(1)";
+          }}
+          title="Global Leaderboard"
+        >
+          <i className="fas fa-trophy"></i>
+        </button>
+
+        {/* Group Leaderboard Button */}
+        <button
+          onClick={() => {
+            console.log("Group Leaderboard clicked");
+            setShowGroupLeaderboard(true);
+          }}
+          style={{
+            width: "50px",
+            height: "50px",
+            backgroundColor: BORDERFILL,
+            border: `3px solid ${BORDERLINE}`,
+            borderRadius: "8px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: "20px",
+            color: FONTCOLOR,
+            transition: "all 0.2s ease",
+            position: "relative",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = PANELFILL;
+            e.currentTarget.style.transform = "scale(1.05)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = BORDERFILL;
+            e.currentTarget.style.transform = "scale(1)";
+          }}
+          title="Group Leaderboard"
+        >
+          <i className="fas fa-trophy"></i>
+          <i
+            className="fas fa-users"
+            style={{
+              position: "absolute",
+              bottom: "2px",
+              right: "2px",
+              fontSize: "10px",
+            }}
+          ></i>
+        </button>
+
         {/* User Profile Icon */}
         <button
           onClick={() => setShowUserProfile(true)}
@@ -130,19 +210,37 @@ export default function GardenIcons({}: GardenIconsProps) {
       </div>
 
       {/* Modals */}
-      <FriendsMenu
-        isVisible={showFriendsMenu}
-        onClose={() => setShowFriendsMenu(false)}
-        userId={user.userId}
-      />
+      {showFriendsMenu && (
+        <FriendsMenu
+          isVisible={showFriendsMenu}
+          onClose={() => setShowFriendsMenu(false)}
+          userId={user.userId}
+        />
+      )}
 
-      <GroupsModal isVisible={showGroups} onClose={() => setShowGroups(false)} />
+      {showUserProfile && (
+        <UserProfile
+          isVisible={showUserProfile}
+          onClose={() => setShowUserProfile(false)}
+          user={userProfileData}
+        />
+      )}
 
-      <UserProfile
-        isVisible={showUserProfile}
-        onClose={() => setShowUserProfile(false)}
-        user={userProfileData}
-      />
+      {showGroups && <GroupsModal isVisible={showGroups} onClose={() => setShowGroups(false)} />}
+
+      {showGlobalLeaderboard && (
+        <GlobalLeaderboardModal
+          isVisible={showGlobalLeaderboard}
+          onClose={() => setShowGlobalLeaderboard(false)}
+        />
+      )}
+
+      {showGroupLeaderboard && (
+        <GroupLeaderboardModal
+          isVisible={showGroupLeaderboard}
+          onClose={() => setShowGroupLeaderboard(false)}
+        />
+      )}
     </>
   );
 }

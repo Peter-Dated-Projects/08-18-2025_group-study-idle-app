@@ -5,9 +5,10 @@ Handles friend adding, removing, and listing functionality.
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 from ..services.friend_service_arangodb import get_friend_service, FriendService
+from ..services.user_service_firestore import get_user_service, UserService
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -23,6 +24,15 @@ router = APIRouter(
 # Pydantic Models for Friends endpoints
 # ------------------------------------------------------------------ #
 
+class FriendInfo(BaseModel):
+    friend_id: str
+    display_name: Optional[str] = None
+    email: Optional[str] = None
+    photo_url: Optional[str] = None
+    created_at: Optional[str] = None
+    last_login: Optional[str] = None
+    provider: Optional[str] = None
+
 class AddFriendRequest(BaseModel):
     user_id: str
     friend_id: str
@@ -33,7 +43,7 @@ class RemoveFriendRequest(BaseModel):
 
 class FriendsListResponse(BaseModel):
     success: bool
-    friends: List[str]
+    friends: List[FriendInfo]
 
 class StandardResponse(BaseModel):
     success: bool
@@ -85,12 +95,43 @@ async def remove_friend(
 @router.get("/list/{user_id}", response_model=FriendsListResponse)
 async def get_friends_list(
     user_id: str,
-    friend_service: FriendService = Depends(get_friend_service)
+    friend_service: FriendService = Depends(get_friend_service),
+    user_service: UserService = Depends(get_user_service)
 ):
-    """Get user's friends list."""
+    """Get user's friends list with detailed user information from Firestore."""
     try:
-        friends = friend_service.get_friends(user_id)
-        return FriendsListResponse(success=True, friends=friends)
+        # Get friend IDs from ArangoDB
+        friend_ids = friend_service.get_friends(user_id)
+        
+        if not friend_ids:
+            return FriendsListResponse(success=True, friends=[])
+        
+        # Fetch user information from Firestore for all friends
+        if user_service.is_available():
+            user_info_map = user_service.get_users_info(friend_ids)
+            
+            # Build FriendInfo objects with Firestore data
+            friends_with_info = []
+            for friend_id in friend_ids:
+                user_info = user_info_map.get(friend_id, {})
+                friend_info = FriendInfo(
+                    friend_id=friend_id,
+                    display_name=user_info.get('display_name'),
+                    email=user_info.get('email'),
+                    photo_url=user_info.get('photo_url'),
+                    created_at=user_info.get('created_at'),
+                    last_login=user_info.get('last_login'),
+                    provider=user_info.get('provider')
+                )
+                friends_with_info.append(friend_info)
+        else:
+            # Fallback: if Firestore is not available, return minimal info
+            logger.warning("Firestore service not available, returning minimal friend info")
+            friends_with_info = [
+                FriendInfo(friend_id=friend_id) for friend_id in friend_ids
+            ]
+        
+        return FriendsListResponse(success=True, friends=friends_with_info)
         
     except Exception as e:
         logger.error(f"Error getting friends list: {e}")
@@ -99,12 +140,43 @@ async def get_friends_list(
 @router.get("/friends-of-friends/{user_id}", response_model=FriendsListResponse)
 async def get_friends_of_friends(
     user_id: str,
-    friend_service: FriendService = Depends(get_friend_service)
+    friend_service: FriendService = Depends(get_friend_service),
+    user_service: UserService = Depends(get_user_service)
 ):
-    """Get user's friends-of-friends (second-degree connections)."""
+    """Get user's friends-of-friends (second-degree connections) with detailed user information."""
     try:
-        friends_of_friends = friend_service.get_friends_of_friends(user_id)
-        return FriendsListResponse(success=True, friends=friends_of_friends)
+        # Get friends-of-friends IDs from ArangoDB
+        friend_of_friend_ids = friend_service.get_friends_of_friends(user_id)
+        
+        if not friend_of_friend_ids:
+            return FriendsListResponse(success=True, friends=[])
+        
+        # Fetch user information from Firestore for all friends-of-friends
+        if user_service.is_available():
+            user_info_map = user_service.get_users_info(friend_of_friend_ids)
+            
+            # Build FriendInfo objects with Firestore data
+            friends_with_info = []
+            for friend_id in friend_of_friend_ids:
+                user_info = user_info_map.get(friend_id, {})
+                friend_info = FriendInfo(
+                    friend_id=friend_id,
+                    display_name=user_info.get('display_name'),
+                    email=user_info.get('email'),
+                    photo_url=user_info.get('photo_url'),
+                    created_at=user_info.get('created_at'),
+                    last_login=user_info.get('last_login'),
+                    provider=user_info.get('provider')
+                )
+                friends_with_info.append(friend_info)
+        else:
+            # Fallback: if Firestore is not available, return minimal info
+            logger.warning("Firestore service not available, returning minimal friend info")
+            friends_with_info = [
+                FriendInfo(friend_id=friend_id) for friend_id in friend_of_friend_ids
+            ]
+        
+        return FriendsListResponse(success=True, friends=friends_with_info)
         
     except Exception as e:
         logger.error(f"Error getting friends-of-friends: {e}")

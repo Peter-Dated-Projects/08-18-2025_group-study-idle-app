@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { BACKEND_URL } from "@/config/api";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
+const backendURL = BACKEND_URL;
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     // Forward the request to the backend
     const backendResponse = await fetch(
-      `${BACKEND_URL}/api/hosting/status/${encodeURIComponent(lobbyId)}`,
+      `${backendURL}/api/hosting/status/${encodeURIComponent(lobbyId)}`,
       {
         method: "GET",
         headers: {

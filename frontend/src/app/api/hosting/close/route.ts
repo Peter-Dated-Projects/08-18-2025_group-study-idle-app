@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { BACKEND_URL } from "@/config/api";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
+const backendURL = BACKEND_URL;
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest) {
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
     // Forward the request to the backend
-    const backendResponse = await fetch(`${BACKEND_URL}/api/hosting/close`, {
+    const backendResponse = await fetch(`${backendURL}/api/hosting/close`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

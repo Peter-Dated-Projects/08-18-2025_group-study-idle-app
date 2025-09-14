@@ -10,6 +10,7 @@ import {
   SUCCESS_COLOR,
   BORDERFILL,
 } from "../../constants";
+import { useSessionAuth } from "@/hooks/useSessionAuth";
 
 type PomoBlockPhase = "work" | "idle";
 
@@ -22,6 +23,7 @@ const defaultSettings: PomoBlockSettings = {
 };
 
 export default function PomoBlockTimer() {
+  const { user } = useSessionAuth();
   const [settings, setSettings] = useState<PomoBlockSettings>(defaultSettings);
   const [currentPhase, setCurrentPhase] = useState<PomoBlockPhase>("idle");
   const [timeLeft, setTimeLeft] = useState(settings.workDuration * 60); // in seconds
@@ -41,6 +43,33 @@ export default function PomoBlockTimer() {
     }
   }, []);
 
+  const updateLeaderboard = async () => {
+    if (!user?.userId) {
+      console.warn("Cannot update leaderboard: user not authenticated");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/leaderboard/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          user_id: user.userId,
+          duration: settings.workDuration, // Send duration in minutes instead of count
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to update leaderboard:", response.statusText);
+      }
+    } catch (error) {
+      console.error("Error updating leaderboard:", error);
+    }
+  };
+
   const handlePhaseComplete = useCallback(() => {
     setIsRunning(false);
 
@@ -50,6 +79,9 @@ export default function PomoBlockTimer() {
     if (currentPhase === "work") {
       const newCompletedSessions = completedSessions + 1;
       setCompletedSessions(newCompletedSessions);
+
+      // Update leaderboard and Redis cache
+      updateLeaderboard();
 
       // Work session completed, go back to idle
       setCurrentPhase("idle");
@@ -198,6 +230,7 @@ export default function PomoBlockTimer() {
       setEditHours(currentHours.toString());
       setEditMinutes(currentMinutes.toString());
     }
+
     setIsEditingTime(false);
   };
 

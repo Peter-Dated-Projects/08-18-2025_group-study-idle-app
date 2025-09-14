@@ -1,13 +1,13 @@
 import React from "react";
-import { 
-  BaseModal, 
-  useCopyToClipboard, 
-  ProfilePicture, 
+import {
+  BaseModal,
+  useCopyToClipboard,
+  ProfilePicture,
   UserDisplayName,
   FormGroup,
   InfoDisplay,
   MessageDisplay,
-  User
+  User,
 } from "../common";
 
 interface UserProfileProps {
@@ -25,8 +25,11 @@ export default function UserProfile({ isVisible, onClose, user }: UserProfilePro
     <BaseModal
       isVisible={isVisible}
       onClose={onClose}
-      title="User Profile"
+      title="👤 User Profile"
+      width="650px"
+      maxHeight="700px"
       constrainToCanvas={true}
+      zIndex={2000}
     >
       {/* Profile Content */}
       <div style={{ padding: "30px" }}>
@@ -38,16 +41,15 @@ export default function UserProfile({ isVisible, onClose, user }: UserProfilePro
           {/* Name */}
           <InfoDisplay
             label="Name"
-            value={user.given_name && user.family_name 
-              ? `${user.given_name} ${user.family_name}` 
-              : "Not specified"}
+            value={
+              user.given_name && user.family_name
+                ? `${user.given_name} ${user.family_name}`
+                : "Not specified"
+            }
           />
 
           {/* Email */}
-          <InfoDisplay
-            label="Email"
-            value={user.email}
-          />
+          <InfoDisplay label="Email" value={user.email} />
 
           {/* User ID */}
           <InfoDisplay
@@ -59,12 +61,14 @@ export default function UserProfile({ isVisible, onClose, user }: UserProfilePro
 
           {/* Copy Message */}
           {copyMessage && (
-            <div style={{ 
-              textAlign: "center", 
-              fontSize: "14px", 
-              color: "#5cb370",
-              fontWeight: "bold"
-            }}>
+            <div
+              style={{
+                textAlign: "center",
+                fontSize: "14px",
+                color: "#5cb370",
+                fontWeight: "bold",
+              }}
+            >
               {copyMessage}
             </div>
           )}

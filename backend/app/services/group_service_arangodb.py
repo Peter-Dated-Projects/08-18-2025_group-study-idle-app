@@ -132,11 +132,15 @@ class GroupService:
 
     def get_group_members(self, group_id: str) -> list:
         """Gets a list of members for a specific group."""
-        aql = f"""
-        FOR user IN 1..1 INBOUND '{STUDY_GROUPS_COLLECTION}/{group_id}' GRAPH '{GROUPS_GRAPH}'
-            RETURN user
-        """
-        return [doc for doc in self.db.aql.execute(aql)]
+        try:
+            aql = f"""
+            FOR user IN 1..1 INBOUND '{STUDY_GROUPS_COLLECTION}/{group_id}' GRAPH '{GROUPS_GRAPH}'
+                RETURN user
+            """
+            return [doc for doc in self.db.aql.execute(aql)]
+        except Exception as e:
+            logger.error(f"Error getting members for group {group_id}: {e}")
+            return []
 
     def get_group(self, group_id: str) -> dict:
         """Gets detailed information for a specific group, including its members."""
@@ -145,34 +149,75 @@ class GroupService:
             return None
 
         members = self.get_group_members(group_id)
-        group["member_ids"] = [m.get("user_id") or m.get("_key") for m in members if m.get("user_id") or m.get("_key")]
         
-        # Ensure group_name field exists (map from 'name' if needed)
-        if "name" in group and "group_name" not in group:
-            group["group_name"] = group["name"]
+        # Create a clean group object without ArangoDB internal fields
+        clean_group = {
+            "group_id": group.get("group_id") or group.get("_key"),
+            "group_name": group.get("group_name") or group.get("name"),
+            "creator_id": group.get("creator_id"),
+            "member_ids": [m.get("user_id") or m.get("_key") for m in members if m.get("user_id") or m.get("_key")]
+        }
+        
+        # Add any other fields that might be present, excluding ArangoDB internal fields
+        for key, value in group.items():
+            if not key.startswith("_") and key not in clean_group:
+                clean_group[key] = value
             
-        return group
+        return clean_group
 
     def get_user_groups(self, user_id: str) -> list:
         """Gets a list of all groups a user is a member of."""
-        self._ensure_user_exists(user_id)
-        aql = f"""
-        FOR group IN 1..1 OUTBOUND '{USERS_COLLECTION}/{user_id}' GRAPH '{GROUPS_GRAPH}'
-            RETURN group
-        """
-        groups = []
-        for group_doc in self.db.aql.execute(aql):
-            # Use group_id if available, otherwise use _key
-            group_key = group_doc.get("group_id") or group_doc.get("_key")
-            members = self.get_group_members(group_key)
-            group_doc["member_ids"] = [m.get("user_id") or m.get("_key") for m in members if m.get("user_id") or m.get("_key")]
+        try:
+            self._ensure_user_exists(user_id)
+        except Exception as e:
+            logger.error(f"Error ensuring user exists for {user_id}: {e}")
+            return []
+        
+        try:
+            aql = f"""
+            FOR group IN 1..1 OUTBOUND '{USERS_COLLECTION}/{user_id}' GRAPH '{GROUPS_GRAPH}'
+                RETURN group
+            """
+            groups = []
             
-            # Ensure group_name field exists (map from 'name' if needed)
-            if "name" in group_doc and "group_name" not in group_doc:
-                group_doc["group_name"] = group_doc["name"]
+            # Check if database and graph are accessible
+            if not self.db or not self.graph:
+                logger.error("Database or graph not properly initialized")
+                return []
             
-            groups.append(group_doc)
-        return groups
+            for group_doc in self.db.aql.execute(aql):
+                try:
+                    # Use group_id if available, otherwise use _key
+                    group_key = group_doc.get("group_id") or group_doc.get("_key")
+                    if not group_key:
+                        logger.warning(f"Group document missing key: {group_doc}")
+                        continue
+                        
+                    members = self.get_group_members(group_key)
+                    
+                    # Create a clean group object without ArangoDB internal fields
+                    clean_group = {
+                        "group_id": group_key,  # Always use group_id as the key
+                        "group_name": group_doc.get("group_name") or group_doc.get("name") or "Unnamed Group",
+                        "creator_id": group_doc.get("creator_id"),
+                        "member_ids": [m.get("user_id") or m.get("_key") for m in members if m.get("user_id") or m.get("_key")]
+                    }
+                    
+                    # Add any other fields that might be present, excluding ArangoDB internal fields
+                    for key, value in group_doc.items():
+                        if not key.startswith("_") and key not in clean_group:
+                            clean_group[key] = value
+                    
+                    groups.append(clean_group)
+                except Exception as e:
+                    logger.error(f"Error processing group document {group_doc}: {e}")
+                    continue
+                    
+            return groups
+            
+        except Exception as e:
+            logger.error(f"Error executing AQL query for user {user_id}: {e}")
+            return []
 
     def update_group(self, group_id: str, user_id: str, new_name: str):
         """Updates a group's name, only if the user is the creator."""

@@ -91,8 +91,8 @@ class RedisLeaderboardService:
             
             # Update all leaderboard ZSETs
             periods = ["daily", "weekly", "monthly", "yearly"]
-            scores = [pomo_stats.daily_pomo, pomo_stats.weekly_pomo, 
-                     pomo_stats.monthly_pomo, pomo_stats.yearly_pomo]
+            scores = [pomo_stats.daily_pomo_duration, pomo_stats.weekly_pomo_duration, 
+                     pomo_stats.monthly_pomo_duration, pomo_stats.yearly_pomo_duration]
             
             for period, score in zip(periods, scores):
                 leaderboard_key = self._get_leaderboard_key(period)
@@ -102,10 +102,10 @@ class RedisLeaderboardService:
             # Cache user details
             user_details = {
                 "user_id": user_id,
-                "daily_pomo": pomo_stats.daily_pomo,
-                "weekly_pomo": pomo_stats.weekly_pomo,
-                "monthly_pomo": pomo_stats.monthly_pomo,
-                "yearly_pomo": pomo_stats.yearly_pomo,
+                "daily_pomo": pomo_stats.daily_pomo_duration,
+                "weekly_pomo": pomo_stats.weekly_pomo_duration,
+                "monthly_pomo": pomo_stats.monthly_pomo_duration,
+                "yearly_pomo": pomo_stats.yearly_pomo_duration,
                 "updated_at": pomo_stats.updated_at.isoformat() if pomo_stats.updated_at else None,
                 "cached_at": datetime.now(UTC).isoformat()
             }
@@ -172,10 +172,10 @@ class RedisLeaderboardService:
                 session.add(pomo_stats)
             
             # Update all time periods
-            pomo_stats.daily_pomo += increment
-            pomo_stats.weekly_pomo += increment
-            pomo_stats.monthly_pomo += increment
-            pomo_stats.yearly_pomo += increment
+            pomo_stats.daily_pomo_duration += increment
+            pomo_stats.weekly_pomo_duration += increment
+            pomo_stats.monthly_pomo_duration += increment
+            pomo_stats.yearly_pomo_duration += increment
             pomo_stats.updated_at = datetime.now(UTC)
             
             session.commit()
@@ -183,8 +183,8 @@ class RedisLeaderboardService:
             
             # Update Redis cache
             periods = ["daily", "weekly", "monthly", "yearly"]
-            scores = [pomo_stats.daily_pomo, pomo_stats.weekly_pomo,
-                     pomo_stats.monthly_pomo, pomo_stats.yearly_pomo]
+            scores = [pomo_stats.daily_pomo_duration, pomo_stats.weekly_pomo_duration,
+                     pomo_stats.monthly_pomo_duration, pomo_stats.yearly_pomo_duration]
             
             for period, score in zip(periods, scores):
                 leaderboard_key = self._get_leaderboard_key(period)
@@ -194,10 +194,10 @@ class RedisLeaderboardService:
             # Update user details cache
             user_details = {
                 "user_id": user_id,
-                "daily_pomo": pomo_stats.daily_pomo,
-                "weekly_pomo": pomo_stats.weekly_pomo,
-                "monthly_pomo": pomo_stats.monthly_pomo,
-                "yearly_pomo": pomo_stats.yearly_pomo,
+                "daily_pomo": pomo_stats.daily_pomo_duration,
+                "weekly_pomo": pomo_stats.weekly_pomo_duration,
+                "monthly_pomo": pomo_stats.monthly_pomo_duration,
+                "yearly_pomo": pomo_stats.yearly_pomo_duration,
                 "updated_at": pomo_stats.updated_at.isoformat(),
                 "cached_at": datetime.now(UTC).isoformat()
             }
@@ -340,11 +340,11 @@ class RedisLeaderboardService:
             
             # Reset in PostgreSQL
             if period == "daily":
-                session.query(PomoLeaderboard).update({PomoLeaderboard.daily_pomo: 0})
+                session.query(PomoLeaderboard).update({PomoLeaderboard.daily_pomo_duration: 0})
             elif period == "weekly":
-                session.query(PomoLeaderboard).update({PomoLeaderboard.weekly_pomo: 0})
+                session.query(PomoLeaderboard).update({PomoLeaderboard.weekly_pomo_duration: 0})
             elif period == "monthly":
-                session.query(PomoLeaderboard).update({PomoLeaderboard.monthly_pomo: 0})
+                session.query(PomoLeaderboard).update({PomoLeaderboard.monthly_pomo_duration: 0})
             
             session.commit()
             

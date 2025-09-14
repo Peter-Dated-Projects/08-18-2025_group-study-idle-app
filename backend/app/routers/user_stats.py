@@ -52,7 +52,7 @@ async def get_user_stats(
 
         # Get pomodoro stats from PostgreSQL
         pomo_stats = db.query(PomoLeaderboard).filter(PomoLeaderboard.user_id == user_id).first()
-        total_pomo = pomo_stats.yearly_pomo if pomo_stats else 0
+        total_pomo = pomo_stats.yearly_pomo_duration if pomo_stats else 0
 
         stats = UserStatsData(
             user_id=user_id,

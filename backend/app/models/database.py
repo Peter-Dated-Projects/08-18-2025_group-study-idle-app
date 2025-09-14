@@ -185,29 +185,19 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Base class for all ORM models
 Base = declarative_base()
 
-class UserStats(Base):
-    """
-    User statistics model. Legacy table, used to track if a user exists in the system.
-    Friend and group stats are now managed in ArangoDB.
-    """
-    __tablename__ = "user_stats"
-    
-    user_id = Column(String, primary_key=True, index=True)  # User's ID
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class PomoLeaderboard(Base):
     """
     Pomodoro leaderboard model for tracking user productivity statistics.
-    Stores daily, weekly, monthly, and yearly pomodoro counts for ranking users.
+    Stores daily, weekly, monthly, and yearly pomodoro durations (in minutes) for ranking users.
     """
     __tablename__ = "pomo_leaderboard"
     
     user_id = Column(String, primary_key=True, index=True)  # User's ID
-    daily_pomo = Column(Integer, default=0)  # Daily pomodoro count
-    weekly_pomo = Column(Integer, default=0)  # Weekly pomodoro count  
-    monthly_pomo = Column(Integer, default=0)  # Monthly pomodoro count
-    yearly_pomo = Column(Integer, default=0)  # Yearly pomodoro count
+    daily_pomo_duration = Column(Integer, default=0)  # Daily pomodoro duration in minutes
+    weekly_pomo_duration = Column(Integer, default=0)  # Weekly pomodoro duration in minutes  
+    monthly_pomo_duration = Column(Integer, default=0)  # Monthly pomodoro duration in minutes
+    yearly_pomo_duration = Column(Integer, default=0)  # Yearly pomodoro duration in minutes
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

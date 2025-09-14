@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { BACKEND_URL } from "@/config/api";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
+const backendURL = BACKEND_URL;
 
 export async function GET(request: NextRequest, { params }: { params: { groupId: string } }) {
   try {
     const { groupId } = params;
 
-    const response = await fetch(`${BACKEND_URL}/api/groups/details/${groupId}`, {
+    const response = await fetch(`${backendURL}/api/groups/details/${groupId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

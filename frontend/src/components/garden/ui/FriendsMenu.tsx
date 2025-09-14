@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { BaseModal } from "../../common";
 import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
+import { useCachedUserFriends, useCacheActions } from "@/hooks/useCachedData";
+import type { Friend } from "@/utils/cacheManager";
 
 interface FriendsMenuProps {
   isVisible: boolean;
@@ -8,31 +10,36 @@ interface FriendsMenuProps {
   userId: string;
 }
 
-interface Friend {
-  id: string;
-}
-
 export default function FriendsMenu({ isVisible, onClose, userId }: FriendsMenuProps) {
-  const [friends, setFriends] = useState<Friend[]>([]);
+  // Use cached friends data
+  const {
+    friends,
+    loading: friendsLoading,
+    error: friendsError,
+    refresh: refreshFriends,
+  } = useCachedUserFriends(userId);
+  const { invalidateFriends } = useCacheActions(userId);
+
   const [newFriendId, setNewFriendId] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
 
-  // Fetch friends list
-  const fetchFriends = async () => {
-    try {
-      const response = await fetch(`/api/friends/list/${userId}`);
-      const data = await response.json();
-
-      if (data.success) {
-        setFriends(data.friends.map((id: string) => ({ id })));
-      }
-    } catch (error) {
-      console.error("Error fetching friends:", error);
-      showMessage("Failed to load friends", "error");
-    }
+  const showMessage = (msg: string, type: "success" | "error") => {
+    setMessage(msg);
+    setMessageType(type);
+    setTimeout(() => {
+      setMessage("");
+      setMessageType("");
+    }, 3000);
   };
+
+  // Display cached data loading error if present
+  useEffect(() => {
+    if (friendsError) {
+      showMessage(friendsError, "error");
+    }
+  }, [friendsError]);
 
   // Add friend
   const addFriend = async () => {
@@ -64,7 +71,9 @@ export default function FriendsMenu({ isVisible, onClose, userId }: FriendsMenuP
       if (data.success) {
         showMessage("Friend added successfully!", "success");
         setNewFriendId("");
-        fetchFriends();
+        // Invalidate cache and refresh friends
+        invalidateFriends();
+        refreshFriends();
       } else {
         showMessage(data.message || "Failed to add friend", "error");
       }
@@ -95,7 +104,9 @@ export default function FriendsMenu({ isVisible, onClose, userId }: FriendsMenuP
 
       if (data.success) {
         showMessage("Friend removed successfully!", "success");
-        fetchFriends();
+        // Invalidate cache and refresh friends
+        invalidateFriends();
+        refreshFriends();
       } else {
         showMessage(data.message || "Failed to remove friend", "error");
       }
@@ -107,27 +118,18 @@ export default function FriendsMenu({ isVisible, onClose, userId }: FriendsMenuP
     }
   };
 
-  const showMessage = (msg: string, type: "success" | "error") => {
-    setMessage(msg);
-    setMessageType(type);
-    setTimeout(() => {
-      setMessage("");
-      setMessageType("");
-    }, 3000);
-  };
-
-  useEffect(() => {
-    if (isVisible) {
-      fetchFriends();
-    }
-  }, [isVisible, userId]);
+  // Friends data is automatically loaded by the hook
+  // No need for manual fetchFriends call
 
   return (
     <BaseModal
       isVisible={isVisible}
       onClose={onClose}
-      title="Friends List"
+      title="👫 Friends List"
+      width="650px"
+      maxHeight="700px"
       constrainToCanvas={true}
+      zIndex={2000}
     >
       {/* Message Display */}
       {message && (
@@ -201,9 +203,26 @@ export default function FriendsMenu({ isVisible, onClose, userId }: FriendsMenuP
       >
         <h3 style={{ color: FONTCOLOR, margin: "0 0 15px 0", fontSize: "16px" }}>
           Your Friends ({friends.length})
+          {friendsLoading && (
+            <span style={{ fontSize: "12px", color: "#999", marginLeft: "10px" }}>
+              Refreshing...
+            </span>
+          )}
         </h3>
 
-        {friends.length === 0 ? (
+        {friendsLoading && friends.length === 0 ? (
+          <div
+            style={{
+              textAlign: "center",
+              color: FONTCOLOR,
+              fontSize: "14px",
+              opacity: 0.7,
+              padding: "40px 20px",
+            }}
+          >
+            Loading your friends...
+          </div>
+        ) : friends.length === 0 ? (
           <div
             style={{
               textAlign: "center",
@@ -217,9 +236,9 @@ export default function FriendsMenu({ isVisible, onClose, userId }: FriendsMenuP
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {friends.map((friend) => (
+            {friends.map((friend, index) => (
               <div
-                key={friend.id}
+                key={friend.friend_id || `friend-${index}`}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -230,17 +249,29 @@ export default function FriendsMenu({ isVisible, onClose, userId }: FriendsMenuP
                   borderRadius: "6px",
                 }}
               >
-                <span
-                  style={{
-                    color: FONTCOLOR,
-                    fontSize: "14px",
-                    fontFamily: "monospace",
-                  }}
-                >
-                  {friend.id}
-                </span>
+                <div>
+                  <div
+                    style={{
+                      color: FONTCOLOR,
+                      fontSize: "14px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {friend.display_name || friend.friend_id}
+                  </div>
+                  <div
+                    style={{
+                      color: FONTCOLOR,
+                      fontSize: "12px",
+                      opacity: 0.7,
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    ID: {friend.friend_id}
+                  </div>
+                </div>
                 <button
-                  onClick={() => removeFriend(friend.id)}
+                  onClick={() => removeFriend(friend.friend_id)}
                   disabled={loading}
                   style={{
                     padding: "6px 12px",

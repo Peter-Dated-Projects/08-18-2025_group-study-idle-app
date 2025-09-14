@@ -1,4 +1,6 @@
 // Global WebSocket manager to maintain persistent connections across component re-mounts
+import { WEBSOCKET_URL, BACKEND_URL } from "@/config/api";
+
 interface LobbyEvent {
   type: "lobby" | "game";
   action: "join" | "leave" | "disband";
@@ -85,11 +87,7 @@ class WebSocketManager {
     }
 
     // Convert HTTP backend URL to WebSocket URL
-    const backendUrl =
-      process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || "http://localhost:8000";
-    const wsUrl =
-      backendUrl.replace(/^https?:\/\//, "ws://") +
-      `/ws?user_id=${encodeURIComponent(this.userId)}`;
+    const wsUrl = WEBSOCKET_URL + `/ws?user_id=${encodeURIComponent(this.userId)}`;
 
     console.log("WebSocket: Connecting to", wsUrl);
 

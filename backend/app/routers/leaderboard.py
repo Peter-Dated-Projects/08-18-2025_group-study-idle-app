@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, UTC
 
-from ..models.database import get_db, PomoLeaderboard, UserStats
+from ..models.database import get_db, PomoLeaderboard
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -23,14 +23,14 @@ router = APIRouter(prefix="/api/leaderboard", tags=["leaderboard"])
 
 class PomoUpdateRequest(BaseModel):
     user_id: str
-    count: int = 1  # Number of pomodoros to add (default 1)
+    duration: int  # Duration in minutes to add
 
 class PomoResponse(BaseModel):
     user_id: str
-    daily_pomo: int
-    weekly_pomo: int
-    monthly_pomo: int
-    yearly_pomo: int
+    daily_pomo_duration: int
+    weekly_pomo_duration: int
+    monthly_pomo_duration: int
+    yearly_pomo_duration: int
     updated_at: datetime
 
 class PomoUpdateResponse(BaseModel):
@@ -40,10 +40,10 @@ class PomoUpdateResponse(BaseModel):
 
 class LeaderboardEntry(BaseModel):
     user_id: str
-    daily_pomo: int
-    weekly_pomo: int
-    monthly_pomo: int
-    yearly_pomo: int
+    daily_pomo_duration: int
+    weekly_pomo_duration: int
+    monthly_pomo_duration: int
+    yearly_pomo_duration: int
 
 class LeaderboardResponse(BaseModel):
     success: bool
@@ -71,43 +71,37 @@ def get_or_create_pomo_stats(db: Session, user_id: str) -> PomoLeaderboard:
 # ------------------------------------------------------------------ #
 
 @router.post("/update", response_model=PomoUpdateResponse)
-async def update_pomodoro_count(request: PomoUpdateRequest, db: Session = Depends(get_db)):
+async def update_pomodoro_duration(request: PomoUpdateRequest, db: Session = Depends(get_db)):
     """
-    Update pomodoro count for a user.
-    Adds the specified count to all time periods (daily, weekly, monthly, yearly).
+    Update pomodoro duration for a user.
+    Adds the specified duration (in minutes) to all time periods (daily, weekly, monthly, yearly).
     """
     try:
         # Get or create pomodoro stats
         pomo_stats = get_or_create_pomo_stats(db, request.user_id)
         
-        # Update all time period counts
-        pomo_stats.daily_pomo += request.count
-        pomo_stats.weekly_pomo += request.count
-        pomo_stats.monthly_pomo += request.count
-        pomo_stats.yearly_pomo += request.count
+        # Update all time period durations
+        pomo_stats.daily_pomo_duration += request.duration
+        pomo_stats.weekly_pomo_duration += request.duration
+        pomo_stats.monthly_pomo_duration += request.duration
+        pomo_stats.yearly_pomo_duration += request.duration
         pomo_stats.updated_at = datetime.now(UTC)
-        
-        # Also ensure user has UserStats entry
-        user_stats = db.query(UserStats).filter(UserStats.user_id == request.user_id).first()
-        if not user_stats:
-            user_stats = UserStats(user_id=request.user_id)
-            db.add(user_stats)
         
         db.commit()
         db.refresh(pomo_stats)
         
         response_stats = PomoResponse(
             user_id=pomo_stats.user_id,
-            daily_pomo=pomo_stats.daily_pomo,
-            weekly_pomo=pomo_stats.weekly_pomo,
-            monthly_pomo=pomo_stats.monthly_pomo,
-            yearly_pomo=pomo_stats.yearly_pomo,
+            daily_pomo_duration=pomo_stats.daily_pomo_duration,
+            weekly_pomo_duration=pomo_stats.weekly_pomo_duration,
+            monthly_pomo_duration=pomo_stats.monthly_pomo_duration,
+            yearly_pomo_duration=pomo_stats.yearly_pomo_duration,
             updated_at=pomo_stats.updated_at
         )
         
         return PomoUpdateResponse(
             success=True,
-            message=f"Added {request.count} pomodoro(s) for user {request.user_id}",
+            message=f"Added {request.duration} minutes for user {request.user_id}",
             stats=response_stats
         )
         
@@ -124,10 +118,10 @@ async def get_user_pomodoro_stats(user_id: str, db: Session = Depends(get_db)):
         
         return PomoResponse(
             user_id=pomo_stats.user_id,
-            daily_pomo=pomo_stats.daily_pomo,
-            weekly_pomo=pomo_stats.weekly_pomo,
-            monthly_pomo=pomo_stats.monthly_pomo,
-            yearly_pomo=pomo_stats.yearly_pomo,
+            daily_pomo_duration=pomo_stats.daily_pomo_duration,
+            weekly_pomo_duration=pomo_stats.weekly_pomo_duration,
+            monthly_pomo_duration=pomo_stats.monthly_pomo_duration,
+            yearly_pomo_duration=pomo_stats.yearly_pomo_duration,
             updated_at=pomo_stats.updated_at
         )
         
@@ -150,13 +144,13 @@ async def get_leaderboard(period: str, limit: int = 10, db: Session = Depends(ge
         
         # Query based on period
         if period == "daily":
-            query = db.query(PomoLeaderboard).order_by(PomoLeaderboard.daily_pomo.desc())
+            query = db.query(PomoLeaderboard).order_by(PomoLeaderboard.daily_pomo_duration.desc())
         elif period == "weekly":
-            query = db.query(PomoLeaderboard).order_by(PomoLeaderboard.weekly_pomo.desc())
+            query = db.query(PomoLeaderboard).order_by(PomoLeaderboard.weekly_pomo_duration.desc())
         elif period == "monthly":
-            query = db.query(PomoLeaderboard).order_by(PomoLeaderboard.monthly_pomo.desc())
+            query = db.query(PomoLeaderboard).order_by(PomoLeaderboard.monthly_pomo_duration.desc())
         else:  # yearly
-            query = db.query(PomoLeaderboard).order_by(PomoLeaderboard.yearly_pomo.desc())
+            query = db.query(PomoLeaderboard).order_by(PomoLeaderboard.yearly_pomo_duration.desc())
         
         # Apply limit and execute
         pomo_entries = query.limit(limit).all()
@@ -165,10 +159,10 @@ async def get_leaderboard(period: str, limit: int = 10, db: Session = Depends(ge
         entries = [
             LeaderboardEntry(
                 user_id=entry.user_id,
-                daily_pomo=entry.daily_pomo,
-                weekly_pomo=entry.weekly_pomo,
-                monthly_pomo=entry.monthly_pomo,
-                yearly_pomo=entry.yearly_pomo
+                daily_pomo_duration=entry.daily_pomo_duration,
+                weekly_pomo_duration=entry.weekly_pomo_duration,
+                monthly_pomo_duration=entry.monthly_pomo_duration,
+                yearly_pomo_duration=entry.yearly_pomo_duration
             )
             for entry in pomo_entries
         ]
@@ -200,11 +194,11 @@ async def reset_period_counts(period: str, db: Session = Depends(get_db)):
         
         # Update all users
         if period == "daily":
-            db.query(PomoLeaderboard).update({PomoLeaderboard.daily_pomo: 0})
+            db.query(PomoLeaderboard).update({PomoLeaderboard.daily_pomo_duration: 0})
         elif period == "weekly":
-            db.query(PomoLeaderboard).update({PomoLeaderboard.weekly_pomo: 0})
+            db.query(PomoLeaderboard).update({PomoLeaderboard.weekly_pomo_duration: 0})
         elif period == "monthly":
-            db.query(PomoLeaderboard).update({PomoLeaderboard.monthly_pomo: 0})
+            db.query(PomoLeaderboard).update({PomoLeaderboard.monthly_pomo_duration: 0})
         
         db.commit()
         
