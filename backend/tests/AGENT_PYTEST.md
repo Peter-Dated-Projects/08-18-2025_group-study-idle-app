@@ -1,454 +1,249 @@
-# AGENT_PYTEST.md - Tests Suite Documentation
+# AGENT_PYTEST.md - Scripts Test Suite Documentation
 
-This document describes the pytest test suites available in the `tests` folder. These tests focus on core application functionality, database connections, and integration testing.
+This document describes the pytest test suites available in the `scripts` folder. All tests have been converted to proper pytest format with fixtures, assertions, and proper test isolation.
 
 ## Overview
 
-The tests folder contains integration and unit tests for core application components:
+The scripts folder contains specialized test files that focus on specific functionality areas:
 
-- **Database Connection Testing**: Tests database connectivity and configuration
-- **Environment Configuration Testing**: Tests various environment configurations
-- **ArangoDB Groups Testing**: Tests group management with ArangoDB
-- **GCP Configuration Testing**: Tests Google Cloud Platform integration
-- **Redis Lobbies Testing**: Tests Redis-based lobby system
-- **Friends System Testing**: Tests ArangoDB-based friends functionality
+- **Friends-of-Friends Testing**: Tests second-degree friend connections
+- **Group Leaderboard Testing**: Tests group leaderboard endpoints and data handling
+- **ZSET Group Leaderboard Testing**: Tests Redis ZSET-based leaderboard operations
+- **Periodic Reset Testing**: Tests scheduled reset functionality
 
 ## Test Files
 
-### 1. test_db_connection.py
+### 1. test_friends_of_friends.py
 
-**Purpose**: Tests database connection functionality and Cloud SQL integration.
-
-**Key Features**:
-
-- Validates environment variable configuration
-- Tests database URL generation
-- Tests database engine creation
-- Validates actual database connectivity
-
-**Test Areas**:
-
-- Environment variable loading from `.env` file
-- Cloud SQL vs local PostgreSQL configuration
-- Database connection establishment
-- Query execution validation
-
-**Environment Variables Tested**:
-
-- `INSTANCE_IS_GCP`: Whether running on Google Cloud Platform
-- `INSTANCE_CONNECTION_NAME`: Cloud SQL instance connection name
-- `USE_CLOUD_SQL_PROXY`: Whether to use Cloud SQL proxy
-- `DB_USER`, `DB_NAME`, `DB_HOST`, `DB_PORT`: Database connection parameters
-
-**Usage**:
-
-```bash
-python tests/test_db_connection.py
-```
-
-### 2. test_env_config.py
-
-**Purpose**: Tests environment configuration with different GCP mode settings.
+**Purpose**: Tests the friends-of-friends functionality, which finds second-degree connections between users.
 
 **Key Features**:
 
-- Tests GCP mode configuration
-- Tests local development mode configuration
-- Validates database URL generation for different environments
-- Tests environment variable combinations
-
-**Configuration Modes Tested**:
-
-- **GCP Mode**: `INSTANCE_IS_GCP=true` with Cloud SQL settings
-- **Local Mode**: Standard PostgreSQL connection settings
-- **Proxy Mode**: Using Cloud SQL proxy for local development
-
-**Test Scenarios**:
-
-- Full GCP configuration with all required variables
-- Local configuration with standard PostgreSQL
-- Mixed configurations and error handling
-
-**Usage**:
-
-```bash
-python tests/test_env_config.py
-```
-
-### 3. test_groups_arangodb.py ✅ (Already pytest format)
-
-**Purpose**: Integration tests for the groups API endpoints with ArangoDB backend.
-
-**Key Features**:
-
-- Tests complete group lifecycle (create, join, leave, delete)
-- Tests group membership management
-- Tests creator permissions and ownership transfer
-- Tests group limits and constraints
+- Creates a test network of friend relationships
+- Tests friend discovery algorithms
+- Validates friend-of-friend connections
+- Tests edge cases (users with no friends)
 
 **Test Functions**:
 
-- `test_create_group()`: Tests group creation functionality
-- `test_join_and_leave_group()`: Tests membership management
-- `test_group_limit()`: Tests 5-group per user limit
-- `test_creator_leaves_group_transfer_ownership()`: Tests ownership transfer
-- `test_creator_leaves_last_deletes_group()`: Tests group deletion
+- `test_alice_friends_of_friends()`: Tests Alice's second-degree connections
+- `test_bob_friends_of_friends()`: Tests Bob's second-degree connections
+- `test_charlie_friends_of_friends()`: Tests Charlie's second-degree connections
+- `test_empty_friends_of_friends()`: Tests users with no friends
 
 **Fixtures**:
 
-- `test_user()`: Provides unique user ID for testing
-- `test_group()`: Creates test group and handles cleanup
+- `backend_server`: Ensures backend server is running
+- `test_friendships`: Creates and cleans up test friendship network
+
+**Network Structure Tested**:
+
+```
+Alice -> Bob -> Charlie
+Alice -> David -> Eve
+Bob -> Frank
+```
+
+**Expected Results**:
+
+- Alice's friends-of-friends: [Charlie, Eve]
+- Bob's friends-of-friends: [David]
+- Charlie's friends-of-friends: [Alice, Frank]
+
+**Usage**:
+
+```bash
+pytest scripts/test_friends_of_friends.py -v
+```
+
+### 2. test_group_leaderboard_pytest.py
+
+**Purpose**: Tests group leaderboard endpoints with comprehensive API validation.
+
+**Key Features**:
+
+- Creates test data in Redis (groups and leaderboard data)
+- Tests all group leaderboard API endpoints
+- Validates response structure and data integrity
+- Tests error handling for invalid inputs
+
+**Test Functions**:
+
+- `test_group_leaderboard_daily()`: Tests daily leaderboard retrieval
+- `test_group_leaderboard_weekly()`: Tests weekly leaderboard retrieval
+- `test_group_rankings_all_periods()`: Tests rankings for all time periods
+- `test_member_rank_in_group()`: Tests individual member ranking
+- `test_user_group_rankings()`: Tests user's rankings across groups
+- `test_compare_groups()`: Tests group comparison functionality
+- `test_invalid_group_id()`: Tests error handling for invalid group IDs
+- `test_invalid_user_id()`: Tests error handling for invalid user IDs
+
+**Fixtures**:
+
+- `backend_server`: Ensures backend server is running
+- `test_data`: Creates and cleans up test Redis data
+
+**Test Data Structure**:
+
+- **Groups**: Study Warriors (3 members), Focus Masters (2 members)
+- **Users**: alice, bob, charlie, diana, eve with different pomo scores
+- **Periods**: daily, weekly, monthly, yearly leaderboards
 
 **API Endpoints Tested**:
 
-- `POST /api/groups/create`: Create new group
-- `POST /api/groups/join`: Join existing group
-- `POST /api/groups/leave`: Leave group
-- `GET /api/groups/details/{group_id}`: Get group details
-- `DELETE /api/groups/delete`: Delete group
-
-**Business Rules Tested**:
-
-- Users can create maximum 5 groups
-- Group creator is automatically added as member
-- When creator leaves, ownership transfers to next member
-- When last member leaves, group is deleted
+- `/api/group-leaderboard/group/{group_id}/{period}`
+- `/api/group-leaderboard/group/{group_id}/rankings`
+- `/api/group-leaderboard/member/{user_id}/group/{group_id}`
+- `/api/group-leaderboard/user/{user_id}/groups`
+- `/api/group-leaderboard/compare-groups`
 
 **Usage**:
 
 ```bash
-pytest tests/test_groups_arangodb.py -v
+pytest scripts/test_group_leaderboard_pytest.py -v
 ```
 
-### 4. test_gcp_config.py
+### 3. test_zset_group_leaderboard_pytest.py
 
-**Purpose**: Tests Google Cloud Platform configuration and connectivity.
+**Purpose**: Tests Redis ZSET-based leaderboard operations for performance and correctness.
 
 **Key Features**:
 
-- Tests GCP instance detection
-- Tests Cloud SQL configuration
-- Tests local development configuration
-- Validates GCP service integration
+- Tests efficient ZSET operations (O(1) and O(log N) complexity)
+- Validates leaderboard data population
+- Tests ranking and scoring operations
+- Measures performance of Redis operations
 
 **Test Functions**:
 
-- `test_gcp_mode()`: Tests full GCP configuration
-- `test_local_mode()`: Tests local development configuration
-
-**GCP Services Tested**:
-
-- Cloud SQL instance connectivity
-- IAM authentication
-- Environment-based configuration switching
-
-**Usage**:
-
-```bash
-python tests/test_gcp_config.py
-```
-
-### 5. test_redis_lobbies_pytest.py
-
-**Purpose**: Comprehensive testing of Redis-based lobby system functionality.
-
-**Key Features**:
-
-- Tests async lobby operations
-- Tests Redis JSON operations
-- Tests lobby lifecycle management
-- Tests multi-user interactions
-
-**Test Functions**:
-
-- `test_redis_connectivity()`: Tests basic Redis connectivity
-- `test_health_check()`: Tests lobby system health
-- `test_create_lobby()`: Tests lobby creation
-- `test_get_lobby()`: Tests lobby retrieval
-- `test_join_lobby()`: Tests joining lobbies
-- `test_leave_lobby()`: Tests leaving lobbies
-- `test_close_lobby()`: Tests closing lobbies
-- `test_get_lobby_users()`: Tests user listing
-- `test_list_all_lobbies()`: Tests lobby listing
-- `test_get_lobby_count()`: Tests lobby counting
-- `test_json_operations()`: Tests JSON serialization
+- `test_zset_population()`: Tests ZSET data structure population
+- `test_zset_ranking_operations()`: Tests ranking operations (ZREVRANK, ZSCORE)
+- `test_zset_range_operations()`: Tests range queries (ZREVRANGE)
+- `test_zset_performance_operations()`: Tests operation performance
+- `test_zset_comprehensive_leaderboard_test()`: Integration test
 
 **Fixtures**:
 
-- `event_loop`: Provides async event loop
-- `test_user_ids`: Provides test user identifiers
-- `test_lobby`: Creates and cleans up test lobby
+- `redis_client`: Provides Redis client for testing
+- `leaderboard_service`: Provides Redis leaderboard service
+- `periods`: Provides test periods (daily, weekly, monthly, yearly)
 
-**Lobby Operations Tested**:
+**Redis Operations Tested**:
 
-- Lobby creation with unique codes
-- User joining and leaving
-- Lobby closure and cleanup
-- Multi-user lobby interactions
-- JSON data persistence
+- `ZCARD`: Get total users in leaderboard
+- `ZREVRANK`: Get user's rank (0-based, descending order)
+- `ZSCORE`: Get user's score
+- `ZREVRANGE`: Get top N users with scores
+
+**Performance Expectations**:
+
+- All operations should complete within 0.1 seconds
+- Operations should scale efficiently with data size
 
 **Usage**:
 
 ```bash
-pytest tests/test_redis_lobbies_pytest.py -v
+pytest scripts/test_zset_group_leaderboard_pytest.py -v
 ```
 
-### 6. test_friends_arangodb.py
+### 4. test_periodic_reset_pytest.py
 
-**Purpose**: Tests ArangoDB-based friends system functionality.
+**Purpose**: Tests the periodic reset service that resets user statistics on schedule.
 
 **Key Features**:
 
-- Tests friend relationship management
-- Tests bidirectional friend connections
-- Tests friend discovery and recommendations
-- Tests ArangoDB graph operations
+- Tests service status and configuration
+- Tests manual reset operations for all periods
+- Validates reset logic (only target period is reset)
+- Tests async functionality properly
 
-**Expected Test Areas** (based on typical friends system):
+**Test Functions**:
 
-- Adding/removing friends
-- Friend request management
-- Friend list retrieval
-- Mutual friends discovery
-- Friend recommendations
+- `test_reset_service_status()`: Tests service status retrieval
+- `test_reset_schedule_information()`: Tests schedule configuration
+- `test_manual_daily_reset()`: Tests daily reset functionality
+- `test_manual_weekly_reset()`: Tests weekly reset functionality
+- `test_manual_monthly_reset()`: Tests monthly reset functionality
+- `test_manual_yearly_reset()`: Tests yearly reset functionality
 
-**Usage**:
+**Fixtures**:
 
-```bash
-pytest tests/test_friends_arangodb.py -v
-```
+- `event_loop`: Provides async event loop for testing
+- `test_user_id`: Provides unique test user ID
+- `db_session`: Provides database session
+- `test_user_data`: Creates and cleans up test user data
 
-### 7. test_periodic_reset.py
+**Reset Periods Tested**:
 
-**Purpose**: Tests periodic reset functionality for user statistics.
+- **Daily**: Resets daily_pomo only
+- **Weekly**: Resets weekly_pomo only
+- **Monthly**: Resets monthly_pomo only
+- **Yearly**: Resets yearly_pomo only
 
-**Key Features**:
+**Reset Schedule**:
 
-- Tests scheduled reset operations
-- Tests reset timing and triggers
-- Tests data integrity during resets
-- Tests multi-period reset coordination
-
-**Expected Test Areas**:
-
-- Daily/weekly/monthly/yearly resets
-- Reset scheduling validation
-- Data preservation during partial resets
-- Error handling and recovery
+- Daily: Every day at 1:00 AM EST
+- Weekly: Every Sunday at 1:00 AM EST
+- Monthly: 1st of every month at 1:00 AM EST
+- Yearly: January 1st at 1:00 AM EST
 
 **Usage**:
 
 ```bash
-pytest tests/test_periodic_reset.py -v
+pytest scripts/test_periodic_reset_pytest.py -v
 ```
 
-## Test Configuration
+## Running All Tests
 
-### Base URL Configuration
-
-Most API tests use configurable base URLs:
-
-```python
-BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8080")
-```
-
-### Database Configuration
-
-Database tests use environment variables for connection:
-
-- Development: Local PostgreSQL
-- Production: Cloud SQL with IAM authentication
-- Testing: Isolated test database
-
-### Redis Configuration
-
-Redis tests require:
-
-- Redis server running locally or remotely
-- Redis JSON module enabled
-- Proper connection configuration
-
-## Running Tests
-
-### Individual Test Files
+To run all script tests:
 
 ```bash
-pytest tests/test_groups_arangodb.py -v
-pytest tests/test_redis_lobbies_pytest.py -v
+pytest scripts/test_*_pytest.py -v
 ```
 
-### All Tests
+To run with coverage:
 
 ```bash
-pytest tests/ -v
-```
-
-### With Coverage
-
-```bash
-pytest tests/ --cov=app --cov-report=html
-```
-
-### Specific Test Categories
-
-```bash
-# Database tests
-pytest tests/test_db_connection.py tests/test_env_config.py tests/test_gcp_config.py
-
-# API integration tests
-pytest tests/test_groups_arangodb.py tests/test_friends_arangodb.py
-
-# Redis tests
-pytest tests/test_redis_lobbies_pytest.py
-
-# Async tests
-pytest tests/test_redis_lobbies_pytest.py tests/test_periodic_reset.py -v
+pytest scripts/test_*_pytest.py --cov=app --cov-report=html
 ```
 
 ## Test Dependencies
 
-### Required Services
+All tests require:
 
-- **PostgreSQL/Cloud SQL**: For database tests
-- **ArangoDB**: For graph-based tests (groups, friends)
-- **Redis**: For lobby and caching tests
-- **Backend API**: Running on configured port
-
-### Python Packages
-
-- `pytest`: Test framework
-- `pytest-asyncio`: For async test support
-- `requests`: For API testing
-- `sqlalchemy`: For database operations
-- `redis`: For Redis operations
-
-### Environment Setup
-
-```bash
-# Install test dependencies
-pip install pytest pytest-asyncio pytest-cov
-
-# Set up environment variables
-export API_BASE_URL="http://localhost:8080"
-export DB_HOST="localhost"
-export DB_PORT="5432"
-export REDIS_URL="redis://localhost:6379"
-```
+- **Backend Server**: Running on http://localhost:8000
+- **Redis**: Running and accessible
+- **Database**: PostgreSQL/ArangoDB depending on test
+- **Python Packages**: pytest, requests, asyncio
 
 ## Test Data Management
 
-### Isolation Strategy
+All tests follow proper test isolation:
 
-- Each test creates its own test data
-- Unique identifiers prevent conflicts
-- Cleanup in fixture teardown
-- Database transactions for rollback
+- **Setup**: Each test creates its own test data
+- **Teardown**: Each test cleans up its data after completion
+- **Isolation**: Tests don't interfere with each other
+- **Fixtures**: Shared setup/teardown logic is in pytest fixtures
 
-### Test Users
+## Backwards Compatibility
 
-Tests use generated unique identifiers:
-
-```python
-def generate_user_id():
-    return f"user_{uuid.uuid4().hex[:8]}"
-```
-
-### Test Groups/Lobbies
-
-Similar strategy for group and lobby identifiers:
-
-```python
-def generate_group_name():
-    return f"Test Group {uuid.uuid4().hex[:4]}"
-```
+All test files maintain backwards compatibility by including `if __name__ == "__main__"` blocks that allow them to be run directly as scripts while still working with pytest.
 
 ## Best Practices
 
-### Test Structure
-
-1. **Arrange**: Set up test data and conditions
-2. **Act**: Execute the functionality being tested
-3. **Assert**: Verify the expected outcomes
-4. **Cleanup**: Remove test data (in fixtures)
-
-### Fixture Usage
-
-- Use `@pytest.fixture` for shared setup/teardown
-- Scope fixtures appropriately (`function`, `class`, `module`, `session`)
-- Yield for cleanup in fixtures
-- Use fixture dependencies for complex setups
-
-### Async Testing
-
-```python
-@pytest.mark.asyncio
-async def test_async_function():
-    result = await some_async_operation()
-    assert result is not None
-```
-
-### Error Testing
-
-```python
-def test_invalid_input():
-    with pytest.raises(ValueError):
-        invalid_operation()
-```
+1. **Use fixtures** for shared setup/teardown
+2. **Assert specific conditions** rather than just checking for success
+3. **Clean up test data** in fixture teardown or try/finally blocks
+4. **Test error conditions** as well as success paths
+5. **Use descriptive test names** that explain what is being tested
+6. **Include logging** for debugging test failures
 
 ## Troubleshooting
 
-### Common Issues
+Common issues and solutions:
 
-1. **Database Connection Errors**
-
-   - Check database server status
-   - Verify connection parameters
-   - Ensure test database exists
-
-2. **Redis Connection Errors**
-
-   - Start Redis server
-   - Check Redis configuration
-   - Verify Redis JSON module
-
-3. **API Connection Errors**
-
-   - Start backend server
-   - Check port configuration
-   - Verify API endpoints exist
-
-4. **Import Errors**
-
-   - Check Python path
-   - Install missing dependencies
-   - Verify module structure
-
-5. **Async Test Issues**
-   - Install `pytest-asyncio`
-   - Use proper async fixtures
-   - Mark tests with `@pytest.mark.asyncio`
-
-### Debug Tips
-
-1. **Verbose Output**: Use `-v` flag for detailed test output
-2. **Debug Mode**: Use `-s` flag to see print statements
-3. **Stop on First Failure**: Use `-x` flag
-4. **Run Specific Tests**: Use `-k pattern` to filter tests
-5. **Coverage Reports**: Use `--cov` for coverage analysis
-
-### Environment Issues
-
-1. **Environment Variables**: Check `.env` file loading
-2. **Service Dependencies**: Ensure all required services are running
-3. **Port Conflicts**: Check for port conflicts with other services
-4. **Permissions**: Verify database and file permissions
-
-## Integration with CI/CD
-
-These tests are designed to work in CI/CD environments:
-
-1. **Service Dependencies**: Use Docker containers for services
-2. **Environment Variables**: Configure via CI/CD environment
-3. **Test Isolation**: Tests don't interfere with each other
-4. **Cleanup**: Proper cleanup prevents resource leaks
-5. **Parallel Execution**: Tests can run in parallel safely
+1. **Backend not running**: Start the backend server on port 8000
+2. **Redis not available**: Start Redis server and check connectivity
+3. **Import errors**: Ensure Python path includes the project root
+4. **Database connection**: Check database server status and credentials
+5. **Test data conflicts**: Ensure proper cleanup in test fixtures

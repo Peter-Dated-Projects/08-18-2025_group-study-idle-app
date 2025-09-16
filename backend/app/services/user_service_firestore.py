@@ -67,10 +67,14 @@ class UserService:
             
             # Initialize Firestore client
             database_name = os.getenv('FIRESTORE_DATABASE_NAME', '(default)')
-            if database_name == '(default)':
-                self.db = firestore.client()
-            else:
-                self.db = firestore.client(database_id=database_name)
+            
+            # Note: firebase-admin 6.5.0 doesn't support database parameter in client()
+            # For multi-database support, we'd need to use the newer google-cloud-firestore directly
+            # For now, we'll use the default database
+            self.db = firestore.client()
+            
+            if database_name != '(default)':
+                logger.warning(f"Firestore database name '{database_name}' specified but firebase-admin 6.5.0 doesn't support multi-database. Using default database.")
             
             logger.info(f"Firestore client initialized successfully for database: {database_name}")
             
