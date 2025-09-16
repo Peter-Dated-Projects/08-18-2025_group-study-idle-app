@@ -4,20 +4,49 @@ import Lobby from "./Lobby";
 import PomoBlockTimer from "./PomoBlockTimer";
 import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 
+// Types for lobby state management
+interface LobbyData {
+  code: string;
+  host: string;
+  users: string[];
+  createdAt: string;
+}
+
+type LobbyState = "empty" | "hosting" | "joined" | "join";
+
+interface ToolsSectionProps {
+  lobbyState?: LobbyState;
+  lobbyData?: LobbyData | null;
+  onLobbyStateChange?: (state: LobbyState) => void;
+  onLobbyDataChange?: (data: LobbyData | null) => void;
+}
+
 interface Tab {
   id: string;
   label: string;
   component: React.ReactNode;
 }
 
-export default function ToolsSection() {
+export default function ToolsSection({
+  lobbyState,
+  lobbyData,
+  onLobbyStateChange,
+  onLobbyDataChange,
+}: ToolsSectionProps) {
   const [activeTab, setActiveTab] = useState("lobby");
 
   const tabs: Tab[] = [
     {
       id: "lobby",
       label: "Study Lobby",
-      component: <Lobby />,
+      component: (
+        <Lobby
+          lobbyState={lobbyState}
+          lobbyData={lobbyData}
+          onLobbyStateChange={onLobbyStateChange}
+          onLobbyDataChange={onLobbyDataChange}
+        />
+      ),
     },
     {
       id: "pomo-block",

@@ -14,6 +14,29 @@ import { FONTCOLOR, BORDERFILL, BORDERLINE, PANELFILL } from "@/components/const
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+// Types for lobby state management
+interface LobbyData {
+  code: string;
+  host: string;
+  users: string[];
+  createdAt: string;
+}
+
+type LobbyState = "empty" | "hosting" | "joined" | "join";
+
+// Lobby types (duplicated from Lobby.tsx for now)
+interface User {
+  userId: string;
+  email: string;
+}
+
+interface LobbyData {
+  code: string;
+  host: string;
+  users: string[];
+  createdAt: string;
+}
+
 export default function GardenPage() {
   return (
     <NotificationProvider>
@@ -50,7 +73,51 @@ function GardenPageContent() {
   const [dragStartY, setDragStartY] = useState(0);
   const [dragStartSplit, setDragStartSplit] = useState(50);
 
+  // Lobby state management - moved from Lobby component to be shared
+  const [lobbyState, setLobbyState] = useState<LobbyState>(() => {
+    if (typeof window !== "undefined") {
+      const savedState = localStorage.getItem("garden_lobby_state");
+      return (savedState as LobbyState) || "empty";
+    }
+    return "empty";
+  });
+
+  const [lobbyData, setLobbyData] = useState<LobbyData | null>(() => {
+    if (typeof window !== "undefined") {
+      const savedData = localStorage.getItem("garden_lobby_data");
+      return savedData ? JSON.parse(savedData) : null;
+    }
+    return null;
+  });
+
   const router = useRouter();
+
+  // Lobby helper functions
+  const saveLobbyData = (state: LobbyState, data: LobbyData | null) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("garden_lobby_state", state);
+      if (data) {
+        localStorage.setItem("garden_lobby_data", JSON.stringify(data));
+      } else {
+        localStorage.removeItem("garden_lobby_data");
+      }
+    }
+  };
+
+  const clearLobbyData = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("garden_lobby_state");
+      localStorage.removeItem("garden_lobby_data");
+    }
+  };
+
+  // Update localStorage whenever lobbyState or lobbyData changes
+  useEffect(() => {
+    saveLobbyData(lobbyState, lobbyData);
+  }, [lobbyState, lobbyData]);
+
+  // Determine if user is in a lobby (hosting or joined)
+  const isInLobby = lobbyState === "hosting" || lobbyState === "joined";
 
   // Handle panel resizing
   const handleDragStart = (e: React.MouseEvent) => {
@@ -191,7 +258,7 @@ function GardenPageContent() {
                   setPixiApp(app);
                 }}
               />
-              <GardenMenu pixiApp={pixiApp} />
+              <GardenMenu pixiApp={pixiApp} isInLobby={isInLobby} />
               <GardenSettings />
               <GardenIcons />
             </div>
@@ -268,6 +335,10 @@ function GardenPageContent() {
                   <MinimizableToolsPanel
                     isMinimized={isMinimized}
                     setIsMinimized={setIsMinimized}
+                    lobbyState={lobbyState}
+                    lobbyData={lobbyData}
+                    onLobbyStateChange={setLobbyState}
+                    onLobbyDataChange={setLobbyData}
                   />
                 </div>
               ) : (
@@ -281,6 +352,10 @@ function GardenPageContent() {
                   <MinimizableToolsPanel
                     isMinimized={isMinimized}
                     setIsMinimized={setIsMinimized}
+                    lobbyState={lobbyState}
+                    lobbyData={lobbyData}
+                    onLobbyStateChange={setLobbyState}
+                    onLobbyDataChange={setLobbyData}
                   />
                 </div>
               )}

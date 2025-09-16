@@ -2,13 +2,33 @@ import React from "react";
 import ToolsSection from "./ToolsSection";
 import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 
+// Types for lobby state management
+interface LobbyData {
+  code: string;
+  host: string;
+  users: string[];
+  createdAt: string;
+}
+
+type LobbyState = "empty" | "hosting" | "joined" | "join";
+
+interface MinimizableToolsPanelProps {
+  isMinimized: boolean;
+  setIsMinimized: React.Dispatch<React.SetStateAction<boolean>>;
+  lobbyState?: LobbyState;
+  lobbyData?: LobbyData | null;
+  onLobbyStateChange?: (state: LobbyState) => void;
+  onLobbyDataChange?: (data: LobbyData | null) => void;
+}
+
 export default function MinimizableToolsPanel({
   isMinimized,
   setIsMinimized,
-}: {
-  isMinimized: boolean;
-  setIsMinimized: React.Dispatch<React.SetStateAction<boolean>>;
-}) {
+  lobbyState,
+  lobbyData,
+  onLobbyStateChange,
+  onLobbyDataChange,
+}: MinimizableToolsPanelProps) {
   const toggleMinimized = () => {
     setIsMinimized((prev) => !prev);
   };
@@ -59,7 +79,12 @@ export default function MinimizableToolsPanel({
           backgroundColor: PANELFILL,
         }}
       >
-        <ToolsSection />
+        <ToolsSection
+          lobbyState={lobbyState}
+          lobbyData={lobbyData}
+          onLobbyStateChange={onLobbyStateChange}
+          onLobbyDataChange={onLobbyDataChange}
+        />
       </div>
     </div>
   );

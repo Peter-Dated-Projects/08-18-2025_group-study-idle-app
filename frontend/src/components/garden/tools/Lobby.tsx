@@ -26,13 +26,25 @@ interface LobbyData {
 
 type LobbyState = "empty" | "hosting" | "joined" | "join";
 
+interface LobbyProps {
+  lobbyState?: LobbyState;
+  lobbyData?: LobbyData | null;
+  onLobbyStateChange?: (state: LobbyState) => void;
+  onLobbyDataChange?: (data: LobbyData | null) => void;
+}
+
 // Local storage keys for persistence
 const LOBBY_STORAGE_KEY = "garden_lobby_data";
 const LOBBY_STATE_STORAGE_KEY = "garden_lobby_state";
 
-export default function Lobby() {
-  // Initialize state from localStorage if available
-  const [lobbyState, setLobbyState] = useState<LobbyState>(() => {
+export default function Lobby({
+  lobbyState: propLobbyState = "empty",
+  lobbyData: propLobbyData = null,
+  onLobbyStateChange,
+  onLobbyDataChange,
+}: LobbyProps) {
+  // Use props if provided, fallback to local state for backward compatibility
+  const [localLobbyState, setLocalLobbyState] = useState<LobbyState>(() => {
     if (typeof window !== "undefined") {
       const savedState = localStorage.getItem(LOBBY_STATE_STORAGE_KEY);
       return (savedState as LobbyState) || "empty";
@@ -40,13 +52,45 @@ export default function Lobby() {
     return "empty";
   });
 
-  const [lobbyData, setLobbyData] = useState<LobbyData | null>(() => {
+  const [localLobbyData, setLocalLobbyData] = useState<LobbyData | null>(() => {
     if (typeof window !== "undefined") {
       const savedData = localStorage.getItem(LOBBY_STORAGE_KEY);
       return savedData ? JSON.parse(savedData) : null;
     }
     return null;
   });
+
+  // Use prop values when provided, otherwise use local state
+  const lobbyState = onLobbyStateChange ? propLobbyState : localLobbyState;
+  const lobbyData = onLobbyDataChange ? propLobbyData : localLobbyData;
+
+  // State change handlers that work with both prop-driven and local state
+  const setLobbyState = (newState: LobbyState) => {
+    if (onLobbyStateChange) {
+      onLobbyStateChange(newState);
+    } else {
+      setLocalLobbyState(newState);
+    }
+  };
+
+  const setLobbyData = (
+    newData: LobbyData | null | ((prev: LobbyData | null) => LobbyData | null)
+  ) => {
+    if (onLobbyDataChange) {
+      if (typeof newData === "function") {
+        const updatedData = newData(propLobbyData);
+        onLobbyDataChange(updatedData);
+      } else {
+        onLobbyDataChange(newData);
+      }
+    } else {
+      if (typeof newData === "function") {
+        setLocalLobbyData(newData);
+      } else {
+        setLocalLobbyData(newData);
+      }
+    }
+  };
 
   const [joinCode, setJoinCode] = useState("");
   const [loading, setLoading] = useState(false);

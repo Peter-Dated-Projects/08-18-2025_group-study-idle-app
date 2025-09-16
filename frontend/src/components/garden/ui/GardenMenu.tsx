@@ -14,6 +14,7 @@ import "@/utils/AvatarSignals"; // Import for console testing functions
 
 import { AVATAR_BOX } from "../../constants";
 import { FRAMERATE } from "../GardenCanvas";
+import PlayerChat from "./PlayerChat";
 
 interface MenuTextures {
   avatar: PIXI.RenderTexture | null;
@@ -23,9 +24,11 @@ interface MenuTextures {
 interface GardenMenuProps {
   // Accept the main PIXI app from GardenCanvas
   pixiApp?: PIXI.Application;
+  // Whether the user is currently in a lobby
+  isInLobby?: boolean;
 }
 
-export default function GardenMenu({ pixiApp }: GardenMenuProps) {
+export default function GardenMenu({ pixiApp, isInLobby = false }: GardenMenuProps) {
   const canvasRefs = {
     avatar: useRef<HTMLCanvasElement>(null),
     inventory: useRef<HTMLCanvasElement>(null),
@@ -284,9 +287,23 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
           }}
         />
       </div>
-      {/* Inventory */}
-      <div style={{ gridArea: "bottomleft", pointerEvents: "auto" }}>
-        {/* <canvas
+
+      {/* PlayerChat - spans bottom left and bottom center */}
+      <div
+        style={{
+          gridColumn: "1 / 3", // spans from column 1 to column 3 (so columns 1 and 2)
+          gridRow: "3", // bottom row only
+          pointerEvents: "auto",
+          display: "flex",
+          alignItems: "stretch",
+        }}
+      >
+        <PlayerChat isInLobby={isInLobby} />
+      </div>
+
+      {/* Inventory - commented out since PlayerChat now occupies bottomleft */}
+      {/* <div style={{ gridArea: "bottomleft", pointerEvents: "auto" }}>
+        <canvas
           ref={canvasRefs.inventory}
           width={150}
           height={150}
@@ -298,8 +315,8 @@ export default function GardenMenu({ pixiApp }: GardenMenuProps) {
             objectFit: "contain",
             border: "1px solid #333",
           }}
-        /> */}
-      </div>
+        />
+      </div> */}
     </div>
   );
 }
