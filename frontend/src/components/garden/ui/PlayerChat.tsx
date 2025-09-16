@@ -6,40 +6,41 @@ import {
   FONTCOLOR,
   PANELFILL,
   SECONDARY_TEXT,
+  SUCCESS_COLOR,
   BodyFont,
   HeaderFont,
 } from "@/components/constants";
+import { useSessionAuth } from "@/hooks/useSessionAuth";
+import { useChat } from "@/hooks/useChat";
 
 interface PlayerChatProps {
   isInLobby?: boolean; // Whether the user is currently in a lobby
-  // Future: onSendMessage?: (message: string) => void;
-  // Future: isConnected?: boolean;
+  lobbyCode?: string; // Current lobby code for clearing messages when switching lobbies
+  onClearChat?: () => void; // Callback when lobby changes
 }
 
-export default function PlayerChat({ isInLobby = false }: PlayerChatProps) {
+export default function PlayerChat({ isInLobby = false, lobbyCode, onClearChat }: PlayerChatProps) {
+  const { user } = useSessionAuth();
+  const { messages, loading, sending, error, sendMessage, loadMessages, clearLocalMessages } =
+    useChat(lobbyCode);
   const [isMinimized, setIsMinimized] = useState(true); // Initially collapsed
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    // Mock data for demonstration
-    {
-      time_created: new Date(Date.now() - 300000), // 5 minutes ago
-      user_id: "user123",
-      content: "Hey everyone! Ready for the study session?",
-    },
-    {
-      time_created: new Date(Date.now() - 120000), // 2 minutes ago
-      user_id: "user456",
-      content: "Absolutely! Let's focus on chapter 3 today.",
-    },
-    {
-      time_created: new Date(Date.now() - 30000), // 30 seconds ago
-      user_id: "user789",
-      content: "Sounds good! I'll start my pomodoro timer in 2 minutes.",
-    },
-  ]);
-
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [textareaHeight, setTextareaHeight] = useState(24); // Initial height
+
+  // Clear messages and load new ones when lobby changes
+  useEffect(() => {
+    if (lobbyCode) {
+      clearLocalMessages();
+      setInputValue("");
+      loadMessages(lobbyCode);
+      if (onClearChat) {
+        onClearChat();
+      }
+    }
+  }, [lobbyCode, onClearChat, clearLocalMessages, loadMessages]);
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -50,32 +51,42 @@ export default function PlayerChat({ isInLobby = false }: PlayerChatProps) {
     scrollToBottom();
   }, [messages]);
 
+  // Calculate textarea height based on content
+  const calculateTextareaHeight = (value: string) => {
+    const lines = value.split("\n").length;
+    const lineHeight = 16; // Approximate line height
+    const padding = 8; // Top and bottom padding
+    const minHeight = 24;
+    const maxHeight = 120; // Limit max height
+
+    const calculatedHeight = Math.max(minHeight, Math.min(maxHeight, lines * lineHeight + padding));
+    return calculatedHeight;
+  };
+
+  // Update textarea height when content changes
+  useEffect(() => {
+    if (textareaRef.current) {
+      const newHeight = calculateTextareaHeight(inputValue);
+      setTextareaHeight(newHeight);
+      textareaRef.current.style.height = `${newHeight}px`;
+    }
+  }, [inputValue]);
+
   // Format time for display (simple format)
-  const formatTime = (date: Date) => {
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
-  // Get display name from user_id (simplified for now)
-  const getDisplayName = (userId: string) => {
-    // In the future, this would map to actual user names
-    const userMap: { [key: string]: string } = {
-      user123: "Alex",
-      user456: "Jordan",
-      user789: "Taylor",
-    };
-    return userMap[userId] || "Player";
-  };
-
-  // Handle sending messages (placeholder for future functionality)
-  const handleSendMessage = () => {
-    if (inputValue.trim() && inputValue.length <= 255) {
-      const newMessage: ChatMessage = {
-        time_created: new Date(),
-        user_id: "current_user", // Will be replaced with actual user ID
-        content: inputValue.trim(),
-      };
-      setMessages((prev) => [...prev, newMessage]);
-      setInputValue("");
+  // Handle sending messages
+  const handleSendMessage = async () => {
+    if (inputValue.trim() && inputValue.length <= 255 && user && lobbyCode) {
+      const username = user.userName || user.userEmail.split("@")[0]; // Fallback to email prefix
+      const success = await sendMessage(lobbyCode, inputValue.trim(), username);
+      if (success) {
+        setInputValue("");
+        setTextareaHeight(24); // Reset height
+      }
     }
   };
 
@@ -84,9 +95,10 @@ export default function PlayerChat({ isInLobby = false }: PlayerChatProps) {
       e.preventDefault();
       handleSendMessage();
     }
+    // Allow Shift+Enter for new lines - textarea handles this automatically
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     if (value.length <= 255) {
       setInputValue(value);
@@ -197,61 +209,100 @@ export default function PlayerChat({ isInLobby = false }: PlayerChatProps) {
               flexDirection: "column",
               gap: "6px",
               minHeight: 0, // Important for flex scrolling
-              justifyContent: "flex-end", // Justify content to bottom
             }}
           >
-            {messages.map((message, index) => (
+            {/* Loading state */}
+            {loading && (
               <div
-                key={index}
                 style={{
                   display: "flex",
-                  flexDirection: "column",
-                  gap: "2px",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  padding: "12px",
+                  color: SECONDARY_TEXT,
+                  fontFamily: BodyFont,
+                  fontSize: "12px",
                 }}
               >
-                {/* Message header with user and time */}
+                Loading messages...
+              </div>
+            )}
+
+            {/* Error state */}
+            {error && (
+              <div
+                style={{
+                  padding: "8px",
+                  backgroundColor: "rgba(255, 0, 0, 0.1)",
+                  border: "1px solid rgba(255, 0, 0, 0.3)",
+                  borderRadius: "4px",
+                  color: "#cc0000",
+                  fontFamily: BodyFont,
+                  fontSize: "12px",
+                  textAlign: "center",
+                }}
+              >
+                {error}
+              </div>
+            )}
+
+            {/* Messages */}
+            {!loading &&
+              messages.map((message, index) => (
                 <div
+                  key={index}
                   style={{
                     display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    fontSize: "11px",
+                    flexDirection: "column",
+                    gap: "2px",
                   }}
                 >
-                  <span
+                  {/* Message header with user and time */}
+                  <div
                     style={{
-                      color: FONTCOLOR,
-                      fontWeight: "bold",
-                      fontFamily: BodyFont,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      fontSize: "11px",
                     }}
                   >
-                    {getDisplayName(message.user_id)}
-                  </span>
-                  <span
-                    style={{
-                      color: SECONDARY_TEXT,
-                      fontFamily: BodyFont,
-                    }}
-                  >
-                    {formatTime(message.time_created)}
-                  </span>
-                </div>
+                    <span
+                      style={{
+                        color: FONTCOLOR,
+                        fontWeight: "bold",
+                        fontFamily: BodyFont,
+                        fontSize: "13px", // Increased by 2px
+                      }}
+                    >
+                      {message.username}
+                    </span>
+                    <span
+                      style={{
+                        color: SECONDARY_TEXT,
+                        fontFamily: BodyFont,
+                        fontSize: "13px", // Increased by 2px
+                      }}
+                    >
+                      {formatTime(message.time_created)}
+                    </span>
+                  </div>
 
-                {/* Message content */}
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: FONTCOLOR,
-                    fontFamily: BodyFont,
-                    lineHeight: "1.3",
-                    wordWrap: "break-word",
-                    paddingLeft: "4px",
-                  }}
-                >
-                  {message.content}
+                  {/* Message content */}
+                  <div
+                    style={{
+                      fontSize: "14px", // Increased by 2px
+                      color: FONTCOLOR,
+                      fontFamily: BodyFont,
+                      lineHeight: "1.3",
+                      wordWrap: "break-word",
+                      paddingLeft: "4px",
+                      whiteSpace: "pre-wrap", // Preserve newlines
+                    }}
+                  >
+                    {message.content}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -260,17 +311,17 @@ export default function PlayerChat({ isInLobby = false }: PlayerChatProps) {
         {!isMinimized && (
           <div
             style={{
-              padding: "6px 8px", // Reduced padding for shorter height
+              padding: "6px 8px",
               borderTop: `2px solid ${BORDERLINE}`,
               backgroundColor: `rgba(228, 190, 147, 1)`, // 25% opacity for BORDERFILL
               display: "flex",
               gap: "6px",
-              alignItems: "center",
-              minHeight: "32px", // Shorter minimum height
+              alignItems: "flex-start", // Changed to flex-start to align button to top
+              minHeight: `${textareaHeight + 12}px`, // Dynamic height based on textarea
             }}
           >
-            <input
-              type="text"
+            <textarea
+              ref={textareaRef}
               value={inputValue}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
@@ -278,36 +329,48 @@ export default function PlayerChat({ isInLobby = false }: PlayerChatProps) {
               maxLength={255}
               style={{
                 flex: 1,
-                padding: "4px 6px", // Reduced padding
-                fontSize: "12px",
+                padding: "4px 6px",
+                fontSize: "14px", // Increased by 2px
                 fontFamily: BodyFont,
                 backgroundColor: "rgba(253, 244, 232, 0.8)", // Higher opacity for better readability
                 border: `2px solid ${BORDERLINE}`, // Slightly thicker border for better visibility
                 borderRadius: "4px",
                 color: FONTCOLOR,
                 outline: "none",
-                height: "24px", // Fixed shorter height
+                height: `${textareaHeight}px`,
+                resize: "none", // Disable manual resize
+                overflow: "hidden", // Hide scrollbar for cleaner look
               }}
             />
             <button
               onClick={handleSendMessage}
-              disabled={!inputValue.trim() || inputValue.length > 255}
+              disabled={!inputValue.trim() || inputValue.length > 255 || sending}
               style={{
-                padding: "4px 8px", // Reduced padding
-                fontSize: "12px",
+                padding: "4px 8px",
+                fontSize: "14px", // Increased by 2px
                 backgroundColor:
-                  inputValue.trim() && inputValue.length <= 255 ? BORDERLINE : SECONDARY_TEXT,
-                color: PANELFILL,
+                  inputValue.trim() && inputValue.length <= 255 && !sending
+                    ? SUCCESS_COLOR
+                    : SECONDARY_TEXT,
+                color: "white",
                 border: "none",
                 borderRadius: "4px",
-                cursor: inputValue.trim() && inputValue.length <= 255 ? "pointer" : "default",
+                cursor:
+                  inputValue.trim() && inputValue.length <= 255 && !sending ? "pointer" : "default",
                 fontFamily: BodyFont,
                 fontWeight: "bold",
-                minWidth: "45px", // Slightly smaller
-                height: "24px", // Fixed shorter height
+                minWidth: "40px",
+                height: "32px", // Fixed height, aligns to top
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              Send
+              {sending ? (
+                <i className="fi fi-rr-time-quarter-past" style={{ fontSize: "14px" }} />
+              ) : (
+                <i className="fi fi-rr-paper-plane" style={{ fontSize: "14px" }} />
+              )}
             </button>
           </div>
         )}

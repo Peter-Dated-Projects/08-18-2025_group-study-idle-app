@@ -258,7 +258,7 @@ function GardenPageContent() {
                   setPixiApp(app);
                 }}
               />
-              <GardenMenu pixiApp={pixiApp} isInLobby={isInLobby} />
+              <GardenMenu pixiApp={pixiApp} isInLobby={isInLobby} lobbyCode={lobbyData?.code} />
               <GardenSettings />
               <GardenIcons />
             </div>

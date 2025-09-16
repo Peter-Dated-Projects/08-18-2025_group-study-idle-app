@@ -17,6 +17,30 @@ interface GameEvent {
   data: Record<string, unknown>;
 }
 
+interface ChatEvent {
+  type: "chat_message";
+  action: "new_message" | "chat_cleared";
+  lobby_code: string;
+  user_id: string;
+  username?: string;
+  message?: {
+    time_created: string;
+    user_id: string;
+    username: string;
+    content: string;
+  };
+}
+
+interface PomoBankEvent {
+  type: "pomo_bank_update";
+  action: "balance_changed";
+  user_id: string;
+  new_balance: number;
+  old_balance: number;
+  change_amount: number;
+  reason: string;
+}
+
 interface UseWebSocketReturn {
   isConnected: boolean;
   connectionCount: number;
@@ -24,6 +48,8 @@ interface UseWebSocketReturn {
   sendMessage: (message: Record<string, unknown>) => void;
   onLobbyEvent: (handler: (event: LobbyEvent) => void) => void;
   onGameEvent: (handler: (event: GameEvent) => void) => void;
+  onChatEvent: (handler: (event: ChatEvent) => void) => void;
+  onPomoBankEvent: (handler: (event: PomoBankEvent) => void) => void;
   connect: () => void;
   disconnect: () => void;
   clearConnectionError: () => void;
@@ -88,6 +114,20 @@ export function useWebSocket(): UseWebSocketReturn {
     [wsManager]
   );
 
+  const onChatEvent = useCallback(
+    (handler: (event: ChatEvent) => void) => {
+      return wsManager.addChatEventHandler(handler);
+    },
+    [wsManager]
+  );
+
+  const onPomoBankEvent = useCallback(
+    (handler: (event: PomoBankEvent) => void) => {
+      return wsManager.addPomoBankEventHandler(handler);
+    },
+    [wsManager]
+  );
+
   const connect = useCallback(() => {
     wsManager.connect();
   }, [wsManager]);
@@ -107,6 +147,8 @@ export function useWebSocket(): UseWebSocketReturn {
     sendMessage,
     onLobbyEvent,
     onGameEvent,
+    onChatEvent,
+    onPomoBankEvent,
     connect,
     disconnect,
     clearConnectionError,

@@ -10,12 +10,8 @@ import {
 } from "../../constants";
 import { useSessionAuth } from "../../../hooks/useSessionAuth";
 import { useWebSocket } from "../../../hooks/useWebSocket";
-
-interface User {
-  id: string;
-  name: string;
-  joinedAt: string;
-}
+import { fetchUsersInfo, getDisplayName } from "../../../utils/userInfo";
+import type { UserInfo } from "../../../types/user";
 
 interface LobbyData {
   code: string;
@@ -96,12 +92,42 @@ export default function Lobby({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // User information mapping
+  const [usersInfo, setUsersInfo] = useState<Record<string, UserInfo>>({});
+
   // Authentication
   const { user, isLoading: authLoading, isAuthenticated } = useSessionAuth();
 
   // WebSocket connection for real-time updates
   const { isConnected, connectionCount, connectionError, onLobbyEvent, clearConnectionError } =
     useWebSocket();
+
+  // Helper function to get display name for a user
+  const getDisplayNameForUser = (userId: string): string => {
+    // If this is the current user, use session data directly
+    if (user && userId === user.userId) {
+      return user.userName || user.userEmail.split("@")[0];
+    }
+
+    // For other users, try API data first, then fall back to user ID
+    const userInfo = usersInfo[userId];
+    if (userInfo) {
+      if (userInfo.display_name) {
+        return userInfo.display_name;
+      } else if (userInfo.email) {
+        return userInfo.email.split("@")[0];
+      }
+    }
+
+    // Final fallback: create a readable name from user ID
+    // If userId looks like an email, use the part before @
+    if (userId.includes("@")) {
+      return userId.split("@")[0];
+    }
+
+    // Otherwise, show a truncated version of the user ID
+    return userId.length > 12 ? `User ${userId.slice(-8)}` : `User ${userId}`;
+  };
 
   // Initialize connection in background without blocking UI
   useEffect(() => {
@@ -141,6 +167,26 @@ export default function Lobby({
   useEffect(() => {
     saveLobbyData(lobbyState, lobbyData);
   }, [lobbyState, lobbyData]);
+
+  // Fetch user information when lobby users change (non-critical)
+  useEffect(() => {
+    if (lobbyData?.users && lobbyData.users.length > 0) {
+      console.log("🔍 Lobby: Attempting to fetch user info for users:", lobbyData.users);
+      fetchUsersInfo(lobbyData.users)
+        .then((response) => {
+          if (response.success) {
+            console.log("✅ Lobby: Successfully fetched user info:", response.users);
+            setUsersInfo(response.users);
+          } else {
+            console.log("⚠️ Lobby: User info fetch unsuccessful, using fallbacks");
+          }
+        })
+        .catch((error) => {
+          console.log("⚠️ Lobby: Failed to fetch user info, using fallbacks:", error.message);
+          // Don't show error to user - we have fallbacks
+        });
+    }
+  }, [lobbyData?.users]);
 
   // Handle real-time lobby events from WebSocket
   useEffect(() => {
@@ -313,6 +359,70 @@ export default function Lobby({
     };
   }, [lobbyState, lobbyData]);
 
+  // Lobby health check system - detect dead/killed lobbies
+  useEffect(() => {
+    if (!lobbyData || lobbyState === "empty") return;
+
+    let healthCheckInterval: NodeJS.Timeout;
+    let consecutiveFailures = 0;
+    const maxFailures = 3; // Allow 3 consecutive failures before considering lobby dead
+    const healthCheckDelay = 30000; // Check every 30 seconds
+
+    const checkLobbyHealth = async () => {
+      try {
+        console.log("🩺 Lobby: Performing health check for lobby", lobbyData.code);
+
+        const response = await fetch(`/api/hosting/lobby/${lobbyData.code}/health`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          signal: AbortSignal.timeout(5000), // 5 second timeout
+        });
+
+        if (response.ok) {
+          consecutiveFailures = 0;
+          console.log("🩺 Lobby: Health check passed");
+        } else if (response.status === 404 || response.status === 410) {
+          console.log("🩺 Lobby: Health check indicates lobby has been killed");
+          setError("Lobby has been closed or no longer exists");
+          setLobbyData(null);
+          setLobbyState("empty");
+          clearLobbyData();
+          return; // Stop health checks
+        } else {
+          consecutiveFailures++;
+          console.warn(`🩺 Lobby: Health check failed (${consecutiveFailures}/${maxFailures})`);
+        }
+      } catch (err) {
+        consecutiveFailures++;
+        console.warn(`🩺 Lobby: Health check error (${consecutiveFailures}/${maxFailures}):`, err);
+      }
+
+      // If too many consecutive failures, assume lobby is dead
+      if (consecutiveFailures >= maxFailures) {
+        console.log("🩺 Lobby: Too many health check failures, assuming lobby is dead");
+        setError("Lobby connection lost - returning to main page");
+        setLobbyData(null);
+        setLobbyState("empty");
+        clearLobbyData();
+      }
+    };
+
+    // Start health checks after initial delay
+    const initialDelay = setTimeout(() => {
+      healthCheckInterval = setInterval(checkLobbyHealth, healthCheckDelay);
+    }, healthCheckDelay);
+
+    return () => {
+      clearTimeout(initialDelay);
+      if (healthCheckInterval) {
+        clearInterval(healthCheckInterval);
+      }
+    };
+  }, [lobbyData, lobbyState]);
+
   const createLobby = async () => {
     console.log("🏗️ Lobby: Creating lobby", { user_id: user?.userId, isAuthenticated });
 
@@ -467,6 +577,12 @@ export default function Lobby({
       };
       console.log("🔒 Lobby: Sending close request", requestBody);
 
+      // Add timeout to detect killed lobbies
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 10000); // 10 second timeout
+
       const response = await fetch(`/api/hosting/end`, {
         method: "POST",
         headers: {
@@ -474,8 +590,10 @@ export default function Lobby({
         },
         credentials: "include", // Include cookies for session
         body: JSON.stringify(requestBody),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       console.log("🔒 Lobby: Close response", { status: response.status });
 
       if (!response.ok) {
@@ -483,17 +601,48 @@ export default function Lobby({
           const errorData = await response.json();
           const errorMessage = errorData.detail || errorData.message || "Failed to close lobby";
           console.error("🔒 Lobby: Close failed with error", response.status, errorMessage);
-          // You might want to show this error to the user in the UI
-          // For now, we'll just log it since close lobby doesn't have error state in UI
+
+          // If lobby has been killed/deleted on server, free the user and return to main page
+          if (response.status === 404 || response.status === 410) {
+            console.log(
+              "🔒 Lobby: Lobby appears to have been killed, freeing user and returning to main page"
+            );
+            setError("Lobby has been closed or no longer exists");
+            // Fall through to clear lobby data and return user to main page
+          } else {
+            // For other errors, don't clear lobby data - let user try again
+            setError(`Failed to close lobby: ${errorMessage}`);
+            return;
+          }
         } catch {
           console.error("🔒 Lobby: Close failed with unknown error", response.status);
+
+          // For server errors that might indicate lobby was killed, free the user
+          if (response.status >= 500) {
+            console.log("🔒 Lobby: Server error suggests lobby may have been killed, freeing user");
+            setError("Server error - returning to lobby main page");
+            // Fall through to clear lobby data
+          } else {
+            setError("Failed to close lobby - please try again");
+            return;
+          }
         }
-        return; // Don't clear lobby data if close failed
       } else {
         console.log("🔒 Lobby: Successfully closed lobby");
       }
     } catch (err) {
       console.error("🔒 Lobby: Network error closing lobby", err);
+
+      // Check if this was a timeout (AbortError)
+      if (err instanceof Error && err.name === "AbortError") {
+        console.log("🔒 Lobby: Close request timed out, lobby may have been killed, freeing user");
+        setError("Close request timed out - returning to lobby main page");
+      } else {
+        // Other network errors might indicate the server/lobby is down
+        console.log("🔒 Lobby: Network error suggests lobby may be unreachable, freeing user");
+        setError("Network error - returning to lobby main page");
+      }
+      // Fall through to clear lobby data
     }
 
     setLobbyData(null);
@@ -1171,63 +1320,67 @@ export default function Lobby({
 
         {lobbyData?.users && lobbyData.users.length > 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {lobbyData.users.map((userId) => (
-              <div
-                key={userId}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  padding: "12px",
-                  backgroundColor: "white",
-                  borderRadius: "8px",
-                  border: `1px solid ${BORDERLINE}`,
-                }}
-              >
+            {lobbyData.users.map((userId) => {
+              const displayName = getDisplayNameForUser(userId);
+
+              return (
                 <div
+                  key={userId}
                   style={{
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
-                    backgroundColor: "#10b981",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    padding: "12px",
+                    backgroundColor: "white",
+                    borderRadius: "8px",
+                    border: `1px solid ${BORDERLINE}`,
                   }}
-                />
-                <div style={{ flex: 1 }}>
-                  <p
+                >
+                  <div
                     style={{
-                      fontFamily: BodyFont,
-                      color: FONTCOLOR,
-                      fontSize: "0.95rem",
-                      margin: 0,
+                      width: "8px",
+                      height: "8px",
+                      borderRadius: "50%",
+                      backgroundColor: "#10b981",
                     }}
-                  >
-                    {userId}
-                    {lobbyData.host === userId && (
-                      <span
-                        style={{
-                          marginLeft: "8px",
-                          fontSize: "0.8rem",
-                          color: ACCENT_COLOR,
-                          fontWeight: "bold",
-                        }}
-                      >
-                        (Host)
-                      </span>
-                    )}
-                  </p>
-                  <p
-                    style={{
-                      fontFamily: BodyFont,
-                      color: SECONDARY_TEXT,
-                      fontSize: "0.8rem",
-                      margin: 0,
-                    }}
-                  >
-                    Online
-                  </p>
+                  />
+                  <div style={{ flex: 1 }}>
+                    <p
+                      style={{
+                        fontFamily: BodyFont,
+                        color: FONTCOLOR,
+                        fontSize: "0.95rem",
+                        margin: 0,
+                      }}
+                    >
+                      {displayName}
+                      {lobbyData.host === userId && (
+                        <span
+                          style={{
+                            marginLeft: "8px",
+                            fontSize: "0.8rem",
+                            color: ACCENT_COLOR,
+                            fontWeight: "bold",
+                          }}
+                        >
+                          (Host)
+                        </span>
+                      )}
+                    </p>
+                    <p
+                      style={{
+                        fontFamily: BodyFont,
+                        color: SECONDARY_TEXT,
+                        fontSize: "0.8rem",
+                        margin: 0,
+                      }}
+                    >
+                      Online
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div

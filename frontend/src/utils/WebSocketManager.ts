@@ -16,6 +16,30 @@ interface GameEvent {
   data: Record<string, unknown>;
 }
 
+interface ChatEvent {
+  type: "chat_message";
+  action: "new_message" | "chat_cleared";
+  lobby_code: string;
+  user_id: string;
+  username?: string;
+  message?: {
+    time_created: string;
+    user_id: string;
+    username: string;
+    content: string;
+  };
+}
+
+interface PomoBankEvent {
+  type: "pomo_bank_update";
+  action: "balance_changed";
+  user_id: string;
+  new_balance: number;
+  old_balance: number;
+  change_amount: number;
+  reason: string;
+}
+
 type EventHandler<T> = (event: T) => void;
 
 class WebSocketManager {
@@ -33,6 +57,8 @@ class WebSocketManager {
   // Event handlers
   private lobbyEventHandlers: EventHandler<LobbyEvent>[] = [];
   private gameEventHandlers: EventHandler<GameEvent>[] = [];
+  private chatEventHandlers: EventHandler<ChatEvent>[] = [];
+  private pomoBankEventHandlers: EventHandler<PomoBankEvent>[] = [];
 
   // State change listeners
   private connectionStateListeners: Array<(isConnected: boolean) => void> = [];
@@ -145,8 +171,36 @@ class WebSocketManager {
           this.gameEventHandlers.forEach((handler) => handler(gameEvent));
         }
 
+        // Handle chat events
+        if (data.type === "chat_message") {
+          const chatEvent = data as ChatEvent;
+          console.log(
+            `💬 WebSocket: Chat event - ${chatEvent.action.toUpperCase()} in lobby ${
+              chatEvent.lobby_code
+            }`,
+            chatEvent
+          );
+          this.chatEventHandlers.forEach((handler) => handler(chatEvent));
+        }
+
+        // Handle pomo bank events
+        if (data.type === "pomo_bank_update") {
+          const pomoBankEvent = data as PomoBankEvent;
+          console.log(
+            `💰 WebSocket: Pomo bank event - ${pomoBankEvent.action.toUpperCase()} for user ${
+              pomoBankEvent.user_id
+            }`,
+            pomoBankEvent
+          );
+          this.pomoBankEventHandlers.forEach((handler) => handler(pomoBankEvent));
+        }
+
         // Log unhandled message types
-        if (!["pong", "system", "lobby", "game"].includes(data.type)) {
+        if (
+          !["pong", "system", "lobby", "game", "chat_message", "pomo_bank_update"].includes(
+            data.type
+          )
+        ) {
           console.warn("❓ WebSocket: Unknown message type", data);
         }
       } catch (error) {
@@ -232,6 +286,26 @@ class WebSocketManager {
       const index = this.gameEventHandlers.indexOf(handler);
       if (index > -1) {
         this.gameEventHandlers.splice(index, 1);
+      }
+    };
+  }
+
+  addChatEventHandler(handler: EventHandler<ChatEvent>): () => void {
+    this.chatEventHandlers.push(handler);
+    return () => {
+      const index = this.chatEventHandlers.indexOf(handler);
+      if (index > -1) {
+        this.chatEventHandlers.splice(index, 1);
+      }
+    };
+  }
+
+  addPomoBankEventHandler(handler: EventHandler<PomoBankEvent>): () => void {
+    this.pomoBankEventHandlers.push(handler);
+    return () => {
+      const index = this.pomoBankEventHandlers.indexOf(handler);
+      if (index > -1) {
+        this.pomoBankEventHandlers.splice(index, 1);
       }
     };
   }

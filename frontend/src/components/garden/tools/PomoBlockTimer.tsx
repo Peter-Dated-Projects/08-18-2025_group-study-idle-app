@@ -32,6 +32,8 @@ export default function PomoBlockTimer() {
   const [isEditingTime, setIsEditingTime] = useState(false);
   const [editHours, setEditHours] = useState("0");
   const [editMinutes, setEditMinutes] = useState(settings.workDuration.toString());
+  const [hasProcessedCompletion, setHasProcessedCompletion] = useState(false);
+  const hasProcessedCompletionRef = useRef(false);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -70,8 +72,54 @@ export default function PomoBlockTimer() {
     }
   };
 
+  const updatePomoBank = async (completionType: "normal" | "skipped") => {
+    if (!user?.userId) {
+      console.warn("Cannot update pomo bank: user not authenticated");
+      return;
+    }
+
+    try {
+      // Calculate minutes based on completion type
+      const minutesWorked =
+        completionType === "normal"
+          ? settings.workDuration
+          : Math.floor((settings.workDuration * 60 - timeLeft) / 60); // Floor the partial minutes
+
+      const response = await fetch("/api/pomo-bank/pomo-earnings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          minutes_completed: minutesWorked,
+          was_skipped: completionType === "skipped",
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to update pomo bank:", response.statusText);
+        return;
+      }
+
+      const result = await response.json();
+      console.log(
+        `💰 Earned ${result.earnings} coins for ${completionType} completion (${minutesWorked} minutes)`
+      );
+    } catch (error) {
+      console.error("Error updating pomo bank:", error);
+    }
+  };
+
   const handlePhaseComplete = useCallback(() => {
+    // Prevent duplicate processing using ref
+    if (hasProcessedCompletionRef.current) {
+      return;
+    }
+
     setIsRunning(false);
+    hasProcessedCompletionRef.current = true;
+    setHasProcessedCompletion(true);
 
     // Play notification sound (simple beep)
     playNotificationSound();
@@ -83,11 +131,14 @@ export default function PomoBlockTimer() {
       // Update leaderboard and Redis cache
       updateLeaderboard();
 
+      // Update pomo bank with normal completion
+      updatePomoBank("normal");
+
       // Work session completed, go back to idle
       setCurrentPhase("idle");
       setTimeLeft(settings.workDuration * 60);
     }
-  }, [currentPhase, completedSessions, settings]);
+  }, [currentPhase, completedSessions, settings, timeLeft, user]);
 
   // Timer effect
   useEffect(() => {
@@ -145,6 +196,8 @@ export default function PomoBlockTimer() {
       setTimeLeft(settings.workDuration * 60);
     }
     setIsRunning(true);
+    hasProcessedCompletionRef.current = false; // Reset completion flag for new session
+    setHasProcessedCompletion(false);
   };
 
   const pauseTimer = () => {
@@ -156,10 +209,25 @@ export default function PomoBlockTimer() {
     setCurrentPhase("idle");
     setTimeLeft(settings.workDuration * 60);
     setCompletedSessions(0);
+    hasProcessedCompletionRef.current = false; // Reset completion flag
+    setHasProcessedCompletion(false);
   };
 
   const skipPhase = () => {
-    handlePhaseComplete();
+    if (currentPhase === "work" && !hasProcessedCompletionRef.current) {
+      // Update pomo bank with partial completion
+      updatePomoBank("skipped");
+
+      // Count it as a completed session for UI purposes
+      setCompletedSessions((prev) => prev + 1);
+    }
+
+    // Reset to idle state
+    setIsRunning(false);
+    setCurrentPhase("idle");
+    setTimeLeft(settings.workDuration * 60);
+    hasProcessedCompletionRef.current = false; // Reset completion flag
+    setHasProcessedCompletion(false);
   };
 
   const formatTime = (seconds: number): string => {

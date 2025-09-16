@@ -25,6 +25,16 @@ class GameEvent(BaseModel):
     lobby_code: str
     data: dict = {}
 
+class PomoBankEvent(BaseModel):
+    """Structure for pomo bank balance update events."""
+    type: str = "pomo_bank_update"
+    action: str = "balance_changed"
+    user_id: str
+    new_balance: int
+    old_balance: int
+    change_amount: int
+    reason: str
+
 class ConnectionManager:
     """Manages WebSocket connections and broadcasts events."""
     
@@ -129,6 +139,20 @@ class ConnectionManager:
         }
         await self.broadcast_to_lobby(message, event.lobby_code)
         logger.info(f"Broadcasted {event.action} event for lobby {event.lobby_code}")
+    
+    async def send_pomo_bank_event(self, event: PomoBankEvent):
+        """Send a pomo bank update event to a specific user."""
+        message = {
+            "type": event.type,
+            "action": event.action,
+            "user_id": event.user_id,
+            "new_balance": event.new_balance,
+            "old_balance": event.old_balance,
+            "change_amount": event.change_amount,
+            "reason": event.reason
+        }
+        await self.send_personal_message(message, event.user_id)
+        logger.info(f"Sent pomo bank update to {event.user_id}: {event.old_balance} → {event.new_balance} ({event.reason})")
     
     def get_connection_count(self) -> int:
         """Get the number of active connections."""

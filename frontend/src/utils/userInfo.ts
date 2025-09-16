@@ -2,15 +2,7 @@
  * Utility functions for fetching user information with caching
  */
 
-export interface UserInfo {
-  user_id: string;
-  display_name?: string | null;
-  email?: string | null;
-  photo_url?: string | null;
-  created_at?: string | null;
-  last_login?: string | null;
-  provider?: string | null;
-}
+import type { UserInfo } from "../types/user";
 
 export interface UsersInfoResponse {
   success: boolean;
@@ -82,8 +74,8 @@ export async function fetchUserInfo(userId: string): Promise<UserInfo | null> {
  * @returns Display name or user ID as fallback
  */
 export function getDisplayName(userInfo: UserInfo | null): string {
-  if (!userInfo) return "Unknown User";
-  return userInfo.display_name || userInfo.user_id;
+  if (!userInfo) return "Loading...";
+  return userInfo.display_name || "Unnamed User";
 }
 
 /**

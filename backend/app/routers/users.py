@@ -84,6 +84,8 @@ async def get_users_info(
         # Schedule cache cleanup in background
         background_tasks.add_task(user_service.cache_service.cleanup_expired_users)
         
+        print("users_info", users_info)  # Debugging line
+
         return UsersInfoResponse(
             success=True,
             users=users_info,

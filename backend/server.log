@@ -1,0 +1,181 @@
+INFO:     Will watch for changes in these directories: ['/Users/petthepotat/Documents/code/dated-projects/08-18-2025_group-study-idle-app/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [95349] using WatchFiles
+� Loading config from: /Users/petthepotat/Documents/code/dated-projects/08-18-2025_group-study-idle-app/backend/config/.env
+�🚀 Starting Group Study Idle App Backend on port 8000
+📝 Debug mode: True
+🔗 Server will be available at: http://0.0.0.0:8000
+--------------------------------------------------
+Firestore database name 'user-notion-tokens' specified but firebase-admin 6.5.0 doesn't support multi-database. Using default database.
+/Users/petthepotat/Documents/code/dated-projects/08-18-2025_group-study-idle-app/.venv/lib/python3.11/site-packages/pydantic/_internal/_config.py:373: UserWarning: Valid config keys have changed in V2:
+* 'allow_population_by_field_name' has been renamed to 'validate_by_name'
+  warnings.warn(message, UserWarning)
+INFO:app.main:Using Redis-based lobby system
+INFO:app.main:Redis connection successful
+INFO:     Started server process [95444]
+INFO:     Waiting for application startup.
+INFO:app.main:Application starting up...
+INFO:app.main:Checking and creating database tables...
+INFO:app.main:Database tables are ready
+INFO:app.services.background_task_manager:Starting background tasks
+INFO:app.main:Periodic sync background task started
+INFO:app.main:Application startup complete
+INFO:app.services.background_task_manager:Periodic sync background task started
+INFO:app.services.periodic_sync_service:Starting periodic sync service (every hour)
+INFO:app.services.periodic_sync_service:Starting Redis -> PostgreSQL sync
+INFO:app.services.periodic_sync_service:Found 0 users in Redis
+INFO:app.services.periodic_sync_service:Found 0 users in PostgreSQL
+INFO:app.services.periodic_sync_service:Sync completed: {'users_updated': 0, 'users_created': 0, 'users_deleted': 0, 'errors': 0, 'sync_time': '2025-09-16T02:03:34.231245'}
+INFO:app.services.background_task_manager:Periodic reset background task started
+INFO:app.services.periodic_reset_service:Starting periodic reset service
+INFO:app.services.background_task_manager:Cache cleanup background task started
+INFO:     Application startup complete.
+WARNING:app.auth_utils:No user_id cookie found in request
+Database tables created successfully!
+INFO:     127.0.0.1:61142 - "GET /api/chat/info/TEST_LOBBY_123 HTTP/1.1" 401 Unauthorized
+INFO:app.services.chat_service:Added chat message 1757988240957-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61220 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61283 - "GET /api/chat/messages/HLL4SX9SCBZSHLY6?start_id=-&count=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61281 - "POST /api/users/info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61282 - "POST /api/users/info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61283 - "GET /api/chat/messages/HLL4SX9SCBZSHLY6?start_id=-&count=50 HTTP/1.1" 200 OK
+INFO:app.services.user_cache_service:Cache cleanup completed: {'total_scanned': 1, 'active_users': 1, 'expired_users': 0, 'removed_count': 0, 'cleanup_time': 1757988253}
+INFO:app.services.user_cache_service:Cache cleanup completed: {'total_scanned': 1, 'active_users': 1, 'expired_users': 0, 'removed_count': 0, 'cleanup_time': 1757988253}
+INFO:     127.0.0.1:61302 - "WebSocket /ws?user_id=803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd" [accepted]
+INFO:app.websocket_manager:User 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd connected via WebSocket. Total connections: 1
+INFO:     connection open
+INFO:app.services.chat_service:Added chat message 1757988263793-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988265777-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988267053-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988269596-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988269713-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988270008-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988270176-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988270696-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988270720-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61380 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988270726-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61381 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988270770-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988271103-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988271113-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988271366-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988271593-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988271812-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988272132-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988272153-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61342 - "POST /api/chat/send HTTP/1.1" 200 OK
+INFO:app.services.chat_service:Added chat message 1757988296391-0 to lobby HLL4SX9SCBZSHLY6
+INFO:app.routers.chat:Chat message sent by user 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd to lobby HLL4SX9SCBZSHLY6
+INFO:     127.0.0.1:61491 - "POST /api/chat/send HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'test_chat_service.py', 'app/routers/chat.py', 'app/main.py', 'app/services/chat_service.py'. Reloading...
+INFO:     Shutting down
+ERROR:app.routers.websockets:Error processing message from 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd: (1012, None)
+INFO:app.websocket_manager:User 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd disconnected. Total connections: 0
+INFO:     connection closed
+INFO:     Waiting for application shutdown.
+INFO:app.main:Application shutting down...
+INFO:app.services.background_task_manager:Stopping background tasks
+INFO:app.services.periodic_sync_service:Stopping periodic sync service
+INFO:app.services.periodic_reset_service:Stopping periodic reset service
+INFO:app.services.background_task_manager:Periodic sync background task was cancelled
+INFO:app.services.background_task_manager:Periodic sync background task ended
+INFO:app.services.background_task_manager:Background task Task-3 cancelled
+INFO:app.services.background_task_manager:Periodic reset background task was cancelled
+INFO:app.services.background_task_manager:Periodic reset background task ended
+INFO:app.services.background_task_manager:Background task Task-4 cancelled
+INFO:app.services.background_task_manager:Cache cleanup background task was cancelled
+INFO:app.services.background_task_manager:Cache cleanup background task ended
+INFO:app.services.background_task_manager:Background task Task-5 cancelled
+INFO:app.main:Background tasks stopped
+INFO:app.main:Application shutdown complete
+INFO:     Application shutdown complete.
+INFO:     Finished server process [95444]
+Firestore database name 'user-notion-tokens' specified but firebase-admin 6.5.0 doesn't support multi-database. Using default database.
+/Users/petthepotat/Documents/code/dated-projects/08-18-2025_group-study-idle-app/.venv/lib/python3.11/site-packages/pydantic/_internal/_config.py:373: UserWarning: Valid config keys have changed in V2:
+* 'allow_population_by_field_name' has been renamed to 'validate_by_name'
+  warnings.warn(message, UserWarning)
+INFO:app.main:Using Redis-based lobby system
+INFO:app.main:Redis connection successful
+INFO:     Started server process [95953]
+INFO:     Waiting for application startup.
+INFO:app.main:Application starting up...
+INFO:app.main:Checking and creating database tables...
+INFO:app.main:Database tables are ready
+INFO:app.services.background_task_manager:Starting background tasks
+INFO:app.main:Periodic sync background task started
+INFO:app.main:Application startup complete
+INFO:app.services.background_task_manager:Periodic sync background task started
+INFO:app.services.periodic_sync_service:Starting periodic sync service (every hour)
+INFO:app.services.periodic_sync_service:Starting Redis -> PostgreSQL sync
+INFO:app.services.periodic_sync_service:Found 0 users in Redis
+INFO:app.services.periodic_sync_service:Found 0 users in PostgreSQL
+INFO:app.services.periodic_sync_service:Sync completed: {'users_updated': 0, 'users_created': 0, 'users_deleted': 0, 'errors': 0, 'sync_time': '2025-09-16T02:05:17.323592'}
+INFO:app.services.background_task_manager:Periodic reset background task started
+INFO:app.services.periodic_reset_service:Starting periodic reset service
+INFO:app.services.background_task_manager:Cache cleanup background task started
+INFO:     Application startup complete.
+INFO:     127.0.0.1:61575 - "WebSocket /ws?user_id=803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd" [accepted]
+INFO:app.websocket_manager:User 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd connected via WebSocket. Total connections: 1
+INFO:     connection open
+Database tables created successfully!
+INFO:     127.0.0.1:61637 - "GET /api/chat/messages/HLL4SX9SCBZSHLY6?start_id=-&count=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61637 - "GET /api/chat/messages/HLL4SX9SCBZSHLY6?start_id=-&count=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61900 - "GET /api/chat/messages/HLL4SX9SCBZSHLY6?start_id=-&count=50 HTTP/1.1" 200 OK
+INFO:     Shutting down
+ERROR:app.routers.websockets:Error processing message from 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd: (1012, None)
+INFO:app.websocket_manager:User 803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd disconnected. Total connections: 0
+INFO:     connection closed
+INFO:     Waiting for application shutdown.
+INFO:app.main:Application shutting down...
+INFO:app.services.background_task_manager:Stopping background tasks
+INFO:app.services.periodic_sync_service:Stopping periodic sync service
+INFO:app.services.periodic_reset_service:Stopping periodic reset service
+INFO:app.services.background_task_manager:Periodic sync background task was cancelled
+INFO:app.services.background_task_manager:Periodic sync background task ended
+INFO:app.services.background_task_manager:Background task Task-3 cancelled
+INFO:app.services.background_task_manager:Periodic reset background task was cancelled
+INFO:app.services.background_task_manager:Periodic reset background task ended
+INFO:app.services.background_task_manager:Background task Task-4 cancelled
+INFO:app.services.background_task_manager:Cache cleanup background task was cancelled
+INFO:app.services.background_task_manager:Cache cleanup background task ended
+INFO:app.services.background_task_manager:Background task Task-5 cancelled
+INFO:app.main:Background tasks stopped
+INFO:app.main:Application shutdown complete
+INFO:     Application shutdown complete.
+INFO:     Finished server process [95953]
+INFO:     Stopping reloader process [95349]

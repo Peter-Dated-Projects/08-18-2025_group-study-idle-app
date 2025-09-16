@@ -4,7 +4,7 @@ Handles WebSocket connections and broadcasts lobby events to connected clients.
 """
 import json
 import logging
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Optional
 from fastapi import WebSocket
 from pydantic import BaseModel
 
@@ -16,7 +16,17 @@ class LobbyEvent(BaseModel):
     action: str  # "join", "leave", "disband"
     lobby_code: str
     user_id: str
+    username: Optional[str] = None
     users: List[str] = []  # Updated user list
+
+class ChatEvent(BaseModel):
+    """Structure for chat events."""
+    type: str  # "chat_message"
+    action: str  # "new_message", "chat_cleared"
+    lobby_code: str
+    user_id: str
+    username: Optional[str] = None
+    message: Optional[dict] = None  # Chat message data
 
 class GameEvent(BaseModel):
     """Structure for game events (future use)."""
@@ -126,10 +136,24 @@ class ConnectionManager:
             "action": event.action,
             "lobby_code": event.lobby_code,
             "user_id": event.user_id,
+            "username": event.username,
             "users": event.users
         }
         await self.broadcast_to_lobby(message, event.lobby_code)
         logger.info(f"Broadcasted {event.action} event for lobby {event.lobby_code}")
+    
+    async def broadcast_chat_event(self, event: ChatEvent):
+        """Broadcast a chat event to all users in the lobby."""
+        message = {
+            "type": event.type,
+            "action": event.action,
+            "lobby_code": event.lobby_code,
+            "user_id": event.user_id,
+            "username": event.username,
+            "message": event.message
+        }
+        await self.broadcast_to_lobby(message, event.lobby_code, exclude_user=event.user_id)
+        logger.info(f"Broadcasted chat {event.action} event for lobby {event.lobby_code}")
     
     def get_connection_count(self) -> int:
         """Get the number of active connections."""

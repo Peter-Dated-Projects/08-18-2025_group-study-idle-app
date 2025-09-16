@@ -15,6 +15,7 @@ import "@/utils/AvatarSignals"; // Import for console testing functions
 import { AVATAR_BOX } from "../../constants";
 import { FRAMERATE } from "../GardenCanvas";
 import PlayerChat from "./PlayerChat";
+import BankBalance from "./BankBalance";
 
 interface MenuTextures {
   avatar: PIXI.RenderTexture | null;
@@ -26,9 +27,11 @@ interface GardenMenuProps {
   pixiApp?: PIXI.Application;
   // Whether the user is currently in a lobby
   isInLobby?: boolean;
+  // Current lobby code for clearing chat when switching lobbies
+  lobbyCode?: string;
 }
 
-export default function GardenMenu({ pixiApp, isInLobby = false }: GardenMenuProps) {
+export default function GardenMenu({ pixiApp, isInLobby = false, lobbyCode }: GardenMenuProps) {
   const canvasRefs = {
     avatar: useRef<HTMLCanvasElement>(null),
     inventory: useRef<HTMLCanvasElement>(null),
@@ -269,8 +272,18 @@ export default function GardenMenu({ pixiApp, isInLobby = false }: GardenMenuPro
       `,
       }}
     >
-      {/* Avatar */}
-      <div style={{ gridArea: "topleft", pointerEvents: "auto" }}>
+      {/* Avatar and Bank Balance */}
+      <div
+        style={{
+          gridArea: "topleft",
+          pointerEvents: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+          alignItems: "flex-start",
+          maxWidth: "150px",
+        }}
+      >
         <canvas
           ref={canvasRefs.avatar}
           width={150}
@@ -286,6 +299,9 @@ export default function GardenMenu({ pixiApp, isInLobby = false }: GardenMenuPro
             imageRendering: "pixelated" as const, // Disable antialiasing for crisp pixels
           }}
         />
+
+        {/* Bank Balance Component */}
+        <BankBalance />
       </div>
 
       {/* PlayerChat - spans bottom left and bottom center */}
@@ -298,7 +314,7 @@ export default function GardenMenu({ pixiApp, isInLobby = false }: GardenMenuPro
           alignItems: "stretch",
         }}
       >
-        <PlayerChat isInLobby={isInLobby} />
+        <PlayerChat isInLobby={isInLobby} lobbyCode={lobbyCode} />
       </div>
 
       {/* Inventory - commented out since PlayerChat now occupies bottomleft */}
