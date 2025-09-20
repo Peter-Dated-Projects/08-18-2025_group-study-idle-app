@@ -2,11 +2,11 @@ import {
   AnimationState,
   CharacterAnimation,
   CharacterAnimationBuilder,
-} from "../engine/CharacterAnimation";
-import { AnimatedTile } from "../engine/Tilemap";
-import { AnimationLoader } from "@/engine/AnimationLoader";
-import { Rigidbody } from "@/engine/Rigidbody";
-import { RectangleCollider, createRectangleCollider, isCollided } from "@/engine/Collider";
+} from "../engine/graphics/AnimationStateMachine";
+import { AnimatedTile } from "../engine/resources/Tilemap";
+import { AnimationLoader } from "@/engine/graphics/AnimationLoader";
+import { Rigidbody } from "@/engine/physics/Rigidbody";
+import { RectangleCollider, createRectangleCollider, isCollided } from "@/engine/physics/Collider";
 import * as PIXI from "pixi.js";
 import { DESIGN_WIDTH, DESIGN_HEIGHT } from "../components/garden/GardenCanvas";
 

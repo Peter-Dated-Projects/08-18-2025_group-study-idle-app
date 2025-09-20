@@ -1,5 +1,5 @@
-import { SignalHandler } from "../engine/GlobalSignalHandler";
-import { CharacterAnimation } from "../engine/CharacterAnimation";
+import { SignalHandler } from "../engine/scripts/GlobalSignalHandler";
+import { CharacterAnimation } from "../engine/graphics/AnimationStateMachine";
 
 /**
  * Signal handler for avatar-related events

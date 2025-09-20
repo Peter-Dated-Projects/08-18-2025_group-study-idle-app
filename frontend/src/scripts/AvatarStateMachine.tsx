@@ -2,10 +2,10 @@ import {
   AnimationState,
   CharacterAnimation,
   CharacterAnimationBuilder,
-} from "../engine/CharacterAnimation";
-import { AnimatedTile } from "../engine/Tilemap";
-import { AnimationLoader } from "@/engine/AnimationLoader";
-import { onSignal } from "@/engine/GlobalSignalHandler";
+} from "../engine/graphics/AnimationStateMachine";
+import { AnimatedTile } from "../engine/resources/Tilemap";
+import { AnimationLoader } from "@/engine/graphics/AnimationLoader";
+import { onSignal } from "@/engine/scripts/GlobalSignalHandler";
 import * as PIXI from "pixi.js";
 
 // Local interface for animation frame data to match CharacterAnimation expectations

@@ -1,14 +1,14 @@
 import { useRef, useState, useEffect } from "react";
 import * as PIXI from "pixi.js";
-import { AnimationLoader, AnimatedSpriteWrapper } from "@/engine/AnimationLoader";
-import { CharacterAnimation } from "@/engine/CharacterAnimation";
+import { AnimationLoader, AnimatedSpriteWrapper } from "@/engine/graphics/AnimationLoader";
+import { CharacterAnimation } from "@/engine/graphics/AnimationStateMachine";
 import { buildAvatarStateMachine, CheerIdleAnimationState } from "@/scripts/AvatarStateMachine";
 import {
   updateSignals,
   registerSignalHandler,
   unregisterSignalHandler,
   emitSignal,
-} from "@/engine/GlobalSignalHandler";
+} from "@/engine/scripts/GlobalSignalHandler";
 import { AvatarSignalHandler } from "@/scripts/AvatarSignalHandler";
 import "@/utils/AvatarSignals"; // Import for console testing functions
 
@@ -194,6 +194,12 @@ export default function GardenMenu({ pixiApp, isInLobby = false, lobbyCode }: Ga
 
   // Helper function to update all canvases
   const updateAllCanvases = (textures: MenuTextures, renderer: PIXI.Renderer) => {
+    // Add null check for renderer
+    if (!renderer) {
+      console.warn("⚠️ PIXI Renderer is null, skipping canvas updates");
+      return;
+    }
+
     Object.entries(canvasRefs).forEach(([key, ref]) => {
       if (ref.current && textures[key as keyof MenuTextures]) {
         const canvas = ref.current;
@@ -215,7 +221,7 @@ export default function GardenMenu({ pixiApp, isInLobby = false, lobbyCode }: Ga
 
   // Update menu textures periodically
   useEffect(() => {
-    if (!pixiApp || !menuContainers.current || !menuTextures.avatar) return;
+    if (!pixiApp || !pixiApp.renderer || !menuContainers.current || !menuTextures.avatar) return;
 
     const updateInterval = setInterval(() => {
       // Process global signals first
@@ -226,8 +232,11 @@ export default function GardenMenu({ pixiApp, isInLobby = false, lobbyCode }: Ga
         characterAnimationRef.current.update(1 / 16); // 16 FPS delta time
       }
 
-      renderMenuTextures(pixiApp, menuContainers.current!, menuTextures);
-      updateAllCanvases(menuTextures, pixiApp.renderer);
+      // Additional safety checks before rendering
+      if (pixiApp && pixiApp.renderer && menuContainers.current) {
+        renderMenuTextures(pixiApp, menuContainers.current!, menuTextures);
+        updateAllCanvases(menuTextures, pixiApp.renderer);
+      }
     }, 1000 / FRAMERATE); // 12 FPS for UI updates
 
     return () => {
@@ -373,6 +382,12 @@ function renderMenuTextures(
   containers: Record<string, PIXI.Container>,
   textures: MenuTextures
 ) {
+  // Add null check for renderer
+  if (!app || !app.renderer) {
+    console.warn("⚠️ PIXI Application or renderer is null, skipping texture rendering");
+    return;
+  }
+
   Object.entries(containers).forEach(([key, container]) => {
     const texture = textures[key as keyof MenuTextures];
     if (texture && container) {
@@ -384,12 +399,15 @@ function renderMenuTextures(
         cont.visible = true;
         cont.alpha = 1.0;
 
-        // Render to texture
-        app.renderer.render({
-          container: cont,
-          target: texture,
-          clear: true,
-        });
+        // Additional safety check before rendering
+        if (app.renderer && typeof app.renderer.render === "function") {
+          // Render to texture
+          app.renderer.render({
+            container: cont,
+            target: texture,
+            clear: true,
+          });
+        }
       } catch (error) {
         console.error(`❌ Failed to render ${key}:`, error);
       }
@@ -403,6 +421,12 @@ function updateCanvasFromTexture(
   texture: PIXI.RenderTexture,
   renderer: PIXI.Renderer
 ) {
+  // Add null checks for renderer and extract
+  if (!renderer || !renderer.extract) {
+    console.warn("⚠️ PIXI Renderer or extract is null, skipping canvas update");
+    return;
+  }
+
   // Disable image smoothing for pixel-perfect rendering
   const context = ctx as CanvasRenderingContext2D;
   context.imageSmoothingEnabled = false;
@@ -413,6 +437,12 @@ function updateCanvasFromTexture(
   try {
     // First check if texture has valid dimensions
     if (texture.width === 0 || texture.height === 0) {
+      return;
+    }
+
+    // Additional safety check for extract methods
+    if (typeof renderer.extract.canvas !== "function") {
+      console.warn("⚠️ Renderer extract.canvas method not available");
       return;
     }
 
@@ -428,6 +458,12 @@ function updateCanvasFromTexture(
     }
   } catch (error) {
     try {
+      // Additional safety check for pixels method
+      if (typeof renderer.extract.pixels !== "function") {
+        console.warn("⚠️ Renderer extract.pixels method not available");
+        return;
+      }
+
       // Fallback to pixel extraction
       const pixels = renderer.extract.pixels(texture);
 

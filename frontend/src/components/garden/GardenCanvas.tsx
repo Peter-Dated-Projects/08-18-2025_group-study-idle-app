@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as PIXI from "pixi.js";
-import { Entity } from "@/engine/Entity";
-import { RectangleCollider, createRectangleCollider } from "@/engine/Collider";
-import { loadPixelTexture, createAndAddEntity } from "@/engine/EntityUtils";
-import { AnimationLoader } from "@/engine/AnimationLoader";
+import { Entity } from "@/engine/physics/Entity";
+import { RectangleCollider, createRectangleCollider } from "@/engine/physics/Collider";
+import { loadPixelTexture, createAndAddEntity } from "@/engine/physics/EntityUtils";
+import { AnimationLoader } from "@/engine/graphics/AnimationLoader";
 import { CowBaby, createCowBaby } from "@/scripts/CowBabyStateMachine";
 
 export const FRAMERATE = 6;
@@ -328,7 +328,7 @@ export default function GardenCanvas({
           // game logic -- every frame
           // Update static entities
           entities.forEach((entity) => {
-            entity.update(ticker.deltaTime);
+            entity.update();
 
             // Check if entity changed and set dirty flag
             if (entity.isChanged) {

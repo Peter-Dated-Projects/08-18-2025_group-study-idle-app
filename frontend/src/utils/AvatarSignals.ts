@@ -3,7 +3,7 @@
  * This file demonstrates how any component can emit signals to control avatar behavior
  */
 
-import { emitSignal, onSignal } from "@/engine/GlobalSignalHandler";
+import { emitSignal, onSignal } from "@/engine/scripts/GlobalSignalHandler";
 
 // ==========================================
 // SIGNAL DEFINITIONS (for documentation)

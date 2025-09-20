@@ -1,12 +1,18 @@
 import * as PIXI from "pixi.js";
 import { Assets } from "pixi.js";
 import { Entity } from "./Entity";
-import { Rect } from "./Rect";
+import { Vec2 } from "./Vec2";
 
 // Function to load texture with pixel art scale mode
 export async function loadPixelTexture(filename: string): Promise<PIXI.Texture> {
   const texture = await Assets.load(filename);
-  texture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
+  // For modern PIXI.js v8+, use the new scale mode API
+  if (texture.source) {
+    texture.source.scaleMode = "nearest";
+  } else if (texture.baseTexture) {
+    // Fallback for older PIXI versions
+    texture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
+  }
   return texture;
 }
 
@@ -29,11 +35,10 @@ export async function createAndAddEntity(
   sprite.zIndex = zIndex;
   container.addChild(sprite);
 
-  const entity = new Entity(sprite, {
-    position: { x, y },
-    area: { width: texture.width * scale, height: texture.height * scale },
-    velocity: { x: 0, y: 0 },
-  });
+  // Create entity with proper Vec2 objects
+  const position = new Vec2(x, y);
+  const size = new Vec2(texture.width * scale, texture.height * scale);
+  const entity = new Entity(position, size);
 
   entities.push(entity);
   return entity;

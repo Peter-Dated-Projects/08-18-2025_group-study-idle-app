@@ -1,4 +1,4 @@
-import { Entity } from "./Entity";
+import { Entity } from "./LegacyEntity";
 import { Rect } from "./Rect";
 import * as PIXI from "pixi.js";
 
