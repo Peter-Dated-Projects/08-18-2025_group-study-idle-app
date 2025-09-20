@@ -2,6 +2,8 @@ import * as PIXI from "pixi.js";
 import { Entity } from "./physics/Entity";
 import { Vec2 } from "./physics/Vec2";
 import { timeManager } from "./TimeManager";
+import { mouseInteractionSystem } from "./input/MouseInteractionSystem";
+import { RendererHandler, BaseRenderer } from "./rendering";
 
 /**
  * World Physics Handler - manages all entities and their physics simulation
@@ -14,13 +16,14 @@ export class WorldPhysicsHandler {
   private isRunning: boolean;
   private gravity: Vec2;
   private worldBounds: { min: Vec2; max: Vec2 } | null;
+  private rendererHandler: RendererHandler;
 
   // Performance tracking
   private lastUpdateTime: number;
   private frameCount: number;
   private averageFPS: number;
 
-  constructor(pixiApp: PIXI.Application) {
+  constructor(pixiApp: PIXI.Application, worldContainer: PIXI.Container) {
     this.entities = new Map();
     this.entitiesArray = [];
     this.pixiApp = pixiApp;
@@ -31,6 +34,12 @@ export class WorldPhysicsHandler {
     this.lastUpdateTime = performance.now();
     this.frameCount = 0;
     this.averageFPS = 0;
+
+    // Initialize the rendering system
+    this.rendererHandler = new RendererHandler(pixiApp, worldContainer);
+
+    // Set up mouse event listeners for interaction system
+    this.setupMouseEventListeners();
 
     // Start the update loop
     this.start();
@@ -47,6 +56,11 @@ export class WorldPhysicsHandler {
 
     this.entities.set(entity.id, entity);
     this.entitiesArray.push(entity);
+
+    // Register clickable entities with mouse interaction system
+    if (entity.hasTag("clickable")) {
+      mouseInteractionSystem.registerEntity(entity);
+    }
   }
 
   /**
@@ -63,6 +77,9 @@ export class WorldPhysicsHandler {
     if (index > -1) {
       this.entitiesArray.splice(index, 1);
     }
+
+    // Unregister from mouse interaction system
+    mouseInteractionSystem.unregisterEntity(entity);
 
     return true;
   }
@@ -174,6 +191,9 @@ export class WorldPhysicsHandler {
     // Update performance tracking
     this.updatePerformanceStats();
 
+    // Update mouse interactions for clickable entities
+    mouseInteractionSystem.update();
+
     // Apply gravity to dynamic entities
     this.applyGravity(deltaTime);
 
@@ -188,6 +208,10 @@ export class WorldPhysicsHandler {
 
     // Clean up inactive entities
     this.cleanupInactiveEntities();
+
+    // Update and render all entities
+    this.rendererHandler.update(deltaTime);
+    this.rendererHandler.renderAll(this.entitiesArray);
   };
 
   /**
@@ -377,6 +401,70 @@ export class WorldPhysicsHandler {
    */
   public isSimulationRunning(): boolean {
     return this.isRunning;
+  }
+
+  /**
+   * Check if any entities have changes that need visual updates
+   */
+  public hasChanges(): boolean {
+    return this.entitiesArray.some((entity) => entity.isChanged);
+  }
+
+  /**
+   * Reset all entity change flags after processing visual updates
+   */
+  public resetAllChanges(): void {
+    this.entitiesArray.forEach((entity) => entity.resetChanged());
+  }
+
+  /**
+   * Get the renderer handler for direct access
+   */
+  public getRendererHandler(): RendererHandler {
+    return this.rendererHandler;
+  }
+
+  /**
+   * Register a renderer for a specific entity
+   */
+  public registerEntityRenderer(entityId: string, renderer: BaseRenderer): void {
+    this.rendererHandler.registerRenderer(entityId, renderer);
+  }
+
+  /**
+   * Remove a renderer for a specific entity
+   */
+  public removeEntityRenderer(entityId: string): void {
+    this.rendererHandler.removeRenderer(entityId);
+  }
+
+  /**
+   * Set debug mode for all renderers
+   */
+  public setDebugMode(enabled: boolean): void {
+    this.rendererHandler.setDebugMode(enabled);
+  }
+
+  /**
+   * Set up mouse event listeners for the interaction system
+   */
+  private setupMouseEventListeners(): void {
+    const canvas = this.pixiApp.canvas;
+    if (!canvas) return;
+
+    // Listen for mouse down/up events to track clicking
+    canvas.addEventListener("mousedown", () => {
+      mouseInteractionSystem.setMouseDown(true);
+    });
+
+    canvas.addEventListener("mouseup", () => {
+      mouseInteractionSystem.setMouseDown(false);
+    });
+
+    // Also listen to document to catch mouse up events outside canvas
+    document.addEventListener("mouseup", () => {
+      mouseInteractionSystem.setMouseDown(false);
+    });
   }
 }
 

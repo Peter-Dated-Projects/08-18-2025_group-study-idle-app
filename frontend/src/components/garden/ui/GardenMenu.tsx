@@ -285,7 +285,7 @@ export default function GardenMenu({ pixiApp, isInLobby = false, lobbyCode }: Ga
       <div
         style={{
           gridArea: "topleft",
-          pointerEvents: "auto",
+          pointerEvents: "none",
           display: "flex",
           flexDirection: "column",
           gap: "8px",
@@ -306,6 +306,7 @@ export default function GardenMenu({ pixiApp, isInLobby = false, lobbyCode }: Ga
             objectFit: "contain",
             // border: "1px solid #333", // Debug border
             imageRendering: "pixelated" as const, // Disable antialiasing for crisp pixels
+            pointerEvents: "auto", // Enable pointer events for avatar click
           }}
         />
 
@@ -318,30 +319,13 @@ export default function GardenMenu({ pixiApp, isInLobby = false, lobbyCode }: Ga
         style={{
           gridColumn: "1 / 3", // spans from column 1 to column 3 (so columns 1 and 2)
           gridRow: "3", // bottom row only
-          pointerEvents: "auto",
+          pointerEvents: "none",
           display: "flex",
           alignItems: "stretch",
         }}
       >
         <PlayerChat isInLobby={isInLobby} lobbyCode={lobbyCode} />
       </div>
-
-      {/* Inventory - commented out since PlayerChat now occupies bottomleft */}
-      {/* <div style={{ gridArea: "bottomleft", pointerEvents: "auto" }}>
-        <canvas
-          ref={canvasRefs.inventory}
-          width={150}
-          height={150}
-          style={{
-            width: "100%",
-            height: "100%",
-            maxWidth: "150px",
-            maxHeight: "150px",
-            objectFit: "contain",
-            border: "1px solid #333",
-          }}
-        />
-      </div> */}
     </div>
   );
 }

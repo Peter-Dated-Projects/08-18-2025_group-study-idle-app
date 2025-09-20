@@ -124,6 +124,7 @@ export default function PlayerChat({ isInLobby = false, lobbyCode, onClearChat }
         display: "flex",
         flexDirection: "column",
         justifyContent: "flex-end", // This ensures content aligns to bottom
+        pointerEvents: "none",
       }}
     >
       <div
@@ -158,6 +159,7 @@ export default function PlayerChat({ isInLobby = false, lobbyCode, onClearChat }
               minHeight: "36px",
               transition: "all 0.3s ease",
               cursor: "pointer",
+              pointerEvents: "auto", // Keep header interactive for collapse functionality
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = `rgba(211, 174, 131, 1)`;
@@ -209,6 +211,7 @@ export default function PlayerChat({ isInLobby = false, lobbyCode, onClearChat }
               flexDirection: "column",
               gap: "6px",
               minHeight: 0, // Important for flex scrolling
+              pointerEvents: "none", // Make messages transparent to mouse events
             }}
           >
             {/* Loading state */}
@@ -318,6 +321,7 @@ export default function PlayerChat({ isInLobby = false, lobbyCode, onClearChat }
               gap: "6px",
               alignItems: "flex-start", // Changed to flex-start to align button to top
               minHeight: `${textareaHeight + 12}px`, // Dynamic height based on textarea
+              pointerEvents: "auto", // Keep input area interactive
             }}
           >
             <textarea

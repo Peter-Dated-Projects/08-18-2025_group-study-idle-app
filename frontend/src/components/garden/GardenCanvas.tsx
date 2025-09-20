@@ -2,18 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as PIXI from "pixi.js";
-import { Entity } from "@/engine/physics/Entity";
-import { RectangleCollider, createRectangleCollider } from "@/engine/physics/Collider";
-import { loadPixelTexture, createAndAddEntity } from "@/engine/physics/EntityUtils";
-import { AnimationLoader } from "@/engine/graphics/AnimationLoader";
-import { CowBaby, createCowBaby } from "@/scripts/CowBabyStateMachine";
+import { WorldPhysicsHandler } from "@/engine/WorldPhysicsHandler";
+import { constructDefaultWorld } from "@/engine/DefaultWorld";
+import { initializeMouseHandler, mouseHandler } from "@/engine/input/MouseHandler";
+import { initializeFPSManager } from "@/engine/input/DynamicFPSManager";
 
 export const FRAMERATE = 6;
 export const DAYLIGHT_FRAMERATE = 0.1;
 export const DAY_CYCLE_TIME = 180;
-
-export const DEFAULT_LAMP_COLOR = 0xffffff;
-export const SECONDARY_LAMP_COLOR = 0xffffff;
 
 // Ensure we're in browser environment before using ResizeObserver
 const isClient = typeof window !== "undefined";
@@ -22,14 +18,6 @@ const hasResizeObserver = isClient && typeof ResizeObserver !== "undefined";
 // Design constants for consistent scaling
 export const DESIGN_WIDTH = 1920;
 export const DESIGN_HEIGHT = 1080;
-
-export interface LightingObject {
-  active: boolean;
-  color: number;
-  intensity: number;
-  radius: number;
-  position: { x: number; y: number };
-}
 
 export default function GardenCanvas({
   onAppCreated,
@@ -119,7 +107,7 @@ export default function GardenCanvas({
           width: elementCheck.clientWidth,
           height: elementCheck.clientHeight,
         });
-        app.ticker.stop();
+        // Don't stop the ticker - we want it running for FPS management
 
         console.log("[GardenCanvas] PIXI app initialized successfully");
         console.log("[GardenCanvas] Canvas element:", app.canvas);
@@ -192,10 +180,6 @@ export default function GardenCanvas({
         finalElementCheck.appendChild(app.canvas);
 
         // ------------------------------------------------------------------------------ //
-        // Create entities and colliders arrays
-        const entities: Entity[] = [];
-        const colliders: RectangleCollider[] = [];
-
         // Create render sprite as framebuffer with fixed design resolution
         const renderTexture = PIXI.RenderTexture.create({
           width: DESIGN_WIDTH,
@@ -207,160 +191,201 @@ export default function GardenCanvas({
 
         // Create world container for scene objects
         const worldContainer = new PIXI.Container();
+        worldContainerRef.current = worldContainer;
 
-        // base map - calculate scale once based on design width
-        const tilemapTexture = await loadPixelTexture("/level/map.png");
+        // Initialize Dynamic FPS Manager for performance optimization
+        console.log("[GardenCanvas] Initializing Dynamic FPS Manager...");
+        initializeFPSManager(app);
+
+        // Initialize MouseHandler for mouse-to-world coordinate conversion with visual indicator
+        console.log(
+          "[GardenCanvas] Initializing MouseHandler with world container and render sprite..."
+        );
+        initializeMouseHandler(app, worldContainer, renderSprite);
+
+        // Enable visual mouse indicator
+        console.log("[GardenCanvas] Enabling mouse position indicator...");
+        if (mouseHandler) {
+          mouseHandler.activate(); // This enables both logging and the red circle indicator
+        }
+
+        // Initialize World Physics Handler for entity management and physics
+        console.log("[GardenCanvas] Initializing WorldPhysicsHandler for entity management...");
+        const worldHandler = await constructDefaultWorld(app, worldContainer);
+        console.log("[GardenCanvas] Default world constructed with entities:", {
+          entityCount: worldHandler.getEntityCount(),
+          entities: worldHandler
+            .getAllEntities()
+            .map((e) => ({ id: e.id, tags: e.tags, position: e.position })),
+        });
+
+        // Create visual content for the world container (tilemap, sprites, etc.)
+        console.log("[GardenCanvas] Setting up visual world content...");
+
+        // Add tilemap as background
+        const tilemapTexture = await PIXI.Assets.load("/level/map.png");
         const tilemapSprite = new PIXI.Sprite(tilemapTexture);
-
-        // Set initial scale based on design width
-        const initialScale = (DESIGN_WIDTH / tilemapTexture.width) * 0.9; // 0.9 for some padding
-
+        const initialScale = (DESIGN_WIDTH / tilemapTexture.width) * 0.9;
         tilemapSprite.anchor.set(0.5);
         tilemapSprite.position.set(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2);
         tilemapSprite.scale.set(initialScale);
         tilemapSprite.zIndex = -100;
+        tilemapTexture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
         worldContainer.addChild(tilemapSprite);
 
-        // Create entities using helper function with consistent scaling
-        const chickenCoop = await createAndAddEntity(
-          worldContainer,
-          entities,
-          "/entities/house_chicken.png",
-          DESIGN_WIDTH / 2 - 300,
-          DESIGN_HEIGHT / 2 + 20,
-          5
-        );
-        const waterBasin = await createAndAddEntity(
-          worldContainer,
-          entities,
-          "/entities/water_basin.png",
-          DESIGN_WIDTH / 2 - 250,
-          DESIGN_HEIGHT / 2 + 250,
-          4
-        );
-        const waterWell = await createAndAddEntity(
-          worldContainer,
-          entities,
-          "/entities/water_well.png",
-          DESIGN_WIDTH / 2 - 100,
-          DESIGN_HEIGHT / 2 + 25,
-          5
-        );
-        const mailbox = await createAndAddEntity(
-          worldContainer,
-          entities,
-          "/entities/mailbox.png",
-          DESIGN_WIDTH / 2 + 400,
-          DESIGN_HEIGHT / 2 + 50,
-          5
-        );
-
-        // Create colliders for static entities
-        colliders.push(
-          createRectangleCollider(
-            chickenCoop.rect.position.x,
-            chickenCoop.rect.position.y,
-            chickenCoop.rect.area.width,
-            chickenCoop.rect.area.height
-          )
-        );
-        colliders.push(
-          createRectangleCollider(
-            waterBasin.rect.position.x,
-            waterBasin.rect.position.y,
-            waterBasin.rect.area.width,
-            waterBasin.rect.area.height
-          )
-        );
-        colliders.push(
-          createRectangleCollider(
-            waterWell.rect.position.x,
-            waterWell.rect.position.y,
-            waterWell.rect.area.width,
-            waterWell.rect.area.height
-          )
-        );
-        colliders.push(
-          createRectangleCollider(
-            mailbox.rect.position.x,
-            mailbox.rect.position.y,
-            mailbox.rect.area.width,
-            mailbox.rect.area.height
-          )
-        );
-
-        // Create animated entities (cow babies)
-        const animatedEntities: CowBaby[] = [];
-        const animationLoader = new AnimationLoader();
-
-        // Create a few cow babies at different positions
-        const cowBaby1 = await createCowBaby(
-          app,
-          animationLoader,
-          DESIGN_WIDTH / 2 + 100,
-          DESIGN_HEIGHT / 2 + 100,
-          worldContainer
-        );
-        animatedEntities.push(cowBaby1);
-
-        const cowBaby2 = await createCowBaby(
-          app,
-          animationLoader,
-          DESIGN_WIDTH / 2 - 50,
-          DESIGN_HEIGHT / 2 + 150,
-          worldContainer
-        );
-        animatedEntities.push(cowBaby2);
-
-        // Replace the manual game loop with PIXI.Ticker
-        const ticker = new PIXI.Ticker(); // Use the app's built-in ticker
-        ticker.minFPS = FRAMERATE / 2;
-        ticker.maxFPS = FRAMERATE;
-
-        // Array to store lights
-        let isDirty = true;
-        let isActiveTab = true;
-
-        // game update loop
-        ticker.add((ticker) => {
-          if (disposed) return;
-
-          // game logic -- every frame
-          // Update static entities
-          entities.forEach((entity) => {
-            entity.update();
-
-            // Check if entity changed and set dirty flag
-            if (entity.isChanged) {
-              isDirty = true;
-              entity.resetChanged();
-            }
-          });
-
-          // Update animated entities (cow babies)
-          animatedEntities.forEach((cowBaby) => {
-            cowBaby.update(ticker.deltaTime, colliders);
-
-            // Check if cow baby changed and set dirty flag
-            if (cowBaby.rigidbody.isChanged) {
-              isDirty = true;
-              cowBaby.rigidbody.resetChanged();
-            }
-          });
+        console.log("[GardenCanvas] Tilemap added to world container:", {
+          texture: tilemapTexture,
+          scale: initialScale,
+          position: { x: DESIGN_WIDTH / 2, y: DESIGN_HEIGHT / 2 },
+          containerChildren: worldContainer.children.length,
         });
 
-        // game render loop
+        // Create visual representations for all physics entities
+        console.log("[GardenCanvas] Creating visual sprites for physics entities...");
+        const entities = worldHandler.getAllEntities();
+        let visualSpritesCreated = 0;
+
+        for (const entity of entities) {
+          // Check if this is a Structure entity with its own sprite
+          if (entity.hasTag && entity.hasTag("structure") && (entity as any).getSprite) {
+            const structureSprite = (entity as any).getSprite();
+            if (structureSprite) {
+              worldContainer.addChild(structureSprite);
+              visualSpritesCreated++;
+              continue; // Skip creating a rectangle graphic for this entity
+            }
+          }
+
+          // Ensure structure objects have a sprite by setting a default spritePath if not present
+          if (entity.hasTag && entity.hasTag("structure") && !(entity as any).spritePath) {
+            (entity as any).spritePath = "/sprites/structure.png"; // Default sprite for structures
+          }
+
+          // Check if this entity has a custom sprite path
+          if ((entity as any).spritePath) {
+            try {
+              const texture = await PIXI.Assets.load((entity as any).spritePath);
+              const sprite = new PIXI.Sprite(texture);
+              sprite.anchor.set(0.5);
+
+              // Apply custom scaling if specified
+              const scale = (entity as any).spriteScale || { x: 1, y: 1 };
+              sprite.scale.set(scale.x, scale.y);
+
+              sprite.position.set(entity.position.x, entity.position.y);
+              sprite.zIndex = entity.hasTag("decoration") ? -10 : 0;
+
+              // Set pixel-perfect rendering
+              texture.source.scaleMode = "nearest";
+
+              // Store reference on entity for updates
+              (entity as any).visualSprite = sprite;
+
+              worldContainer.addChild(sprite);
+              visualSpritesCreated++;
+              continue; // Skip creating a rectangle graphic for this entity
+            } catch (error) {
+              console.warn(`Failed to load sprite for entity ${entity.id}:`, error);
+              // Fall through to create rectangle graphic as fallback
+            }
+          }
+
+          // Create a red outline rectangle sprite to represent each entity
+          const graphics = new PIXI.Graphics();
+
+          // Get entity size from collider
+          const entitySize = entity.collider?.size || { x: 32, y: 32 };
+
+          // Add red outline for better visibility
+          graphics.rect(-entitySize.x / 2, -entitySize.y / 2, entitySize.x, entitySize.y);
+          graphics.stroke({ color: 0xff0000, width: 2 });
+
+          // Position the graphics at entity position
+          graphics.position.set(entity.position.x, entity.position.y);
+          graphics.zIndex = entity.hasTag("ground") ? -50 : 0; // Ground behind other objects
+
+          // Store reference on entity for updates
+          (entity as any).visualSprite = graphics;
+
+          worldContainer.addChild(graphics);
+          visualSpritesCreated++;
+        }
+
+        console.log("[GardenCanvas] Visual sprites created:", {
+          entitiesCount: entities.length,
+          visualSpritesCreated,
+          totalWorldContainerChildren: worldContainer.children.length,
+        });
+
+        // Sort children by zIndex for proper layering
+        worldContainer.sortChildren();
+
+        // TODO: Add more visual entities to worldContainer as needed
+        // The WorldPhysicsHandler will manage physics entities independently
+        // but we can sync visual elements with physics entities when needed
+
+        // Use the app's built-in ticker for FPS management integration
+        const ticker = app.ticker; // Use app's ticker instead of creating new one
+        ticker.minFPS = 3; // Set reasonable minimum
+        ticker.maxFPS = 60; // Set reasonable maximum (will be controlled by DynamicFPSManager)
+
+        let isActiveTab = true;
+        let needsInitialRender = true; // Flag to ensure initial render
+        let renderCount = 0; // Debug counter
+
+        // game render loop - WorldPhysicsHandler handles entity updates automatically
         ticker.add(() => {
           if (disposed) return;
           if (!isActiveTab) return;
-          if (!isDirty) return;
+
+          // Sync visual sprites with physics entity positions (physics updates automatically)
+          const entities = worldHandler.getAllEntities();
+          for (const entity of entities) {
+            // Handle Structure entities with their own sprites
+            if (
+              entity.hasTag &&
+              entity.hasTag("structure") &&
+              (entity as any).updateSpritePosition
+            ) {
+              (entity as any).updateSpritePosition();
+              continue;
+            }
+
+            // Handle regular visual sprites
+            const visualSprite = (entity as any).visualSprite;
+            if (visualSprite && entity.position) {
+              // Update visual sprite position to match physics entity
+              visualSprite.position.set(entity.position.x, entity.position.y);
+            }
+          }
+
+          // Check if any entities have changed and need re-rendering, OR if we need initial render
+          const hasEntityChanges = worldHandler.hasChanges();
+          const shouldRender = needsInitialRender || hasEntityChanges;
+
+          if (!shouldRender) return;
+
+          renderCount++;
+          if (renderCount <= 5 || renderCount % 60 === 0) {
+            // Log first 5 renders and every 60th
+            console.log(`[GardenCanvas] Rendering frame ${renderCount}:`, {
+              needsInitialRender,
+              hasEntityChanges,
+              worldContainerChildren: worldContainer.children.length,
+            });
+          }
 
           // Render world container to the render texture (framebuffer)
           app.renderer.render(worldContainer, { renderTexture });
 
           // Render the final result to screen
           app.renderer.render(app.stage);
-          isDirty = false;
+
+          // Reset flags after rendering
+          if (hasEntityChanges) {
+            worldHandler.resetAllChanges();
+          }
+          needsInitialRender = false; // Clear initial render flag after first render
         });
 
         // Start the ticker
@@ -386,7 +411,8 @@ export default function GardenCanvas({
             (app.screen.height - renderTexture.height * uniformScale) / 2
           );
 
-          isDirty = true;
+          // Force a re-render after resize
+          needsInitialRender = true;
         };
 
         // Assign the onResize function to the reference so handleResize can call it
