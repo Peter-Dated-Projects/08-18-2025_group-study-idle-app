@@ -1,4 +1,4 @@
-import { PhysicsEntity, Vec2 } from "../engine/physics";
+import { PhysicsEntity, Vec2 } from "../../engine/physics";
 import * as PIXI from "pixi.js";
 
 /**
@@ -6,9 +6,9 @@ import * as PIXI from "pixi.js";
  * Extends PhysicsEntity to provide interactive building/editing functionality
  */
 export class Structure extends PhysicsEntity {
-  private sprite: PIXI.Sprite | null = null;
-  private onClick: ((structure: Structure) => void) | null = null;
-  private isClickable: boolean = true;
+  protected sprite: PIXI.Sprite | null = null;
+  protected onClick: ((structure: Structure) => void) | null = null;
+  protected isClickable: boolean = true;
 
   constructor(position: Vec2, onClick?: (structure: Structure) => void) {
     // Create the base physics entity with 256x256 size
@@ -41,15 +41,15 @@ export class Structure extends PhysicsEntity {
   public async initializeSprite(): Promise<void> {
     try {
       // Load the empty structure texture
-      const texture = await PIXI.Assets.load("/level/empty-structure.png");
+      const texture = await PIXI.Assets.load("/entities/empty-structure.png");
 
       // Create sprite
       this.sprite = new PIXI.Sprite(texture);
       this.sprite.anchor.set(0.5); // Center anchor
 
       // Scale to fit 100x100 size
-      const scaleX = 100 / texture.width;
-      const scaleY = 100 / texture.height;
+      const scaleX = 256 / texture.width;
+      const scaleY = 256 / texture.height;
       this.sprite.scale.set(scaleX, scaleY);
 
       // Position sprite
@@ -74,9 +74,9 @@ export class Structure extends PhysicsEntity {
   }
 
   /**
-   * Handle click events
+   * Handle click events - protected so subclasses can override
    */
-  private handleClick(event: PIXI.FederatedPointerEvent): void {
+  protected handleClick(event: PIXI.FederatedPointerEvent): void {
     if (!this.isClickable) return;
 
     console.log("Structure clicked:", this);

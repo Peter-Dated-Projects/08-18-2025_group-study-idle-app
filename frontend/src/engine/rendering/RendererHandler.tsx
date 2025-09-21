@@ -55,7 +55,7 @@ export class RendererHandler {
    * Update and render all registered entities
    */
   renderAll(entities: PhysicsEntity[]): void {
-    entities.forEach(entity => {
+    entities.forEach((entity) => {
       this.renderEntity(entity);
     });
   }
@@ -65,7 +65,7 @@ export class RendererHandler {
    */
   setDebugMode(enabled: boolean): void {
     this.debugMode = enabled;
-    this.entityRenderers.forEach(renderer => {
+    this.entityRenderers.forEach((renderer) => {
       renderer.setDebugMode(enabled);
     });
   }
@@ -95,7 +95,7 @@ export class RendererHandler {
    * Clear all renderers
    */
   clearAll(): void {
-    this.entityRenderers.forEach(renderer => {
+    this.entityRenderers.forEach((renderer) => {
       renderer.destroy();
     });
     this.entityRenderers.clear();
@@ -105,7 +105,7 @@ export class RendererHandler {
    * Update all renderers (call this each frame)
    */
   update(deltaTime: number): void {
-    this.entityRenderers.forEach(renderer => {
+    this.entityRenderers.forEach((renderer) => {
       renderer.update(deltaTime);
     });
   }
@@ -116,7 +116,7 @@ export class RendererHandler {
   getStats(): { rendererCount: number; debugMode: boolean } {
     return {
       rendererCount: this.entityRenderers.size,
-      debugMode: this.debugMode
+      debugMode: this.debugMode,
     };
   }
 }

@@ -60,10 +60,10 @@ export class SpriteRenderer extends BaseRenderer {
    */
   createDefaultSpriteComponent(entity: PhysicsEntity): SpriteComponent {
     const graphics = new PIXI.Graphics();
-    
+
     // Get entity size from collider or use default
     const size = entity.collider?.size || { x: 32, y: 32 };
-    
+
     // Draw a colored rectangle based on entity properties
     const color = entity.tint || 0xffffff;
     graphics.fill(color);
@@ -79,7 +79,7 @@ export class SpriteRenderer extends BaseRenderer {
       visible: true,
       alpha: 1.0,
       scale: { x: 1, y: 1 },
-      anchor: { x: 0.5, y: 0.5 }
+      anchor: { x: 0.5, y: 0.5 },
     };
   }
 
@@ -102,7 +102,7 @@ export class SpriteRenderer extends BaseRenderer {
   private createDebugGraphics(): void {
     this.debugGraphics = new PIXI.Graphics();
     this.debugGraphics.visible = this.debugMode;
-    
+
     if (this.getWorldContainer()) {
       this.getWorldContainer()!.addChild(this.debugGraphics);
     }
@@ -124,7 +124,7 @@ export class SpriteRenderer extends BaseRenderer {
     this.spriteComponent.sprite.y = entity.position.y;
 
     // Update sprite rotation if entity has rotation
-    if ('rotation' in entity) {
+    if ("rotation" in entity) {
       this.spriteComponent.sprite.rotation = (entity as any).rotation || 0;
     }
 
@@ -139,7 +139,10 @@ export class SpriteRenderer extends BaseRenderer {
       this.spriteComponent.sprite.visible = this.spriteComponent.visible;
     }
     if (this.spriteComponent.scale) {
-      this.spriteComponent.sprite.scale.set(this.spriteComponent.scale.x, this.spriteComponent.scale.y);
+      this.spriteComponent.sprite.scale.set(
+        this.spriteComponent.scale.x,
+        this.spriteComponent.scale.y
+      );
     }
 
     // Update debug rendering
@@ -157,10 +160,10 @@ export class SpriteRenderer extends BaseRenderer {
     if (!this.debugGraphics || !this.debugMode) return;
 
     this.debugGraphics.clear();
-    
+
     // Get entity size from collider or use default
     const size = entity.collider?.size || { x: 32, y: 32 };
-    
+
     // Draw entity bounds as red outline
     this.debugGraphics.stroke({ width: 2, color: 0xff0000 });
     this.debugGraphics.rect(
@@ -172,7 +175,7 @@ export class SpriteRenderer extends BaseRenderer {
     this.debugGraphics.stroke();
 
     // Draw velocity vector if entity is moving
-    if ('velocity' in entity) {
+    if ("velocity" in entity) {
       const velocity = (entity as any).velocity;
       if (velocity && (Math.abs(velocity.x) > 0.1 || Math.abs(velocity.y) > 0.1)) {
         this.debugGraphics.stroke({ width: 1, color: 0x00ff00 });

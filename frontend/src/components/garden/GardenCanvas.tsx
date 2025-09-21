@@ -3,9 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import * as PIXI from "pixi.js";
 import { WorldPhysicsHandler } from "@/engine/WorldPhysicsHandler";
-import { constructDefaultWorld } from "@/engine/DefaultWorld";
-import { initializeMouseHandler, mouseHandler } from "@/engine/input/MouseHandler";
+import { constructDefaultWorld, createDefaultWorldConfig } from "@/engine/DefaultWorld";
+import {
+  initializeMouseHandler,
+  mouseHandler,
+  toggleMouseHandlerState,
+  getMouseHandlerMode,
+} from "@/engine/input/MouseHandler";
 import { initializeFPSManager } from "@/engine/input/DynamicFPSManager";
+import { debugMouseHandler, testMouseHandler } from "@/debug/MouseHandlerDebug";
+import { runAllMouseTests } from "@/debug/MouseHandlerTest";
+import { createSimpleMouseIndicator } from "@/debug/SimpleMouseIndicator";
+import { createDeadSimpleMouseCursor } from "@/debug/DeadSimpleMouseCursor";
+import { forceTestMouseHandler, testCanvasEvents } from "@/debug/ForceTestMouse";
 
 export const FRAMERATE = 6;
 export const DAYLIGHT_FRAMERATE = 0.1;
@@ -203,13 +213,41 @@ export default function GardenCanvas({
         );
         initializeMouseHandler(app, worldContainer, renderSprite);
 
-        // Enable visual mouse indicator
-        console.log("[GardenCanvas] Enabling mouse position indicator...");
+        // Test the new reactive MouseHandler system
+        console.log("[GardenCanvas] MouseHandler initialized in IDLE mode by default");
         if (mouseHandler) {
-          mouseHandler.activate(); // This enables both logging and the red circle indicator
+          // Test toggling to ACTIVE mode
+          setTimeout(() => {
+            console.log("[GardenCanvas] Testing reactive MouseHandler system:");
+            console.log("Current mode:", getMouseHandlerMode());
+
+            console.log("Toggling to ACTIVE state...");
+            const newState = toggleMouseHandlerState();
+            console.log("New state after toggle:", newState);
+
+            // Debug the mouse handler state
+            debugMouseHandler();
+            testMouseHandler();
+            runAllMouseTests();
+
+            // Force test the main mouse handler
+            forceTestMouseHandler();
+
+            // Test canvas events directly
+            testCanvasEvents();
+          }, 1000);
+
+          // Test auto-return to IDLE mode
+          setTimeout(() => {
+            console.log("[GardenCanvas] Checking auto-return to IDLE mode after 2 seconds...");
+            console.log("Current mode should be IDLE:", getMouseHandlerMode());
+          }, 3000);
         }
 
-        // Initialize World Physics Handler for entity management and physics
+        // Create dead simple cursor for basic testing
+        console.log("[GardenCanvas] Creating dead simple cursor for basic testing...");
+        createDeadSimpleMouseCursor(app);
+
         console.log("[GardenCanvas] Initializing WorldPhysicsHandler for entity management...");
         const worldHandler = await constructDefaultWorld(app, worldContainer);
         console.log("[GardenCanvas] Default world constructed with entities:", {

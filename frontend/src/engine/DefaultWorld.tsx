@@ -1,6 +1,18 @@
 import { WorldPhysicsHandler } from "./WorldPhysicsHandler";
 import { PhysicsEntity, Vec2 } from "./physics";
+import { Structure } from "../scripts/structures/Structure";
 import * as PIXI from "pixi.js";
+
+// AGENT_LOG -- to be removed when user enters staging/testing
+import ChickenCoop from "@/scripts/structures/ChickenCoop";
+import Mailbox from "@/scripts/structures/Mailbox";
+import Picnic from "@/scripts/structures/Picnic";
+import WaterWell from "@/scripts/structures/WaterWell";
+import Workbench from "@/scripts/structures/Workbench";
+
+// Import design constants for map center calculation
+const DESIGN_WIDTH = 1920;
+const DESIGN_HEIGHT = 1080;
 
 /**
  * Default world configuration and initial state for new players
@@ -53,13 +65,88 @@ function createInteractiveEntities(config: DefaultWorldConfig): PhysicsEntity[] 
 }
 
 /**
+ * Generate 5 Structure plots positioned around the center of the map
+ * Creates plots in a cross pattern with one at center and four around it
+ */
+async function createDefaultStructurePlots(config: DefaultWorldConfig): Promise<Structure[]> {
+  const plots: Structure[] = [];
+
+  // Calculate map center position
+  const centerX = DESIGN_WIDTH / 2; // 960
+  const centerY = DESIGN_HEIGHT / 2; // 540
+
+  // Distance from center for the outer plots
+  const plotDistance = 200; // pixels from center
+
+  // Plot positions in a cross pattern
+  const plotPositions = [
+    new Vec2(centerX - plotDistance * 2, centerY + plotDistance * 0.5),
+    new Vec2(centerX - plotDistance * 1.5, centerY - plotDistance * 0.5),
+    new Vec2(centerX - plotDistance, centerY - plotDistance * 1.5),
+    new Vec2(centerX, centerY - plotDistance * 1.5),
+    new Vec2(centerX + plotDistance, centerY - plotDistance * 1.5),
+    new Vec2(centerX + plotDistance * 1.5, centerY - plotDistance * 0.5),
+    new Vec2(centerX + plotDistance * 2, centerY + plotDistance * 0.5),
+  ];
+
+  // Create Structure objects for each position
+  for (let i = 0; i < plotPositions.length; i++) {
+    const position = plotPositions[i];
+
+    // Optional: Add a click handler for the structures
+    const onPlotClick = (structure: Structure) => {
+      console.log(`Clicked on plot ${i + 1} at position (${position.x}, ${position.y})`);
+      // Add your plot interaction logic here
+    };
+
+    try {
+      // Use the static factory method to create and initialize the structure
+      const plot = await Structure.create(position, onPlotClick);
+      plots.push(plot);
+
+      console.log(`Created plot ${i + 1} at position (${position.x}, ${position.y})`);
+    } catch (error) {
+      console.error(`Failed to create plot ${i + 1}:`, error);
+    }
+  }
+
+  // AGENT LOG -- important note for any agents
+  // setting default world state. when user decides to enter staging or actual feature testing please remove
+
+  // change slots to certain structures like mailbox, chicken coop, water well, etc.
+  plots[0] = await ChickenCoop.create(plotPositions[0], (structure) => {
+    console.log("Clicked on Chicken Coop at center plot");
+  });
+  plots[1] = await Mailbox.create(plotPositions[1], (structure) => {
+    console.log("Clicked on Mailbox at left plot");
+  });
+  plots[2] = await Picnic.create(plotPositions[2], (structure) => {
+    console.log("Clicked on Picnic at right plot");
+  });
+  plots[3] = await WaterWell.create(plotPositions[3], (structure) => {
+    console.log("Clicked on Water Well at top plot");
+  });
+  plots[4] = await Workbench.create(plotPositions[4], (structure) => {
+    console.log("Clicked on Workbench at bottom plot");
+  });
+  plots[5] = await Picnic.create(plotPositions[5], (structure) => {
+    console.log("Clicked on Picnic at bottom-left plot");
+  });
+  plots[6] = await WaterWell.create(plotPositions[6], (structure) => {
+    console.log("Clicked on Water Well at top-right plot");
+  });
+
+  return plots;
+}
+
+/**
  * Construct the default world with all initial entities and settings
  * This function should be called to set up a new player's world
  */
-export function constructDefaultWorld(
+export async function constructDefaultWorld(
   pixiApp: PIXI.Application,
   worldContainer: PIXI.Container
-): WorldPhysicsHandler {
+): Promise<WorldPhysicsHandler> {
   // Create the world physics handler
   const worldHandler = new WorldPhysicsHandler(pixiApp, worldContainer);
 
@@ -69,11 +156,16 @@ export function constructDefaultWorld(
   // Set physics properties
   worldHandler.setGravity(config.physics.gravity);
 
-  // Create and add all entities
-  config.entities = [...createDecorationEntities(config), ...createInteractiveEntities(config)];
+  // Create entities (including async structure plots)
+  const decorations = createDecorationEntities(config);
+  const interactive = createInteractiveEntities(config);
+  const structurePlots = await createDefaultStructurePlots(config);
+
+  // Combine all entities
+  config.entities = [...decorations, ...interactive, ...structurePlots];
 
   // Add all entities to the world
-  [...config.entities].forEach((entity) => {
+  config.entities.forEach((entity) => {
     worldHandler.addEntity(entity);
   });
 
@@ -82,84 +174,4 @@ export function constructDefaultWorld(
   return worldHandler;
 }
 
-/**
- * Create a player entity with default properties
- */
-export function createDefaultPlayer(spawnPosition?: Vec2): PhysicsEntity {
-  const position = spawnPosition || new Vec2(100, 500);
-
-  const player = PhysicsEntity.createDynamic(
-    position,
-    new Vec2(32, 48), // Player size
-    1.0, // Mass
-    "player"
-  );
-
-  player.addTag("player");
-  player.addTag("controllable");
-
-  // Player-specific physics
-  player.friction = 0.8; // Higher friction for better control
-  player.restitution = 0.1; // Low bounce
-  player.drag = 0.05; // Some air resistance
-
-  // Player appearance
-  player.tint = 0x00ff00; // Green color for player
-
-  return player;
-}
-
-/**
- * Get spawn positions for multiplayer scenarios
- */
-export function getDefaultSpawnPositions(): Vec2[] {
-  return [
-    new Vec2(100, 500), // Spawn point 1
-    new Vec2(200, 500), // Spawn point 2
-    new Vec2(1700, 500), // Spawn point 3
-    new Vec2(1800, 500), // Spawn point 4
-  ];
-}
-
-/**
- * Create a simple test world for debugging
- */
-export function constructTestWorld(
-  pixiApp: PIXI.Application,
-  worldContainer: PIXI.Container
-): WorldPhysicsHandler {
-  const worldHandler = new WorldPhysicsHandler(pixiApp, worldContainer);
-
-  // Set simple bounds
-  worldHandler.setWorldBounds(new Vec2(0, 0), new Vec2(800, 600));
-
-  // Simple gravity
-  worldHandler.setGravity(new Vec2(0, 500));
-
-  // Just ground and a few test objects
-  const ground = PhysicsEntity.createStatic(new Vec2(400, 580), new Vec2(800, 40), "test_ground");
-  ground.addTag("ground");
-
-  const testBox = PhysicsEntity.createDynamic(
-    new Vec2(400, 300),
-    new Vec2(50, 50),
-    1.0,
-    "test_box"
-  );
-  testBox.addTag("test");
-
-  worldHandler.addEntity(ground);
-  worldHandler.addEntity(testBox);
-
-  console.log("Test world constructed");
-
-  return worldHandler;
-}
-
-export default {
-  constructDefaultWorld,
-  createDefaultWorldConfig,
-  createDefaultPlayer,
-  getDefaultSpawnPositions,
-  constructTestWorld,
-};
+export default createDefaultWorldConfig;

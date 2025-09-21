@@ -3,15 +3,24 @@ import { Vec2 } from "../physics/Vec2";
 import { fpsManager } from "./DynamicFPSManager";
 
 /**
+ * MouseHandler state modes
+ */
+export enum MouseState {
+  IDLE = "idle",
+  ACTIVE = "active",
+}
+
+/**
  * MouseHandler state interface for consolidated state management
  */
 interface MouseHandlerState {
-  // Activity states
-  isActive: boolean;
+  // Current state mode
+  currentMode: MouseState;
+
+  // Canvas tracking
   isMouseInsideCanvas: boolean;
   isWindowFocused: boolean;
   isDocumentVisible: boolean;
-  isMouseIdle: boolean;
 
   // Visual settings
   showVisualIndicator: boolean;
@@ -32,8 +41,11 @@ interface CoordinateCache {
 }
 
 /**
- * MouseHandler - Handles mouse-to-world coordinate conversion
- * Provides on-demand conversion when mouse is inside the canvas
+ * MouseHandler - Reactive mouse tracking and coordinate conversion system
+ * - Always starts in IDLE mode (low FPS)
+ * - Switches to ACTIVE mode only when explicitly called via toggleState()
+ * - Auto-returns to IDLE after 1 second unless toggled again
+ * - Provides mouse position tracking and visual indicator
  */
 export class MouseHandler {
   private pixiApp: PIXI.Application;
@@ -47,9 +59,9 @@ export class MouseHandler {
   // Render sprite reference for accurate world offset calculation
   private renderSprite: PIXI.Sprite | null = null;
 
-  // Mouse inactivity tracking
-  private mouseInactivityTimer: NodeJS.Timeout | null = null;
-  private mouseInactivityThreshold: number = 1000; // 1 second in milliseconds
+  // State management timer
+  private idleTimer: NodeJS.Timeout | null = null;
+  private idleTimeout: number = 1000; // 1 second in milliseconds
 
   // Scaling information for proper coordinate conversion
   private designWidth: number = 1080;
@@ -68,13 +80,12 @@ export class MouseHandler {
     this.renderSprite = renderSprite || null;
     this.canvasElement = this.pixiApp.canvas as HTMLCanvasElement;
 
-    // Initialize state
+    // Initialize state - start in IDLE mode by default
     this.state = {
-      isActive: false,
+      currentMode: MouseState.IDLE,
       isMouseInsideCanvas: false,
       isWindowFocused: true,
       isDocumentVisible: true,
-      isMouseIdle: false,
       showVisualIndicator: false,
       lastMouseMoveTime: Date.now(),
       currentWorldPosition: new Vec2(),
@@ -90,6 +101,89 @@ export class MouseHandler {
 
     this.setupEventListeners();
     this.createMouseIndicator();
+
+    // Initialize FPS to idle mode
+    this.updateFPSBasedOnState();
+  }
+
+  /**
+   * Toggle between ACTIVE and IDLE states
+   * - Switches to ACTIVE mode and shows visual indicator
+   * - Auto-returns to IDLE mode after 1 second unless called again
+   * - Resets timer if already in ACTIVE mode
+   * @returns The new state after toggling
+   */
+  public toggleState(): MouseState {
+    console.log(`[MouseHandler] Toggling to ACTIVE state`);
+
+    // Clear existing idle timer
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
+
+    // Set to active mode
+    this.state.currentMode = MouseState.ACTIVE;
+    this.state.showVisualIndicator = true;
+
+    // Show indicator if mouse is inside canvas
+    if (this.mouseIndicator && this.state.isMouseInsideCanvas) {
+      this.mouseIndicator.visible = true;
+    }
+
+    // Update FPS to active mode
+    this.updateFPSBasedOnState();
+
+    // Set timer to return to idle mode
+    this.idleTimer = setTimeout(() => {
+      this.returnToIdle();
+    }, this.idleTimeout);
+
+    return this.state.currentMode;
+
+    console.log(
+      `[MouseHandler] State: ${this.state.currentMode}, timer set for ${this.idleTimeout}ms`
+    );
+  }
+
+  /**
+   * Return to IDLE state
+   * - Sets mode to IDLE and hides visual indicator
+   * - Updates FPS to idle mode
+   */
+  private returnToIdle(): void {
+    console.log(`[MouseHandler] Returning to IDLE state`);
+
+    this.state.currentMode = MouseState.IDLE;
+    this.state.showVisualIndicator = false;
+
+    // Hide indicator
+    if (this.mouseIndicator) {
+      this.mouseIndicator.visible = false;
+    }
+
+    // Update FPS to idle mode
+    this.updateFPSBasedOnState();
+
+    // Clear timer
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
+  }
+
+  /**
+   * Get current state mode
+   */
+  public getCurrentMode(): MouseState {
+    return this.state.currentMode;
+  }
+
+  /**
+   * Check if currently in active mode
+   */
+  public isActive(): boolean {
+    return this.state.currentMode === MouseState.ACTIVE;
   }
 
   /**
@@ -159,7 +253,6 @@ export class MouseHandler {
       }
 
       // Use active FPS only if ALL conditions are met:
-      // - Window is focused AND tab is visible AND mouse is in canvas AND handler is active AND mouse is not idle
       const shouldUseActiveFPS =
         this.state.isWindowFocused &&
         this.state.isDocumentVisible &&
@@ -213,60 +306,28 @@ export class MouseHandler {
   }
 
   /**
-   * Start or restart the mouse inactivity timer
-   */
-  private startMouseInactivityTimer(): void {
-    // Clear any existing timer
-    this.clearMouseInactivityTimer();
-
-    this.mouseInactivityTimer = setTimeout(() => {
-      this.state.isMouseIdle = true;
-      console.log("Mouse inactive for 1 second - switching to idle FPS");
-      this.updateFPSBasedOnState();
-    }, this.mouseInactivityThreshold);
-  }
-
-  /**
-   * Clear the mouse inactivity timer
-   */
-  private clearMouseInactivityTimer(): void {
-    if (this.mouseInactivityTimer) {
-      clearTimeout(this.mouseInactivityTimer);
-      this.mouseInactivityTimer = null;
-    }
-  }
-
-  /**
-   * Reset mouse activity state and restart timer
-   */
-  private resetMouseActivity(): void {
-    const wasIdle = this.state.isMouseIdle;
-    this.state.isMouseIdle = false;
-    this.state.lastMouseMoveTime = Date.now();
-
-    // If mouse was idle and now moving, update FPS
-    if (wasIdle) {
-      console.log("Mouse activity resumed");
-      this.updateFPSBasedOnState();
-    }
-
-    // Restart the inactivity timer
-    this.startMouseInactivityTimer();
-  }
-
-  /**
    * Create the visual mouse indicator (red circle)
    */
   private createMouseIndicator(): void {
+    console.log(`[MouseHandler] Creating mouse indicator...`);
     this.mouseIndicator = new PIXI.Graphics();
-    this.mouseIndicator.circle(0, 0, 5); // 5px radius circle at origin
-    this.mouseIndicator.fill({ color: 0xff0000, alpha: 0.8 }); // Red color with slight transparency
+
+    // PIXI v8 syntax for drawing a circle
+    this.mouseIndicator
+      .circle(0, 0, 5) // 5px radius circle at origin
+      .fill({ color: 0xff0000, alpha: 0.8 }); // Red color with slight transparency
+
     this.mouseIndicator.visible = false; // Initially hidden
     this.mouseIndicator.zIndex = 10000; // Ensure it's always on top
 
     // Add to the world container if available, otherwise add to stage
     const container = this.worldContainer || this.pixiApp.stage;
     container.addChild(this.mouseIndicator);
+    console.log(`[MouseHandler] Mouse indicator created and added to container:`, container);
+
+    // Force render after adding
+    this.pixiApp.renderer.render(container);
+    console.log(`[MouseHandler] Forced render after adding indicator`);
   }
 
   /**
@@ -274,21 +335,35 @@ export class MouseHandler {
    */
   private handleMouseEnter(event: MouseEvent): void {
     try {
+      console.log(`[MouseHandler] Mouse entered canvas`);
       this.state.isMouseInsideCanvas = true;
 
-      // Reset mouse activity when entering canvas
-      this.resetMouseActivity();
+      // Calculate world coordinates
+      const worldCoords = this.mouseToWorldCoords(event.clientX, event.clientY);
+      this.state.currentWorldPosition = worldCoords;
 
-      // Show visual indicator when mouse enters canvas
+      // Show and position visual indicator if enabled
       if (this.mouseIndicator && this.state.showVisualIndicator) {
+        console.log(
+          `[MouseHandler] Showing indicator and positioning at (${worldCoords.x.toFixed(
+            2
+          )}, ${worldCoords.y.toFixed(2)})`
+        );
         this.mouseIndicator.visible = true;
+        this.updateMouseIndicatorPosition(worldCoords);
+      } else {
+        console.log(
+          `[MouseHandler] Not showing indicator: indicator=${!!this.mouseIndicator}, showVisual=${
+            this.state.showVisualIndicator
+          }`
+        );
       }
 
-      if (this.state.isActive) {
-        const worldCoords = this.mouseToWorldCoords(event.clientX, event.clientY);
-        this.state.currentWorldPosition = worldCoords;
-        this.updateMouseIndicatorPosition(worldCoords);
+      // Update FPS based on new state
+      this.updateFPSBasedOnState();
 
+      // Log if in active mode
+      if (this.isActive()) {
         console.log(
           `Mouse entered canvas - World coordinates: (${worldCoords.x.toFixed(
             2
@@ -307,9 +382,6 @@ export class MouseHandler {
     try {
       this.state.isMouseInsideCanvas = false;
 
-      // Clear mouse inactivity timer when leaving canvas
-      this.clearMouseInactivityTimer();
-
       // Update FPS based on current state (mouse no longer in canvas)
       this.updateFPSBasedOnState();
 
@@ -318,7 +390,7 @@ export class MouseHandler {
         this.mouseIndicator.visible = false;
       }
 
-      if (this.state.isActive) {
+      if (this.isActive()) {
         console.log("Mouse left canvas");
       }
     } catch (error) {
@@ -331,19 +403,20 @@ export class MouseHandler {
    */
   private handleMouseMove(event: MouseEvent): void {
     try {
-      if (this.state.isMouseInsideCanvas && this.state.isActive) {
-        // Reset mouse activity on any movement
-        this.resetMouseActivity();
-
+      if (this.state.isMouseInsideCanvas) {
         const worldCoords = this.mouseToWorldCoords(event.clientX, event.clientY);
         this.state.currentWorldPosition = worldCoords;
-        this.updateMouseIndicatorPosition(worldCoords);
+        this.state.lastMouseMoveTime = Date.now();
+
+        // Always update visual indicator if it's enabled
+        if (this.state.showVisualIndicator) {
+          this.updateMouseIndicatorPosition(worldCoords);
+        }
       }
     } catch (error) {
       console.error("Error handling mouse move:", error);
     }
   }
-
   /**
    * Update the position of the mouse indicator
    */
@@ -416,62 +489,20 @@ export class MouseHandler {
       const adjustedX = (canvasX - worldOffset.offsetX) / worldOffset.scaleX;
       const adjustedY = (canvasY - worldOffset.offsetY) / worldOffset.scaleY;
 
-      return new Vec2(adjustedX, adjustedY);
+      const result = new Vec2(adjustedX, adjustedY);
+      return result;
     } else {
       // Fallback to simple scaling method
       const worldX = (canvasX / canvasRect.width) * this.designWidth;
       const worldY = (canvasY / canvasRect.height) * this.designHeight;
 
-      return new Vec2(worldX, worldY);
+      const result = new Vec2(worldX, worldY);
+      return result;
     }
   }
 
   /**
-   * Activate the mouse handler (enables console logging and visual indicator)
-   */
-  public activate(): void {
-    this.state.isActive = true;
-    this.state.showVisualIndicator = true;
-
-    // Show indicator if mouse is already inside canvas
-    if (this.mouseIndicator && this.state.isMouseInsideCanvas) {
-      this.mouseIndicator.visible = true;
-    }
-
-    // Start mouse inactivity tracking if mouse is inside canvas
-    if (this.state.isMouseInsideCanvas) {
-      this.resetMouseActivity();
-    }
-
-    // Update FPS based on current state when activating
-    this.updateFPSBasedOnState();
-
-    console.log("MouseHandler activated - mouse coordinates will be logged when inside canvas");
-  }
-
-  /**
-   * Deactivate the mouse handler (disables console logging and visual indicator)
-   */
-  public deactivate(): void {
-    this.state.isActive = false;
-    this.state.showVisualIndicator = false;
-
-    // Clear mouse inactivity timer when deactivating
-    this.clearMouseInactivityTimer();
-
-    // Hide the visual indicator
-    if (this.mouseIndicator) {
-      this.mouseIndicator.visible = false;
-    }
-
-    // Set to idle FPS when deactivating
-    this.updateFPSBasedOnState();
-
-    console.log("MouseHandler deactivated");
-  }
-
-  /**
-   * Enable only the visual indicator (without console logging)
+   * Enable the visual indicator
    */
   public enableVisualIndicator(): void {
     this.state.showVisualIndicator = true;
@@ -495,13 +526,6 @@ export class MouseHandler {
    */
   public isMouseInside(): boolean {
     return this.state.isMouseInsideCanvas;
-  }
-
-  /**
-   * Check if the handler is currently active
-   */
-  public isHandlerActive(): boolean {
-    return this.state.isActive;
   }
 
   /**
@@ -582,50 +606,25 @@ export class MouseHandler {
   /**
    * Set the mouse inactivity threshold
    * @param milliseconds - Time in milliseconds before mouse is considered idle
-   */
-  public setMouseInactivityThreshold(milliseconds: number): void {
-    if (milliseconds < 100) {
-      console.warn("Mouse inactivity threshold too low. Minimum is 100ms.");
-      return;
-    }
-
-    this.mouseInactivityThreshold = milliseconds;
-    console.log(`Mouse inactivity threshold set to ${milliseconds}ms`);
-
-    // Restart timer with new threshold if currently active
-    if (this.state.isMouseInsideCanvas && this.state.isActive && !this.state.isMouseIdle) {
-      this.startMouseInactivityTimer();
-    }
-  }
-
-  /**
-   * Get the current mouse inactivity threshold
-   */
-  public getMouseInactivityThreshold(): number {
-    return this.mouseInactivityThreshold;
-  }
-
   /**
    * Get current state information for debugging
    */
   public getState(): {
-    isActive: boolean;
+    currentMode: MouseState;
     isMouseInsideCanvas: boolean;
     isWindowFocused: boolean;
     isDocumentVisible: boolean;
     showVisualIndicator: boolean;
-    isMouseIdle: boolean;
     lastMouseMoveTime: number;
     hasRenderSprite: boolean;
     worldOffset: { offsetX: number; offsetY: number; scaleX: number; scaleY: number } | null;
   } {
     return {
-      isActive: this.state.isActive,
+      currentMode: this.state.currentMode,
       isMouseInsideCanvas: this.state.isMouseInsideCanvas,
       isWindowFocused: this.state.isWindowFocused,
       isDocumentVisible: this.state.isDocumentVisible,
       showVisualIndicator: this.state.showVisualIndicator,
-      isMouseIdle: this.state.isMouseIdle,
       lastMouseMoveTime: this.state.lastMouseMoveTime,
       hasRenderSprite: this.renderSprite !== null,
       worldOffset: this.getWorldOffset(),
@@ -650,8 +649,11 @@ export class MouseHandler {
       document.removeEventListener("visibilitychange", this.handleVisibilityChange.bind(this));
       document.removeEventListener("mouseleave", this.handleDocumentMouseLeave.bind(this));
 
-      // Clear mouse inactivity timer
-      this.clearMouseInactivityTimer();
+      // Clear idle timer
+      if (this.idleTimer) {
+        clearTimeout(this.idleTimer);
+        this.idleTimer = null;
+      }
 
       // Clean up visual indicator
       if (this.mouseIndicator) {
@@ -665,11 +667,10 @@ export class MouseHandler {
 
       // Reset state
       this.state = {
-        isActive: false,
+        currentMode: MouseState.IDLE,
         isMouseInsideCanvas: false,
         isWindowFocused: true,
         isDocumentVisible: true,
-        isMouseIdle: false,
         showVisualIndicator: false,
         lastMouseMoveTime: Date.now(),
         currentWorldPosition: new Vec2(),
@@ -710,7 +711,44 @@ export function initializeMouseHandler(
     mouseHandler.dispose();
   }
   mouseHandler = new MouseHandler(pixiApp, worldContainer, renderSprite);
-  mouseHandler.activate(); // Auto-activate as requested
+  // Note: MouseHandler now starts in IDLE mode by default
+  // Use toggleState() to activate when needed
+}
+
+/**
+ * Toggle the mouse handler state between IDLE and ACTIVE
+ * @returns The new state after toggling
+ */
+export function toggleMouseHandlerState(): MouseState | null {
+  if (!mouseHandler) {
+    console.warn("MouseHandler not initialized. Call initializeMouseHandler first.");
+    return null;
+  }
+  return mouseHandler.toggleState();
+}
+
+/**
+ * Get the current mode of the mouse handler
+ * @returns Current mode (IDLE or ACTIVE) or null if handler not initialized
+ */
+export function getMouseHandlerMode(): MouseState | null {
+  if (!mouseHandler) {
+    console.warn("MouseHandler not initialized. Call initializeMouseHandler first.");
+    return null;
+  }
+  return mouseHandler.getCurrentMode();
+}
+
+/**
+ * Check if the mouse handler is currently active
+ * @returns True if active, false if idle, null if handler not initialized
+ */
+export function isMouseHandlerActive(): boolean | null {
+  if (!mouseHandler) {
+    console.warn("MouseHandler not initialized. Call initializeMouseHandler first.");
+    return null;
+  }
+  return mouseHandler.isActive();
 }
 
 /**
@@ -745,30 +783,6 @@ export function getMouseHandlerState(): any {
     return null;
   }
   return mouseHandler.getState();
-}
-
-/**
- * Set the mouse inactivity threshold globally
- * @param milliseconds - Time in milliseconds before mouse is considered idle (default: 1000ms)
- */
-export function setMouseInactivityThreshold(milliseconds: number): void {
-  if (!mouseHandler) {
-    console.warn("MouseHandler not initialized. Call initializeMouseHandler first.");
-    return;
-  }
-  mouseHandler.setMouseInactivityThreshold(milliseconds);
-}
-
-/**
- * Get the current mouse inactivity threshold
- * @returns Current threshold in milliseconds, or null if handler not initialized
- */
-export function getMouseInactivityThreshold(): number | null {
-  if (!mouseHandler) {
-    console.warn("MouseHandler not initialized. Call initializeMouseHandler first.");
-    return null;
-  }
-  return mouseHandler.getMouseInactivityThreshold();
 }
 
 /**

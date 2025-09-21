@@ -231,8 +231,8 @@ function GardenPageContent() {
           backgroundColor: BORDERFILL,
           border: `5px solid ${BORDERLINE}`,
           cursor: isClicking
-            ? `url("/ui/mouse_click.png") 8 8, auto`
-            : `url("/ui/mouse_idle.png") 8 8, auto`,
+            ? `url("/ui/mouse_click.png") 0 0, auto`
+            : `url("/ui/mouse_idle.png") 0 0, auto`,
           color: FONTCOLOR,
           textShadow: `1px 1px 1px ${BORDERFILL}`,
         }}
