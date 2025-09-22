@@ -19,15 +19,6 @@ export function debugMouseHandler(): void {
     return;
   }
 
-  console.log("🔍 MouseHandler Debug State:");
-  console.log("  isActive:", state.isActive);
-  console.log("  showVisualIndicator:", state.showVisualIndicator);
-  console.log("  isMouseInsideCanvas:", state.isMouseInsideCanvas);
-  console.log("  isWindowFocused:", state.isWindowFocused);
-  console.log("  isDocumentVisible:", state.isDocumentVisible);
-  console.log("  isMouseIdle:", state.isMouseIdle);
-  console.log("  lastMouseMoveTime:", new Date(state.lastMouseMoveTime).toLocaleTimeString());
-
   // Try to access internal state for current position
   const internalState = (mouseHandler as any).state;
   if (internalState && internalState.currentWorldPosition) {
@@ -51,7 +42,6 @@ export function debugMouseHandler(): void {
  */
 export function enableMouseEventDebugging(): void {
   if (typeof document === "undefined") {
-    console.log("❌ Not in browser environment");
     return;
   }
 
@@ -63,8 +53,6 @@ export function enableMouseEventDebugging(): void {
   // Check if canvas element has proper event listeners
   const canvas = document.querySelector("canvas");
   if (canvas) {
-    console.log("🎯 Canvas element found, checking events...");
-
     // Test if canvas receives mouse events
     canvas.addEventListener("mousemove", (e) => {
       console.log(`🎯 Canvas mousemove: (${e.clientX}, ${e.clientY})`);
@@ -90,10 +78,6 @@ export function testMouseHandler(): void {
   debugMouseHandler();
 
   if (mouseHandler) {
-    // Force activate
-    mouseHandler.activate();
-    console.log("✅ MouseHandler activated");
-
     // Check state again
     setTimeout(() => {
       console.log("🧪 State after activation:");

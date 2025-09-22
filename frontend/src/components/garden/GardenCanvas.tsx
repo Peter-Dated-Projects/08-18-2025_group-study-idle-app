@@ -12,10 +12,8 @@ import {
 } from "@/engine/input/MouseHandler";
 import { initializeFPSManager } from "@/engine/input/DynamicFPSManager";
 import { debugMouseHandler, testMouseHandler } from "@/debug/MouseHandlerDebug";
-import { runAllMouseTests } from "@/debug/MouseHandlerTest";
 import { createSimpleMouseIndicator } from "@/debug/SimpleMouseIndicator";
 import { createDeadSimpleMouseCursor } from "@/debug/DeadSimpleMouseCursor";
-import { forceTestMouseHandler, testCanvasEvents } from "@/debug/ForceTestMouse";
 
 export const FRAMERATE = 6;
 export const DAYLIGHT_FRAMERATE = 0.1;
@@ -228,13 +226,6 @@ export default function GardenCanvas({
             // Debug the mouse handler state
             debugMouseHandler();
             testMouseHandler();
-            runAllMouseTests();
-
-            // Force test the main mouse handler
-            forceTestMouseHandler();
-
-            // Test canvas events directly
-            testCanvasEvents();
           }, 1000);
 
           // Test auto-return to IDLE mode

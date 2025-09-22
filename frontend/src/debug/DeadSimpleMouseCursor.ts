@@ -16,8 +16,6 @@ export class DeadSimpleMouseCursor {
 
     this.createCursor();
     this.setupEvents();
-
-    console.log("[DeadSimpleMouseCursor] Created and active");
   }
 
   private createCursor(): void {
@@ -31,8 +29,6 @@ export class DeadSimpleMouseCursor {
     // Add directly to app stage for maximum visibility
     this.app.stage.addChild(this.cursor);
     this.cursor.visible = false;
-
-    console.log("[DeadSimpleMouseCursor] Red circle created and added to stage");
   }
 
   private setupEvents(): void {
@@ -68,14 +64,11 @@ export class DeadSimpleMouseCursor {
         }
       }
     });
-
-    console.log("[DeadSimpleMouseCursor] Event listeners set up");
   }
 
   public destroy(): void {
     this.cursor.removeFromParent();
     this.cursor.destroy();
-    console.log("[DeadSimpleMouseCursor] Destroyed");
   }
 }
 

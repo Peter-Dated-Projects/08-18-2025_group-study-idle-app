@@ -222,7 +222,7 @@ export default function GroupLeaderboardModal({ isVisible, onClose }: GroupLeade
               fontSize: "14px",
             }}
           >
-            You haven't joined any groups yet. Join a group to view group leaderboards!
+            You haven&apos;t joined any groups yet. Join a group to view group leaderboards!
           </div>
         ) : (
           <div>

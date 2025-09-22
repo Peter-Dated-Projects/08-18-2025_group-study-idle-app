@@ -51,10 +51,6 @@ export class ChickenCoop extends Structure {
 
       // Set pixel-perfect rendering
       texture.source.scaleMode = "nearest";
-
-      console.log(
-        `ChickenCoop sprite initialized at position (${this.position.x}, ${this.position.y})`
-      );
     } catch (error) {
       console.error("Failed to initialize ChickenCoop sprite:", error);
       // Fall back to base structure sprite if chicken coop texture fails
@@ -89,14 +85,8 @@ export class ChickenCoop extends Structure {
   public addChickens(count: number): boolean {
     if (this.currentChickens + count <= this.maxChickens) {
       this.currentChickens += count;
-      console.log(`Added ${count} chickens. Total: ${this.currentChickens}/${this.maxChickens}`);
       return true;
     } else {
-      console.log(
-        `Cannot add ${count} chickens. Only ${
-          this.maxChickens - this.currentChickens
-        } slots available.`
-      );
       return false;
     }
   }
@@ -107,12 +97,8 @@ export class ChickenCoop extends Structure {
   public removeChickens(count: number): boolean {
     if (this.currentChickens >= count) {
       this.currentChickens -= count;
-      console.log(
-        `Removed ${count} chickens. Remaining: ${this.currentChickens}/${this.maxChickens}`
-      );
       return true;
     } else {
-      console.log(`Cannot remove ${count} chickens. Only ${this.currentChickens} available.`);
       return false;
     }
   }
@@ -122,7 +108,6 @@ export class ChickenCoop extends Structure {
    */
   public collectEggs(): number {
     const eggCount = this.getEggCount();
-    console.log(`Collected ${eggCount} eggs from the chicken coop!`);
     // Reset egg production timer here in a real implementation
     return eggCount;
   }

@@ -114,8 +114,6 @@ export class MouseHandler {
    * @returns The new state after toggling
    */
   public toggleState(): MouseState {
-    console.log(`[MouseHandler] Toggling to ACTIVE state`);
-
     // Clear existing idle timer
     if (this.idleTimer) {
       clearTimeout(this.idleTimer);
@@ -140,10 +138,6 @@ export class MouseHandler {
     }, this.idleTimeout);
 
     return this.state.currentMode;
-
-    console.log(
-      `[MouseHandler] State: ${this.state.currentMode}, timer set for ${this.idleTimeout}ms`
-    );
   }
 
   /**
@@ -152,8 +146,6 @@ export class MouseHandler {
    * - Updates FPS to idle mode
    */
   private returnToIdle(): void {
-    console.log(`[MouseHandler] Returning to IDLE state`);
-
     this.state.currentMode = MouseState.IDLE;
     this.state.showVisualIndicator = false;
 
@@ -270,7 +262,6 @@ export class MouseHandler {
    */
   private handleWindowFocus(): void {
     this.state.isWindowFocused = true;
-    console.log("Window gained focus");
     this.updateFPSBasedOnState();
   }
 
@@ -279,7 +270,6 @@ export class MouseHandler {
    */
   private handleWindowBlur(): void {
     this.state.isWindowFocused = false;
-    console.log("Window lost focus - switching to idle FPS");
     this.updateFPSBasedOnState();
   }
 
@@ -288,12 +278,6 @@ export class MouseHandler {
    */
   private handleVisibilityChange(): void {
     this.state.isDocumentVisible = !document.hidden;
-
-    if (document.hidden) {
-      console.log("Tab became hidden - switching to idle FPS");
-    } else {
-      console.log("Tab became visible");
-    }
     this.updateFPSBasedOnState();
   }
 
@@ -301,7 +285,6 @@ export class MouseHandler {
    * Handle mouse leaving the entire document/window area
    */
   private handleDocumentMouseLeave(): void {
-    console.log("Mouse left window area - switching to idle FPS");
     this.updateFPSBasedOnState();
   }
 
@@ -309,7 +292,6 @@ export class MouseHandler {
    * Create the visual mouse indicator (red circle)
    */
   private createMouseIndicator(): void {
-    console.log(`[MouseHandler] Creating mouse indicator...`);
     this.mouseIndicator = new PIXI.Graphics();
 
     // PIXI v8 syntax for drawing a circle
@@ -323,11 +305,9 @@ export class MouseHandler {
     // Add to the world container if available, otherwise add to stage
     const container = this.worldContainer || this.pixiApp.stage;
     container.addChild(this.mouseIndicator);
-    console.log(`[MouseHandler] Mouse indicator created and added to container:`, container);
 
     // Force render after adding
     this.pixiApp.renderer.render(container);
-    console.log(`[MouseHandler] Forced render after adding indicator`);
   }
 
   /**
@@ -335,7 +315,6 @@ export class MouseHandler {
    */
   private handleMouseEnter(event: MouseEvent): void {
     try {
-      console.log(`[MouseHandler] Mouse entered canvas`);
       this.state.isMouseInsideCanvas = true;
 
       // Calculate world coordinates
@@ -344,32 +323,12 @@ export class MouseHandler {
 
       // Show and position visual indicator if enabled
       if (this.mouseIndicator && this.state.showVisualIndicator) {
-        console.log(
-          `[MouseHandler] Showing indicator and positioning at (${worldCoords.x.toFixed(
-            2
-          )}, ${worldCoords.y.toFixed(2)})`
-        );
         this.mouseIndicator.visible = true;
         this.updateMouseIndicatorPosition(worldCoords);
-      } else {
-        console.log(
-          `[MouseHandler] Not showing indicator: indicator=${!!this.mouseIndicator}, showVisual=${
-            this.state.showVisualIndicator
-          }`
-        );
       }
 
       // Update FPS based on new state
       this.updateFPSBasedOnState();
-
-      // Log if in active mode
-      if (this.isActive()) {
-        console.log(
-          `Mouse entered canvas - World coordinates: (${worldCoords.x.toFixed(
-            2
-          )}, ${worldCoords.y.toFixed(2)})`
-        );
-      }
     } catch (error) {
       console.error("Error handling mouse enter:", error);
     }
@@ -388,10 +347,6 @@ export class MouseHandler {
       // Hide visual indicator when mouse leaves canvas
       if (this.mouseIndicator) {
         this.mouseIndicator.visible = false;
-      }
-
-      if (this.isActive()) {
-        console.log("Mouse left canvas");
       }
     } catch (error) {
       console.error("Error handling mouse leave:", error);
@@ -590,10 +545,6 @@ export class MouseHandler {
 
     // Invalidate cache when render sprite changes
     this.invalidateCoordinateCache();
-
-    console.log(
-      `MouseHandler render sprite set with design dimensions: ${designWidth}x${designHeight}`
-    );
   }
 
   /**

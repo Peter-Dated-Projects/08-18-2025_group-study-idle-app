@@ -434,7 +434,7 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
                 fontSize: "12px",
               }}
             >
-              You haven't joined any groups yet. Create or join a group to get started!
+              You haven&apos;t joined any groups yet. Create or join a group to get started!
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

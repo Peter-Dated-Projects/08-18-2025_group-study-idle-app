@@ -126,7 +126,8 @@ export default function TestChatPage() {
               immediately in other tabs
             </li>
             <li>
-              <strong>Connection Status:</strong> Verify all tabs show "Connected" WebSocket status
+              <strong>Connection Status:</strong> Verify all tabs show &quot;Connected&quot;
+              WebSocket status
             </li>
             <li>
               <strong>Different Lobbies:</strong> Change the lobby code in one tab - messages should
@@ -142,7 +143,7 @@ export default function TestChatPage() {
           <ul style={{ lineHeight: "1.6" }}>
             <li>Messages appear in real-time across all tabs with the same lobby code</li>
             <li>Your own messages appear with blue background</li>
-            <li>Other users' messages appear with gray background</li>
+            <li>Other users&apos; messages appear with gray background</li>
             <li>All messages include username and timestamp</li>
             <li>WebSocket connection status is shown and updates properly</li>
           </ul>

@@ -37,7 +37,6 @@ export class DynamicFPSManager {
     }
 
     this.fpsPresets.set(presetName, fps);
-    console.log(`FPS preset '${presetName}' set to ${fps} FPS`);
   }
 
   /**
@@ -54,7 +53,6 @@ export class DynamicFPSManager {
     }
 
     if (!this.isEnabled) {
-      console.log(`FPS manager is disabled. Cannot switch to preset '${presetName}'.`);
       return;
     }
 
@@ -63,10 +61,6 @@ export class DynamicFPSManager {
 
     // Set the PIXI ticker target FPS
     this.pixiApp.ticker.maxFPS = targetFPS;
-
-    console.log(
-      `✅ Switched to FPS preset '${presetName}' (${targetFPS} FPS) - ticker.maxFPS updated`
-    );
   }
 
   /**
@@ -126,7 +120,6 @@ export class DynamicFPSManager {
   public enable(): void {
     this.isEnabled = true;
     this.switchToPreset(this.currentPreset); // Reapply current preset
-    console.log("Dynamic FPS Manager enabled");
   }
 
   /**
@@ -135,7 +128,6 @@ export class DynamicFPSManager {
   public disable(): void {
     this.isEnabled = false;
     this.pixiApp.ticker.maxFPS = 0; // 0 means no limit (PIXI default)
-    console.log("Dynamic FPS Manager disabled");
   }
 
   /**
@@ -158,11 +150,6 @@ export class DynamicFPSManager {
     }
 
     const removed = this.fpsPresets.delete(presetName);
-    if (removed) {
-      console.log(`FPS preset '${presetName}' removed`);
-    } else {
-      console.warn(`FPS preset '${presetName}' not found`);
-    }
     return removed;
   }
 }
@@ -177,13 +164,8 @@ export let fpsManager: DynamicFPSManager | null = null;
  * @param pixiApp - The PIXI application instance
  */
 export function initializeFPSManager(pixiApp: PIXI.Application): void {
-  if (fpsManager) {
-    console.log("FPS Manager already initialized, replacing with new instance");
-  }
-
   fpsManager = new DynamicFPSManager(pixiApp);
   fpsManager.switchToPreset("idle"); // Start with idle preset (6 FPS)
-  console.log("Dynamic FPS Manager initialized and set to idle FPS");
 }
 
 /**

@@ -51,8 +51,6 @@ export class Picnic extends Structure {
 
       // Set pixel-perfect rendering
       texture.source.scaleMode = "nearest";
-
-      console.log(`Picnic sprite initialized at position (${this.position.x}, ${this.position.y})`);
     } catch (error) {
       console.error("Failed to initialize Picnic sprite:", error);
       // Fall back to base structure sprite if picnic texture fails

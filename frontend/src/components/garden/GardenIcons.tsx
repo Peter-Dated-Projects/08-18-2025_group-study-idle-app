@@ -7,6 +7,7 @@ import GlobalLeaderboardModal from "./ui/GlobalLeaderboardModal";
 import GroupLeaderboardModal from "./ui/GroupLeaderboardModal";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface GardenIconsProps {
   // No specific props needed for now
 }

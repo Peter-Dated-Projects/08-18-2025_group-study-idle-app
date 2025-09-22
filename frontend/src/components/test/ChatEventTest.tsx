@@ -151,7 +151,7 @@ export default function ChatEventTest({ lobbyCode }: ChatEventTestProps) {
           <li>Open this page in multiple browser tabs/windows</li>
           <li>Use the same lobby code in all tabs</li>
           <li>Send messages in one tab - they should appear in all tabs in real-time</li>
-          <li>Check that WebSocket status shows "Connected"</li>
+          <li>Check that WebSocket status shows &quot;Connected&quot;</li>
         </ul>
       </div>
     </div>

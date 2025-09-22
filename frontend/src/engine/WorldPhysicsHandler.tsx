@@ -273,8 +273,8 @@ export class WorldPhysicsHandler {
       const halfSize = entity.collider.halfSize;
 
       // Constrain position
-      let constrainedX = Math.max(min.x + halfSize.x, Math.min(pos.x, max.x - halfSize.x));
-      let constrainedY = Math.max(min.y + halfSize.y, Math.min(pos.y, max.y - halfSize.y));
+      const constrainedX = Math.max(min.x + halfSize.x, Math.min(pos.x, max.x - halfSize.x));
+      const constrainedY = Math.max(min.y + halfSize.y, Math.min(pos.y, max.y - halfSize.y));
 
       // If position was constrained, update entity and handle bounce
       if (constrainedX !== pos.x || constrainedY !== pos.y) {
