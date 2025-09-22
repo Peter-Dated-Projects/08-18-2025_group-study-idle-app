@@ -56,6 +56,80 @@ export class SpriteRenderer extends BaseRenderer {
   }
 
   /**
+   * Create a debug sprite component for entities without custom sprites (red rectangle)
+   */
+  createDebugSpriteComponent(entity: PhysicsEntity): SpriteComponent {
+    const graphics = new PIXI.Graphics();
+
+    // Get entity size from collider or use default
+    const size = entity.collider?.size || { x: 32, y: 32 };
+
+    // Create red outline rectangle like in the current GardenCanvas
+    graphics.rect(-size.x / 2, -size.y / 2, size.x, size.y);
+    graphics.stroke({ color: 0xff0000, width: 2 });
+
+    // Set zIndex based on entity tags
+    const zIndex = entity.hasTag && entity.hasTag("ground") ? -50 : 0;
+    graphics.zIndex = zIndex;
+
+    return {
+      sprite: graphics,
+      visible: true,
+      alpha: 1.0,
+      scale: { x: 1, y: 1 },
+      anchor: { x: 0.5, y: 0.5 },
+    };
+  }
+
+  /**
+   * Create a sprite component from an existing PIXI sprite (for Structure entities)
+   */
+  createSpriteFromExisting(existingSprite: PIXI.Sprite | PIXI.Container): SpriteComponent {
+    return {
+      sprite: existingSprite,
+      visible: existingSprite.visible,
+      alpha: existingSprite.alpha,
+      scale: { x: existingSprite.scale.x, y: existingSprite.scale.y },
+      anchor: { x: 0.5, y: 0.5 }, // Assume center anchor for existing sprites
+    };
+  }
+
+  /**
+   * Create a sprite component from a custom sprite path
+   */
+  async createSpriteFromPath(entity: PhysicsEntity, spritePath: string): Promise<SpriteComponent | null> {
+    try {
+      const texture = await PIXI.Assets.load(spritePath);
+      const sprite = new PIXI.Sprite(texture);
+      
+      sprite.anchor.set(0.5);
+      
+      // Apply custom scaling if specified
+      const scale = (entity as any).spriteScale || { x: 1, y: 1 };
+      sprite.scale.set(scale.x, scale.y);
+      
+      // Set zIndex based on entity tags
+      const zIndex = entity.hasTag && entity.hasTag("decoration") ? -10 : 0;
+      sprite.zIndex = zIndex;
+      
+      // Set pixel-perfect rendering
+      texture.source.scaleMode = "nearest";
+
+      return {
+        sprite: sprite,
+        texture: texture,
+        visible: true,
+        alpha: 1.0,
+        scale: scale,
+        anchor: { x: 0.5, y: 0.5 },
+      };
+    } catch (error) {
+      console.warn(`Failed to load sprite for entity ${entity.id}:`, error);
+      return null;
+    }
+  }
+
+  /**
    * Create a basic sprite component for entities without custom sprites
    */
   createDefaultSpriteComponent(entity: PhysicsEntity): SpriteComponent {
@@ -112,9 +186,37 @@ export class SpriteRenderer extends BaseRenderer {
    * Main rendering implementation
    */
   protected onRender(entity: PhysicsEntity): void {
-    // Create default sprite if none exists
+    // Create appropriate sprite if none exists
     if (!this.spriteComponent) {
-      this.setSpriteComponent(this.createDefaultSpriteComponent(entity));
+      // First check if this is a Structure entity with its own sprite
+      if (entity.hasTag && entity.hasTag("structure") && (entity as any).getSprite) {
+        const structureSprite = (entity as any).getSprite();
+        if (structureSprite) {
+          this.setSpriteComponent(this.createSpriteFromExisting(structureSprite));
+          return; // Structure handles its own rendering
+        }
+      }
+
+      // Set default sprite path for structure entities without one
+      if (entity.hasTag && entity.hasTag("structure") && !(entity as any).spritePath) {
+        (entity as any).spritePath = "/sprites/structure.png";
+      }
+
+      // Try to create from custom sprite path if entity has one
+      if ((entity as any).spritePath) {
+        // We need to handle async loading, for now create debug sprite as fallback
+        this.setSpriteComponent(this.createDebugSpriteComponent(entity));
+        
+        // Async load the actual sprite
+        this.createSpriteFromPath(entity, (entity as any).spritePath).then((spriteComponent) => {
+          if (spriteComponent) {
+            this.setSpriteComponent(spriteComponent);
+          }
+        });
+      } else {
+        // Use debug red rectangle for entities without custom sprites
+        this.setSpriteComponent(this.createDebugSpriteComponent(entity));
+      }
     }
 
     if (!this.spriteComponent) return;
@@ -145,8 +247,10 @@ export class SpriteRenderer extends BaseRenderer {
       );
     }
 
-    // Update debug rendering
-    this.updateDebugGraphics(entity);
+    // Update debug rendering if enabled
+    if (this.debugMode) {
+      this.updateDebugGraphics(entity);
+    }
 
     // Store last position for delta calculations
     this.lastPosition.x = entity.position.x;

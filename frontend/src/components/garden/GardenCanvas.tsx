@@ -14,6 +14,8 @@ import { initializeFPSManager } from "@/engine/input/DynamicFPSManager";
 import { debugMouseHandler, testMouseHandler } from "@/debug/MouseHandlerDebug";
 import { createSimpleMouseIndicator } from "@/debug/SimpleMouseIndicator";
 import { createDeadSimpleMouseCursor } from "@/debug/DeadSimpleMouseCursor";
+import { RendererHandler } from "@/engine/rendering/RendererHandler";
+import { SpriteRenderer } from "@/engine/rendering/SpriteRenderer";
 
 export const FRAMERATE = 6;
 export const DAYLIGHT_FRAMERATE = 0.1;
@@ -36,6 +38,8 @@ export default function GardenCanvas({
   const appRef = useRef<PIXI.Application | null>(null);
   const worldContainerRef = useRef<PIXI.Container | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const worldHandlerRef = useRef<any>(null);
+  const rendererHandlerRef = useRef<RendererHandler | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   // Ensure component is mounted and stable before initializing PIXI
@@ -241,6 +245,7 @@ export default function GardenCanvas({
 
         console.log("[GardenCanvas] Initializing WorldPhysicsHandler for entity management...");
         const worldHandler = await constructDefaultWorld(app, worldContainer);
+        worldHandlerRef.current = worldHandler;
         console.log("[GardenCanvas] Default world constructed with entities:", {
           entityCount: worldHandler.getEntityCount(),
           entities: worldHandler
@@ -269,139 +274,60 @@ export default function GardenCanvas({
           containerChildren: worldContainer.children.length,
         });
 
-        // Create visual representations for all physics entities
-        console.log("[GardenCanvas] Creating visual sprites for physics entities...");
+        // Initialize the rendering system
+        console.log("[GardenCanvas] Initializing rendering system...");
+        const rendererHandler = new RendererHandler(app, worldContainer);
+        rendererHandlerRef.current = rendererHandler;
+        
+        // Create visual representations for all physics entities using the rendering system
+        console.log("[GardenCanvas] Setting up entity renderers...");
         const entities = worldHandler.getAllEntities();
-        let visualSpritesCreated = 0;
+        let renderersCreated = 0;
 
         for (const entity of entities) {
-          // Check if this is a Structure entity with its own sprite
-          if (entity.hasTag && entity.hasTag("structure") && (entity as any).getSprite) {
-            const structureSprite = (entity as any).getSprite();
-            if (structureSprite) {
-              worldContainer.addChild(structureSprite);
-              visualSpritesCreated++;
-              continue; // Skip creating a rectangle graphic for this entity
-            }
-          }
-
-          // Ensure structure objects have a sprite by setting a default spritePath if not present
-          if (entity.hasTag && entity.hasTag("structure") && !(entity as any).spritePath) {
-            (entity as any).spritePath = "/sprites/structure.png"; // Default sprite for structures
-          }
-
-          // Check if this entity has a custom sprite path
-          if ((entity as any).spritePath) {
-            try {
-              const texture = await PIXI.Assets.load((entity as any).spritePath);
-              const sprite = new PIXI.Sprite(texture);
-              sprite.anchor.set(0.5);
-
-              // Apply custom scaling if specified
-              const scale = (entity as any).spriteScale || { x: 1, y: 1 };
-              sprite.scale.set(scale.x, scale.y);
-
-              sprite.position.set(entity.position.x, entity.position.y);
-              sprite.zIndex = entity.hasTag("decoration") ? -10 : 0;
-
-              // Set pixel-perfect rendering
-              texture.source.scaleMode = "nearest";
-
-              // Store reference on entity for updates
-              (entity as any).visualSprite = sprite;
-
-              worldContainer.addChild(sprite);
-              visualSpritesCreated++;
-              continue; // Skip creating a rectangle graphic for this entity
-            } catch (error) {
-              console.warn(`Failed to load sprite for entity ${entity.id}:`, error);
-              // Fall through to create rectangle graphic as fallback
-            }
-          }
-
-          // Create a red outline rectangle sprite to represent each entity
-          const graphics = new PIXI.Graphics();
-
-          // Get entity size from collider
-          const entitySize = entity.collider?.size || { x: 32, y: 32 };
-
-          // Add red outline for better visibility
-          graphics.rect(-entitySize.x / 2, -entitySize.y / 2, entitySize.x, entitySize.y);
-          graphics.stroke({ color: 0xff0000, width: 2 });
-
-          // Position the graphics at entity position
-          graphics.position.set(entity.position.x, entity.position.y);
-          graphics.zIndex = entity.hasTag("ground") ? -50 : 0; // Ground behind other objects
-
-          // Store reference on entity for updates
-          (entity as any).visualSprite = graphics;
-
-          worldContainer.addChild(graphics);
-          visualSpritesCreated++;
+          // Create a SpriteRenderer for each entity
+          const spriteRenderer = new SpriteRenderer();
+          
+          // Enable debug mode to show red rectangles for entities without custom sprites
+          spriteRenderer.setDebugMode(true);
+          
+          // Register the renderer with the handler
+          rendererHandler.registerRenderer(entity.id, spriteRenderer);
+          renderersCreated++;
         }
 
-        console.log("[GardenCanvas] Visual sprites created:", {
+        console.log("[GardenCanvas] Entity renderers created:", {
           entitiesCount: entities.length,
-          visualSpritesCreated,
+          renderersCreated,
           totalWorldContainerChildren: worldContainer.children.length,
         });
 
         // Sort children by zIndex for proper layering
         worldContainer.sortChildren();
 
-        // TODO: Add more visual entities to worldContainer as needed
-        // The WorldPhysicsHandler will manage physics entities independently
-        // but we can sync visual elements with physics entities when needed
-
         // Use the app's built-in ticker for FPS management integration
-        const ticker = app.ticker; // Use app's ticker instead of creating new one
-        ticker.minFPS = 3; // Set reasonable minimum
-        ticker.maxFPS = 60; // Set reasonable maximum (will be controlled by DynamicFPSManager)
+        const ticker = app.ticker;
+        ticker.minFPS = 3;
+        ticker.maxFPS = 60;
 
         let isActiveTab = true;
-        let needsInitialRender = true; // Flag to ensure initial render
-        let renderCount = 0; // Debug counter
+        let needsInitialRender = true;
 
-        // game render loop - WorldPhysicsHandler handles entity updates automatically
+        // Game render loop using the new rendering system
         ticker.add(() => {
           if (disposed) return;
           if (!isActiveTab) return;
 
-          // Sync visual sprites with physics entity positions (physics updates automatically)
-          const entities = worldHandler.getAllEntities();
-          for (const entity of entities) {
-            // Handle Structure entities with their own sprites
-            if (
-              entity.hasTag &&
-              entity.hasTag("structure") &&
-              (entity as any).updateSpritePosition
-            ) {
-              (entity as any).updateSpritePosition();
-              continue;
-            }
-
-            // Handle regular visual sprites
-            const visualSprite = (entity as any).visualSprite;
-            if (visualSprite && entity.position) {
-              // Update visual sprite position to match physics entity
-              visualSprite.position.set(entity.position.x, entity.position.y);
-            }
-          }
-
-          // Check if any entities have changed and need re-rendering, OR if we need initial render
+          // Check if we need to render
           const hasEntityChanges = worldHandler.hasChanges();
           const shouldRender = needsInitialRender || hasEntityChanges;
 
           if (!shouldRender) return;
 
-          renderCount++;
-          if (renderCount <= 5 || renderCount % 60 === 0) {
-            // Log first 5 renders and every 60th
-            console.log(`[GardenCanvas] Rendering frame ${renderCount}:`, {
-              needsInitialRender,
-              hasEntityChanges,
-              worldContainerChildren: worldContainer.children.length,
-            });
+          // Render all entities using the rendering system
+          const currentEntities = worldHandler.getAllEntities();
+          for (const entity of currentEntities) {
+            rendererHandler.renderEntity(entity);
           }
 
           // Render world container to the render texture (framebuffer)
@@ -414,7 +340,7 @@ export default function GardenCanvas({
           if (hasEntityChanges) {
             worldHandler.resetAllChanges();
           }
-          needsInitialRender = false; // Clear initial render flag after first render
+          needsInitialRender = false;
         });
 
         // Start the ticker
@@ -494,6 +420,21 @@ export default function GardenCanvas({
       console.log("[GardenCanvas] Cleanup function called");
       disposed = true;
       const app = appRef.current;
+
+      // Clean up renderer handler
+      if (rendererHandlerRef.current) {
+        console.log("[GardenCanvas] Cleaning up renderer handler...");
+        const entities = worldHandlerRef.current?.getAllEntities() || [];
+        for (const entity of entities) {
+          rendererHandlerRef.current.removeRenderer(entity.id);
+        }
+        rendererHandlerRef.current = null;
+      }
+
+      // Clear world handler ref
+      if (worldHandlerRef.current) {
+        worldHandlerRef.current = null;
+      }
 
       // Clean up resize observer
       if (resizeObserverRef.current) {
