@@ -97,21 +97,24 @@ export class SpriteRenderer extends BaseRenderer {
   /**
    * Create a sprite component from a custom sprite path
    */
-  async createSpriteFromPath(entity: PhysicsEntity, spritePath: string): Promise<SpriteComponent | null> {
+  async createSpriteFromPath(
+    entity: PhysicsEntity,
+    spritePath: string
+  ): Promise<SpriteComponent | null> {
     try {
       const texture = await PIXI.Assets.load(spritePath);
       const sprite = new PIXI.Sprite(texture);
-      
+
       sprite.anchor.set(0.5);
-      
+
       // Apply custom scaling if specified
       const scale = (entity as any).spriteScale || { x: 1, y: 1 };
       sprite.scale.set(scale.x, scale.y);
-      
+
       // Set zIndex based on entity tags
       const zIndex = entity.hasTag && entity.hasTag("decoration") ? -10 : 0;
       sprite.zIndex = zIndex;
-      
+
       // Set pixel-perfect rendering
       texture.source.scaleMode = "nearest";
 
@@ -206,7 +209,7 @@ export class SpriteRenderer extends BaseRenderer {
       if ((entity as any).spritePath) {
         // We need to handle async loading, for now create debug sprite as fallback
         this.setSpriteComponent(this.createDebugSpriteComponent(entity));
-        
+
         // Async load the actual sprite
         this.createSpriteFromPath(entity, (entity as any).spritePath).then((spriteComponent) => {
           if (spriteComponent) {

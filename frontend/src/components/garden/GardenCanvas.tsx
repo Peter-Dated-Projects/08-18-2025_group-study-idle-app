@@ -278,7 +278,7 @@ export default function GardenCanvas({
         console.log("[GardenCanvas] Initializing rendering system...");
         const rendererHandler = new RendererHandler(app, worldContainer);
         rendererHandlerRef.current = rendererHandler;
-        
+
         // Create visual representations for all physics entities using the rendering system
         console.log("[GardenCanvas] Setting up entity renderers...");
         const entities = worldHandler.getAllEntities();
@@ -287,10 +287,10 @@ export default function GardenCanvas({
         for (const entity of entities) {
           // Create a SpriteRenderer for each entity
           const spriteRenderer = new SpriteRenderer();
-          
+
           // Enable debug mode to show red rectangles for entities without custom sprites
           spriteRenderer.setDebugMode(true);
-          
+
           // Register the renderer with the handler
           rendererHandler.registerRenderer(entity.id, spriteRenderer);
           renderersCreated++;

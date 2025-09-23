@@ -1,7 +1,6 @@
 """
 Service for fetching user information from Firestore with Redis caching.
 """
-import json
 import logging
 import os
 from typing import Optional, Dict, Any
@@ -45,12 +44,19 @@ class UserService:
                 if service_account_json:
                     # Use service account JSON from environment variable
                     import json
-                    service_account_info = json.loads(service_account_json)
-                    cred = credentials.Certificate(service_account_info)
-                    firebase_admin.initialize_app(cred, {
-                        'projectId': project_id
-                    })
-                    logger.info(f"Firebase initialized with service account JSON for project: {project_id}")
+                    try:
+                        service_account_info = json.loads(service_account_json)
+                        cred = credentials.Certificate(service_account_info)
+                        firebase_admin.initialize_app(cred, {
+                            'projectId': project_id
+                        })
+                        logger.info(f"Firebase initialized with service account JSON for project: {project_id}")
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Failed to parse FIRESTORE_SERVICE_ACCOUNT_JSON: {e}")
+                        raise ValueError(f"Invalid JSON in FIRESTORE_SERVICE_ACCOUNT_JSON environment variable: {e}")
+                    except Exception as e:
+                        logger.error(f"Failed to initialize Firebase with service account JSON: {e}")
+                        raise
                 elif service_account_path and os.path.exists(service_account_path):
                     # Use service account credentials file
                     cred = credentials.Certificate(service_account_path)
