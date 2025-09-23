@@ -2,8 +2,8 @@ import * as PIXI from "pixi.js";
 import { Entity } from "./physics/Entity";
 import { Vec2 } from "./physics/Vec2";
 import { timeManager } from "./TimeManager";
-import { mouseInteractionSystem } from "./input/MouseInteractionSystem";
 import { RendererHandler, BaseRenderer } from "./rendering";
+import { resetClickState } from "./input/MouseHandler";
 
 /**
  * World Physics Handler - manages all entities and their physics simulation
@@ -56,11 +56,6 @@ export class WorldPhysicsHandler {
 
     this.entities.set(entity.id, entity);
     this.entitiesArray.push(entity);
-
-    // Register clickable entities with mouse interaction system
-    if (entity.hasTag("clickable")) {
-      mouseInteractionSystem.registerEntity(entity);
-    }
   }
 
   /**
@@ -77,9 +72,6 @@ export class WorldPhysicsHandler {
     if (index > -1) {
       this.entitiesArray.splice(index, 1);
     }
-
-    // Unregister from mouse interaction system
-    mouseInteractionSystem.unregisterEntity(entity);
 
     return true;
   }
@@ -191,9 +183,6 @@ export class WorldPhysicsHandler {
     // Update performance tracking
     this.updatePerformanceStats();
 
-    // Update mouse interactions for clickable entities
-    mouseInteractionSystem.update();
-
     // Apply gravity to dynamic entities
     this.applyGravity(deltaTime);
 
@@ -212,6 +201,9 @@ export class WorldPhysicsHandler {
     // Update and render all entities
     this.rendererHandler.update(deltaTime);
     this.rendererHandler.renderAll(this.entitiesArray);
+
+    // Reset mouse click state at the end of the frame
+    resetClickState();
   };
 
   /**
@@ -451,20 +443,6 @@ export class WorldPhysicsHandler {
   private setupMouseEventListeners(): void {
     const canvas = this.pixiApp.canvas;
     if (!canvas) return;
-
-    // Listen for mouse down/up events to track clicking
-    canvas.addEventListener("mousedown", () => {
-      mouseInteractionSystem.setMouseDown(true);
-    });
-
-    canvas.addEventListener("mouseup", () => {
-      mouseInteractionSystem.setMouseDown(false);
-    });
-
-    // Also listen to document to catch mouse up events outside canvas
-    document.addEventListener("mouseup", () => {
-      mouseInteractionSystem.setMouseDown(false);
-    });
   }
 }
 

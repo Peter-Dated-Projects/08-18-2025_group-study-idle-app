@@ -1,11 +1,17 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../constants";
-import FriendsMenu from "./ui/FriendsMenu";
+import FriendsModal from "./ui/FriendsModal";
 import UserProfile from "./UserProfile";
 import GroupsModal from "./ui/GroupsModal";
 import GlobalLeaderboardModal from "./ui/GlobalLeaderboardModal";
 import GroupLeaderboardModal from "./ui/GroupLeaderboardModal";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
+import { Structure } from "@/scripts/structures/Structure";
+import StructuresModal from "./ui/StructuresModal";
+import {
+  clearGlobalStructureClickHandler,
+  setGlobalStructureClickHandler,
+} from "@/utils/globalStructureHandler";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface GardenIconsProps {
@@ -20,6 +26,25 @@ export default function GardenIcons({}: GardenIconsProps) {
   const [showGlobalLeaderboard, setShowGlobalLeaderboard] = useState(false);
   const [showGroupLeaderboard, setShowGroupLeaderboard] = useState(false);
 
+  // Structures modal state - moved before handleStructureClick function
+  const [locked, setLocked] = useState(false);
+  const [selectedStructureName, setSelectedStructureName] = useState<string>("Structure");
+
+  // Structure click handler
+  const handleStructureClick = (structure: Structure) => {
+    setSelectedStructureName(structure.id);
+    setLocked(true);
+  };
+
+  // Set up global structure click handler
+  useEffect(() => {
+    setGlobalStructureClickHandler(handleStructureClick);
+    return () => {
+      clearGlobalStructureClickHandler();
+    };
+  }, []);
+
+  // Early return AFTER all hooks have been called
   if (!user) return null;
 
   // Convert user session to the format expected by UserProfile
@@ -62,11 +87,9 @@ export default function GardenIcons({}: GardenIconsProps) {
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = PANELFILL;
-            e.currentTarget.style.transform = "scale(1.05)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = BORDERFILL;
-            e.currentTarget.style.transform = "scale(1)";
           }}
           title="Friends"
         >
@@ -92,11 +115,9 @@ export default function GardenIcons({}: GardenIconsProps) {
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = PANELFILL;
-            e.currentTarget.style.transform = "scale(1.05)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = BORDERFILL;
-            e.currentTarget.style.transform = "scale(1)";
           }}
           title="Groups"
         >
@@ -198,11 +219,9 @@ export default function GardenIcons({}: GardenIconsProps) {
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = PANELFILL;
-            e.currentTarget.style.transform = "scale(1.05)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = BORDERFILL;
-            e.currentTarget.style.transform = "scale(1)";
           }}
           title="User Profile"
         >
@@ -212,7 +231,7 @@ export default function GardenIcons({}: GardenIconsProps) {
 
       {/* Modals */}
       {showFriendsMenu && (
-        <FriendsMenu
+        <FriendsModal
           isVisible={showFriendsMenu}
           onClose={() => setShowFriendsMenu(false)}
           userId={user.userId}
@@ -242,6 +261,13 @@ export default function GardenIcons({}: GardenIconsProps) {
           onClose={() => setShowGroupLeaderboard(false)}
         />
       )}
+
+      {/* Structures Modal */}
+      <StructuresModal
+        locked={locked}
+        onClose={() => setLocked(false)}
+        structureName={selectedStructureName}
+      />
     </>
   );
 }

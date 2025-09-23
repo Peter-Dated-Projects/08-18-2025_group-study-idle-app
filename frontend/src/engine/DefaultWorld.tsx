@@ -1,6 +1,6 @@
 import { WorldPhysicsHandler } from "./WorldPhysicsHandler";
 import { PhysicsEntity, Vec2 } from "./physics";
-import { Structure } from "../scripts/structures/Structure";
+import { MouseInteractionCallbacks, Structure } from "../scripts/structures/Structure";
 import * as PIXI from "pixi.js";
 
 // AGENT_LOG -- to be removed when user enters staging/testing
@@ -9,6 +9,7 @@ import Mailbox from "@/scripts/structures/Mailbox";
 import Picnic from "@/scripts/structures/Picnic";
 import WaterWell from "@/scripts/structures/WaterWell";
 import Workbench from "@/scripts/structures/Workbench";
+import { callGlobalStructureClickHandler } from "@/utils/globalStructureHandler";
 
 // Import design constants for map center calculation
 const DESIGN_WIDTH = 1920;
@@ -89,19 +90,32 @@ async function createDefaultStructurePlots(config: DefaultWorldConfig): Promise<
     new Vec2(centerX + plotDistance * 2, centerY + plotDistance * 0.5),
   ];
 
+  // Optional: Add a click handler for the structures
+  const onPlotMouseCallbacks: MouseInteractionCallbacks = {
+    onClick: (entity) => {
+      console.log("Structure plot clicked:", entity.id);
+
+      // Cast entity to Structure since we know it's a structure in this context
+      const structure = entity as Structure;
+
+      // Activate Modal -- for now
+      callGlobalStructureClickHandler(structure);
+    },
+    onEnter: (entity) => {
+      console.log("Mouse entered structure plot:", entity.id);
+    },
+    onLeave: (entity) => {
+      console.log("Mouse left structure plot:", entity.id);
+    },
+  };
+
   // Create Structure objects for each position
   for (let i = 0; i < plotPositions.length; i++) {
     const position = plotPositions[i];
 
-    // Optional: Add a click handler for the structures
-    const onPlotClick = (structure: Structure) => {
-      console.log(`Clicked on plot ${i + 1} at position (${position.x}, ${position.y})`);
-      // Add your plot interaction logic here
-    };
-
     try {
       // Use the static factory method to create and initialize the structure
-      const plot = await Structure.create(position, onPlotClick);
+      const plot = await Structure.create(position, onPlotMouseCallbacks);
       plots.push(plot);
 
       console.log(`Created plot ${i + 1} at position (${position.x}, ${position.y})`);
@@ -114,27 +128,13 @@ async function createDefaultStructurePlots(config: DefaultWorldConfig): Promise<
   // setting default world state. when user decides to enter staging or actual feature testing please remove
 
   // change slots to certain structures like mailbox, chicken coop, water well, etc.
-  plots[0] = await ChickenCoop.create(plotPositions[0], (structure) => {
-    console.log("Clicked on Chicken Coop at center plot");
-  });
-  plots[1] = await Mailbox.create(plotPositions[1], (structure) => {
-    console.log("Clicked on Mailbox at left plot");
-  });
-  plots[2] = await Picnic.create(plotPositions[2], (structure) => {
-    console.log("Clicked on Picnic at right plot");
-  });
-  plots[3] = await WaterWell.create(plotPositions[3], (structure) => {
-    console.log("Clicked on Water Well at top plot");
-  });
-  plots[4] = await Workbench.create(plotPositions[4], (structure) => {
-    console.log("Clicked on Workbench at bottom plot");
-  });
-  plots[5] = await Picnic.create(plotPositions[5], (structure) => {
-    console.log("Clicked on Picnic at bottom-left plot");
-  });
-  plots[6] = await WaterWell.create(plotPositions[6], (structure) => {
-    console.log("Clicked on Water Well at top-right plot");
-  });
+  plots[0] = await ChickenCoop.create(plotPositions[0], onPlotMouseCallbacks);
+  plots[1] = await Mailbox.create(plotPositions[1], onPlotMouseCallbacks);
+  plots[2] = await Picnic.create(plotPositions[2], onPlotMouseCallbacks);
+  plots[3] = await WaterWell.create(plotPositions[3], onPlotMouseCallbacks);
+  plots[4] = await Workbench.create(plotPositions[4], onPlotMouseCallbacks);
+  plots[5] = await Picnic.create(plotPositions[5], onPlotMouseCallbacks);
+  plots[6] = await WaterWell.create(plotPositions[6], onPlotMouseCallbacks);
 
   return plots;
 }

@@ -28,6 +28,12 @@ interface MouseHandlerState {
   // Mouse tracking
   lastMouseMoveTime: number;
   currentWorldPosition: Vec2;
+
+  // Mouse button state
+  isLeftButtonDown: boolean;
+  isRightButtonDown: boolean;
+  isLeftButtonClicked: boolean;
+  isRightButtonClicked: boolean;
 }
 
 /**
@@ -38,6 +44,20 @@ interface CoordinateCache {
   worldOffset: { offsetX: number; offsetY: number; scaleX: number; scaleY: number } | null;
   lastUpdateTime: number;
   cacheValidDuration: number; // Cache valid for 100ms
+}
+
+/**
+ * Global MouseHandler instance
+ */
+export interface MouseStateDetails {
+  currentMode: MouseState;
+  isMouseInsideCanvas: boolean;
+  isWindowFocused: boolean;
+  isDocumentVisible: boolean;
+  showVisualIndicator: boolean;
+  lastMouseMoveTime: number;
+  hasRenderSprite: boolean;
+  worldOffset: { offsetX: number; offsetY: number; scaleX: number; scaleY: number } | null;
 }
 
 /**
@@ -89,6 +109,10 @@ export class MouseHandler {
       showVisualIndicator: false,
       lastMouseMoveTime: Date.now(),
       currentWorldPosition: new Vec2(),
+      isLeftButtonDown: false,
+      isRightButtonDown: false,
+      isLeftButtonClicked: false,
+      isRightButtonClicked: false,
     };
 
     // Initialize coordinate cache
@@ -200,6 +224,8 @@ export class MouseHandler {
       this.canvasElement.addEventListener("mouseenter", this.handleMouseEnter.bind(this));
       this.canvasElement.addEventListener("mouseleave", this.handleMouseLeave.bind(this));
       this.canvasElement.addEventListener("mousemove", this.handleMouseMove.bind(this));
+      this.canvasElement.addEventListener("mousedown", this.handleMouseDown.bind(this));
+      this.canvasElement.addEventListener("mouseup", this.handleMouseUp.bind(this));
     } catch (error) {
       console.error("Error setting up mouse events:", error);
     }
@@ -372,6 +398,37 @@ export class MouseHandler {
       console.error("Error handling mouse move:", error);
     }
   }
+
+  /**
+   * Handle mouse down events
+   */
+  private handleMouseDown(event: MouseEvent): void {
+    if (event.button === 0) {
+      this.state.isLeftButtonDown = true;
+      this.state.isLeftButtonClicked = false;
+    } else if (event.button === 2) {
+      this.state.isRightButtonDown = true;
+      this.state.isRightButtonClicked = false;
+    }
+  }
+
+  /**
+   * Handle mouse up events
+   */
+  private handleMouseUp(event: MouseEvent): void {
+    if (event.button === 0) {
+      if (this.state.isLeftButtonDown) {
+        this.state.isLeftButtonClicked = true;
+      }
+      this.state.isLeftButtonDown = false;
+    } else if (event.button === 2) {
+      if (this.state.isRightButtonDown) {
+        this.state.isRightButtonClicked = true;
+      }
+      this.state.isRightButtonDown = false;
+    }
+  }
+
   /**
    * Update the position of the mouse indicator
    */
@@ -498,6 +555,47 @@ export class MouseHandler {
   }
 
   /**
+   * Check if the left mouse button is currently pressed down.
+   * @returns True if the left button is down, false otherwise.
+   */
+  public isLeftButtonDown(): boolean {
+    return this.state.isLeftButtonDown;
+  }
+
+  /**
+   * Check if the right mouse button is currently pressed down.
+   * @returns True if the right button is down, false otherwise.
+   */
+  public isRightButtonDown(): boolean {
+    return this.state.isRightButtonDown;
+  }
+
+  /**
+   * Check if the left mouse button was clicked in the current frame.
+   * @returns True if a click occurred, false otherwise.
+   */
+  public wasLeftButtonClicked(): boolean {
+    return this.state.isLeftButtonClicked;
+  }
+
+  /**
+   * Check if the right mouse button was clicked in the current frame.
+   * @returns True if a click occurred, false otherwise.
+   */
+  public wasRightButtonClicked(): boolean {
+    return this.state.isRightButtonClicked;
+  }
+
+  /**
+   * Resets the click state for both buttons.
+   * Should be called at the end of each frame/update loop.
+   */
+  public resetClickState(): void {
+    this.state.isLeftButtonClicked = false;
+    this.state.isRightButtonClicked = false;
+  }
+
+  /**
    * Get the current world offset from the render sprite (with caching)
    * This represents how much the world has been translated and scaled on the canvas
    * @returns Object containing offset and scale information, or null if render sprite not available
@@ -560,16 +658,7 @@ export class MouseHandler {
   /**
    * Get current state information for debugging
    */
-  public getState(): {
-    currentMode: MouseState;
-    isMouseInsideCanvas: boolean;
-    isWindowFocused: boolean;
-    isDocumentVisible: boolean;
-    showVisualIndicator: boolean;
-    lastMouseMoveTime: number;
-    hasRenderSprite: boolean;
-    worldOffset: { offsetX: number; offsetY: number; scaleX: number; scaleY: number } | null;
-  } {
+  public getState(): MouseStateDetails {
     return {
       currentMode: this.state.currentMode,
       isMouseInsideCanvas: this.state.isMouseInsideCanvas,
@@ -625,6 +714,10 @@ export class MouseHandler {
         showVisualIndicator: false,
         lastMouseMoveTime: Date.now(),
         currentWorldPosition: new Vec2(),
+        isLeftButtonDown: false,
+        isRightButtonDown: false,
+        isLeftButtonClicked: false,
+        isRightButtonClicked: false,
       };
 
       this.renderSprite = null;
@@ -728,7 +821,7 @@ export function mouseToWorldCoords(mouseX?: number, mouseY?: number): Vec2 | nul
  * Get the current state of the mouse handler for debugging
  * @returns Current state object or null if handler not initialized
  */
-export function getMouseHandlerState(): any {
+export function getMouseHandlerState(): MouseStateDetails | null {
   if (!mouseHandler) {
     console.warn("MouseHandler not initialized. Call initializeMouseHandler first.");
     return null;
@@ -751,4 +844,40 @@ export function getWorldOffset(): {
     return null;
   }
   return mouseHandler.getWorldOffset();
+}
+
+/**
+ * Check if the left mouse button was clicked in the current frame.
+ * @returns True if a click occurred, false otherwise, or null if handler not initialized.
+ */
+export function wasLeftButtonClicked(): boolean | null {
+  if (!mouseHandler) {
+    console.warn("MouseHandler not initialized. Call initializeMouseHandler first.");
+    return null;
+  }
+  return mouseHandler.wasLeftButtonClicked();
+}
+
+/**
+ * Check if the right mouse button was clicked in the current frame.
+ * @returns True if a click occurred, false otherwise, or null if handler not initialized.
+ */
+export function wasRightButtonClicked(): boolean | null {
+  if (!mouseHandler) {
+    console.warn("MouseHandler not initialized. Call initializeMouseHandler first.");
+    return null;
+  }
+  return mouseHandler.wasRightButtonClicked();
+}
+
+/**
+ * Resets the click state for both buttons.
+ * Should be called at the end of each frame/update loop.
+ */
+export function resetClickState(): void {
+  if (!mouseHandler) {
+    console.warn("MouseHandler not initialized. Call initializeMouseHandler first.");
+    return;
+  }
+  mouseHandler.resetClickState();
 }

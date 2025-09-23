@@ -8,11 +8,16 @@ import GardenTasks from "@/components/garden/tasks/GardenTasks";
 import GardenSettings from "@/components/garden/ui/GardenSettings";
 import GardenIcons from "@/components/garden/GardenIcons";
 import { NotificationProvider, useGlobalNotification } from "@/components/NotificationProvider";
+import {
+  setGlobalStructureClickHandler,
+  clearGlobalStructureClickHandler,
+} from "@/utils/globalStructureHandler";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
 
 import { FONTCOLOR, BORDERFILL, BORDERLINE, PANELFILL } from "@/components/constants";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Structure } from "@/scripts/structures/Structure";
 
 // Types for lobby state management
 interface LobbyData {

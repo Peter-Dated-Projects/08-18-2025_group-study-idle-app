@@ -9,11 +9,10 @@ import {
   mouseHandler,
   toggleMouseHandlerState,
   getMouseHandlerMode,
+  resetClickState,
 } from "@/engine/input/MouseHandler";
 import { initializeFPSManager } from "@/engine/input/DynamicFPSManager";
-import { debugMouseHandler, testMouseHandler } from "@/debug/MouseHandlerDebug";
-import { createSimpleMouseIndicator } from "@/debug/SimpleMouseIndicator";
-import { createDeadSimpleMouseCursor } from "@/debug/DeadSimpleMouseCursor";
+import { createMouseCursor } from "@/debug/MouseCursor";
 import { RendererHandler } from "@/engine/rendering/RendererHandler";
 import { SpriteRenderer } from "@/engine/rendering/SpriteRenderer";
 
@@ -226,10 +225,6 @@ export default function GardenCanvas({
             console.log("Toggling to ACTIVE state...");
             const newState = toggleMouseHandlerState();
             console.log("New state after toggle:", newState);
-
-            // Debug the mouse handler state
-            debugMouseHandler();
-            testMouseHandler();
           }, 1000);
 
           // Test auto-return to IDLE mode
@@ -239,9 +234,9 @@ export default function GardenCanvas({
           }, 3000);
         }
 
-        // Create dead simple cursor for basic testing
-        console.log("[GardenCanvas] Creating dead simple cursor for basic testing...");
-        createDeadSimpleMouseCursor(app);
+        // Create mouse cursor for basic testing
+        console.log("[GardenCanvas] Creating mouse cursor for basic testing...");
+        createMouseCursor(app);
 
         console.log("[GardenCanvas] Initializing WorldPhysicsHandler for entity management...");
         const worldHandler = await constructDefaultWorld(app, worldContainer);

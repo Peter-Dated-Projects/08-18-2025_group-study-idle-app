@@ -1,16 +1,16 @@
 import { Vec2 } from "../../engine/physics";
-import { Structure } from "./Structure";
+import { MouseInteractionCallbacks, Structure } from "./Structure";
 import * as PIXI from "pixi.js";
+
+import { MAILBOX_CONFIG } from "@/config/structureConfigs";
 
 /**
  * Mailbox structure - a communication hub for the farm
  * Provides mail delivery and messaging functionality
  */
 export class Mailbox extends Structure {
-  private mailboxTexturePath = "/entities/mailbox.png";
-
-  constructor(position: Vec2, onClick?: (structure: Mailbox) => void) {
-    super(position, onClick ? (structure) => onClick(structure as Mailbox) : undefined);
+  constructor(position: Vec2, mouseCallbacks: MouseInteractionCallbacks) {
+    super(position, mouseCallbacks);
 
     // Add mailbox-specific tags
     this.addTag("mailbox");
@@ -22,17 +22,15 @@ export class Mailbox extends Structure {
    * Override sprite initialization to use mailbox texture
    */
   public async initializeSprite(): Promise<void> {
+    // change the actual sprite
     try {
-      // Load the mailbox texture
-      const texture = await PIXI.Assets.load(this.mailboxTexturePath);
-
-      // Create sprite
+      const texture = await PIXI.Assets.load(MAILBOX_CONFIG.image);
       this.sprite = new PIXI.Sprite(texture);
       this.sprite.anchor.set(0.5); // Center anchor
 
-      // Scale to fit appropriate size for mailbox (smaller than base structure)
-      const scaleX = 120 / texture.width;
-      const scaleY = 120 / texture.height;
+      // Scale to fit appropriate size for mailbox
+      const scaleX = MAILBOX_CONFIG.width / texture.width;
+      const scaleY = MAILBOX_CONFIG.height / texture.height;
       this.sprite.scale.set(scaleX, scaleY);
 
       // Position sprite
@@ -45,53 +43,15 @@ export class Mailbox extends Structure {
       // Set up click event
       this.sprite.on("pointerdown", this.handleClick.bind(this));
 
+      // Set up hover events for white border effect
+      this.sprite.on("pointerover", this.handleHoverEnter.bind(this));
+      this.sprite.on("pointerout", this.handleHoverExit.bind(this));
+
       // Set pixel-perfect rendering
       texture.source.scaleMode = "nearest";
-
-      console.log(
-        `Mailbox sprite initialized at position (${this.position.x}, ${this.position.y})`
-      );
     } catch (error) {
-      console.error("Failed to initialize Mailbox sprite:", error);
-      // Fall back to base structure sprite if mailbox texture fails
-      await super.initializeSprite();
+      console.error("Error loading mailbox texture:", error);
     }
-  }
-
-  /**
-   * Handle mailbox-specific click interactions
-   */
-  protected handleClick(event: PIXI.FederatedPointerEvent): void {
-    // Call parent click handler first
-    super.handleClick(event);
-
-    // Add mailbox-specific click behavior
-    this.openMailbox();
-  }
-
-  /**
-   * Handle mailbox-specific interactions
-   */
-  public openMailbox(): void {
-    console.log("Opening mailbox - checking for new mail...");
-    // Add mailbox-specific functionality here
-    // Could check for messages, deliveries, etc.
-  }
-
-  /**
-   * Send mail through the mailbox
-   */
-  public sendMail(recipient: string, message: string): void {
-    console.log(`Sending mail to ${recipient}: ${message}`);
-    // Add mail sending functionality here
-  }
-
-  /**
-   * Check if there's new mail
-   */
-  public hasNewMail(): boolean {
-    // Placeholder logic - could be connected to game state
-    return Math.random() > 0.7; // 30% chance of new mail
   }
 
   /**
@@ -99,9 +59,9 @@ export class Mailbox extends Structure {
    */
   public static async create(
     position: Vec2,
-    onClick?: (mailbox: Mailbox) => void
+    mouseCallbacks: MouseInteractionCallbacks
   ): Promise<Mailbox> {
-    const mailbox = new Mailbox(position, onClick);
+    const mailbox = new Mailbox(position, mouseCallbacks);
     await mailbox.initializeSprite();
     return mailbox;
   }

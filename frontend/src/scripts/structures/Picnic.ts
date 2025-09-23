@@ -1,19 +1,20 @@
 import { Vec2 } from "../../engine/physics";
-import { Structure } from "./Structure";
+import { MouseInteractionCallbacks, Structure } from "./Structure";
 import * as PIXI from "pixi.js";
+
+import { PICNIC_CONFIG } from "@/config/structureConfigs";
 
 /**
  * Picnic structure - a relaxation and social area
  * Provides rest and social interaction functionality
  */
 export class Picnic extends Structure {
-  private picnicTexturePath = "/entities/picnic.png";
   private maxSeats = 4;
   private currentVisitors = 0;
   private restBonus = 10; // energy restored per rest session
 
-  constructor(position: Vec2, onClick?: (structure: Picnic) => void) {
-    super(position, onClick ? (structure) => onClick(structure as Picnic) : undefined);
+  constructor(position: Vec2, mouseCallbacks: MouseInteractionCallbacks) {
+    super(position, mouseCallbacks);
 
     // Add picnic-specific tags
     this.addTag("picnic");
@@ -26,17 +27,15 @@ export class Picnic extends Structure {
    * Override sprite initialization to use picnic texture
    */
   public async initializeSprite(): Promise<void> {
+    // change the actual sprite
     try {
-      // Load the picnic texture
-      const texture = await PIXI.Assets.load(this.picnicTexturePath);
-
-      // Create sprite
+      const texture = await PIXI.Assets.load(PICNIC_CONFIG.image);
       this.sprite = new PIXI.Sprite(texture);
       this.sprite.anchor.set(0.5); // Center anchor
 
-      // Scale to fit appropriate size for picnic area
-      const scaleX = 176 / texture.width;
-      const scaleY = 176 / texture.height;
+      // Scale to fit appropriate size for picnic
+      const scaleX = PICNIC_CONFIG.width / texture.width;
+      const scaleY = PICNIC_CONFIG.height / texture.height;
       this.sprite.scale.set(scaleX, scaleY);
 
       // Position sprite
@@ -49,125 +48,25 @@ export class Picnic extends Structure {
       // Set up click event
       this.sprite.on("pointerdown", this.handleClick.bind(this));
 
+      // Set up hover events for white border effect
+      this.sprite.on("pointerover", this.handleHoverEnter.bind(this));
+      this.sprite.on("pointerout", this.handleHoverExit.bind(this));
+
       // Set pixel-perfect rendering
       texture.source.scaleMode = "nearest";
     } catch (error) {
-      console.error("Failed to initialize Picnic sprite:", error);
-      // Fall back to base structure sprite if picnic texture fails
-      await super.initializeSprite();
+      console.error("Error loading picnic texture:", error);
     }
-  }
-
-  /**
-   * Handle picnic-specific click interactions
-   */
-  protected handleClick(event: PIXI.FederatedPointerEvent): void {
-    // Call parent click handler first
-    super.handleClick(event);
-
-    // Add picnic-specific click behavior
-    this.usePicnicArea();
-  }
-
-  /**
-   * Use the picnic area for rest and relaxation
-   */
-  public usePicnicArea(): void {
-    if (this.currentVisitors < this.maxSeats) {
-      this.currentVisitors++;
-      console.log(`Using picnic area for rest. Visitors: ${this.currentVisitors}/${this.maxSeats}`);
-      console.log(`Restored ${this.restBonus} energy!`);
-
-      // Simulate rest session - in real game this would take time
-      setTimeout(() => {
-        this.finishRest();
-      }, 2000); // 2 second rest simulation
-    } else {
-      console.log("Picnic area is full! Please wait for a seat to become available.");
-    }
-  }
-
-  /**
-   * Finish rest session
-   */
-  private finishRest(): void {
-    if (this.currentVisitors > 0) {
-      this.currentVisitors--;
-      console.log(
-        `Rest session complete! Feeling refreshed. Available seats: ${
-          this.maxSeats - this.currentVisitors
-        }`
-      );
-    }
-  }
-
-  /**
-   * Host a social gathering
-   */
-  public hostGathering(): boolean {
-    if (this.currentVisitors === 0) {
-      console.log("Hosting a social gathering at the picnic area!");
-      this.currentVisitors = this.maxSeats; // Fill all seats
-
-      // Simulate gathering duration
-      setTimeout(() => {
-        this.endGathering();
-      }, 5000); // 5 second gathering simulation
-
-      return true;
-    } else {
-      console.log("Cannot host gathering - picnic area is currently in use.");
-      return false;
-    }
-  }
-
-  /**
-   * End social gathering
-   */
-  private endGathering(): void {
-    this.currentVisitors = 0;
-    console.log("Social gathering has ended. Picnic area is now available!");
-  }
-
-  /**
-   * Check availability
-   */
-  public getAvailability(): { available: number; occupied: number; total: number } {
-    return {
-      available: this.maxSeats - this.currentVisitors,
-      occupied: this.currentVisitors,
-      total: this.maxSeats,
-    };
-  }
-
-  /**
-   * Check if picnic area is available
-   */
-  public isAvailable(): boolean {
-    return this.currentVisitors < this.maxSeats;
-  }
-
-  /**
-   * Check if picnic area is full
-   */
-  public isFull(): boolean {
-    return this.currentVisitors >= this.maxSeats;
-  }
-
-  /**
-   * Get current mood/atmosphere of the picnic area
-   */
-  public getMood(): string {
-    if (this.currentVisitors === 0) return "peaceful and quiet";
-    if (this.currentVisitors === this.maxSeats) return "lively and bustling";
-    return "pleasantly occupied";
   }
 
   /**
    * Static factory method to create a Picnic with automatic sprite initialization
    */
-  public static async create(position: Vec2, onClick?: (picnic: Picnic) => void): Promise<Picnic> {
-    const picnic = new Picnic(position, onClick);
+  public static async create(
+    position: Vec2,
+    mouseCallbacks: MouseInteractionCallbacks
+  ): Promise<Picnic> {
+    const picnic = new Picnic(position, mouseCallbacks);
     await picnic.initializeSprite();
     return picnic;
   }

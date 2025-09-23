@@ -20,4 +20,3 @@ export * from "./Collider";
 export * from "./EntityUtils";
 export type { Rect as PhysicsRect } from "./Rect";
 export * from "./Rigidbody";
-export { Entity as LegacyEntity } from "./LegacyEntity";

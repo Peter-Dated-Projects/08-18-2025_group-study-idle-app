@@ -4,7 +4,7 @@ import * as PIXI from "pixi.js";
  * Dead Simple Mouse Cursor - bypasses all complex logic
  * This creates a simple red circle that follows the mouse using basic canvas coordinates
  */
-export class DeadSimpleMouseCursor {
+export class MouseCursor {
   private app: PIXI.Application;
   private cursor: PIXI.Graphics;
   private container: PIXI.Container;
@@ -36,13 +36,13 @@ export class DeadSimpleMouseCursor {
 
     // Mouse enter - show cursor
     canvas.addEventListener("mouseenter", () => {
-      console.log("[DeadSimpleMouseCursor] Mouse entered - showing cursor");
+      console.log("[MouseCursor] Mouse entered - showing cursor");
       this.cursor.visible = true;
     });
 
     // Mouse leave - hide cursor
     canvas.addEventListener("mouseleave", () => {
-      console.log("[DeadSimpleMouseCursor] Mouse left - hiding cursor");
+      console.log("[MouseCursor] Mouse left - hiding cursor");
       this.cursor.visible = false;
     });
 
@@ -57,11 +57,6 @@ export class DeadSimpleMouseCursor {
 
         // Set position directly in screen coordinates
         this.cursor.position.set(x, y);
-
-        // Log every 30th frame to avoid spam
-        if (Math.random() < 0.03) {
-          console.log(`[DeadSimpleMouseCursor] Moving to (${x.toFixed(1)}, ${y.toFixed(1)})`);
-        }
       }
     });
   }
@@ -73,19 +68,19 @@ export class DeadSimpleMouseCursor {
 }
 
 // Global instance
-let globalCursor: DeadSimpleMouseCursor | null = null;
+let globalCursor: MouseCursor | null = null;
 
-export function createDeadSimpleMouseCursor(app: PIXI.Application): DeadSimpleMouseCursor {
+export function createMouseCursor(app: PIXI.Application): MouseCursor {
   // Remove existing cursor
   if (globalCursor) {
     globalCursor.destroy();
   }
 
-  globalCursor = new DeadSimpleMouseCursor(app);
+  globalCursor = new MouseCursor(app);
 
   // Make available for debugging
   if (typeof window !== "undefined") {
-    (window as any).deadSimpleCursor = globalCursor;
+    (window as any).Cursor = globalCursor;
   }
 
   return globalCursor;

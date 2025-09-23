@@ -4,13 +4,13 @@ import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 import { useCachedUserFriends, useCacheActions } from "@/hooks/useCachedData";
 import type { Friend } from "@/utils/cacheManager";
 
-interface FriendsMenuProps {
+interface FriendsModalProps {
   isVisible: boolean;
   onClose: () => void;
   userId: string;
 }
 
-export default function FriendsMenu({ isVisible, onClose, userId }: FriendsMenuProps) {
+export default function FriendsModal({ isVisible, onClose, userId }: FriendsModalProps) {
   // Use cached friends data
   const {
     friends,

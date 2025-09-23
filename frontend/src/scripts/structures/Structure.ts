@@ -1,5 +1,20 @@
 import { PhysicsEntity, Vec2 } from "../../engine/physics";
 import * as PIXI from "pixi.js";
+import { OutlineFilter } from "pixi-filters";
+import { Entity } from "@/engine/physics/Entity";
+
+import { EMPTY_STRUCTURE_CONFIG } from "@/config/structureConfigs";
+import { getMouseHandlerState, mouseHandler } from "@/engine/input/MouseHandler";
+
+export interface MouseInteractionCallbacks {
+  onClick?: (entity: Entity) => void;
+  onEnter?: (entity: Entity) => void;
+  onLeave?: (entity: Entity) => void;
+}
+
+export interface StructureState {
+  isHovered: boolean;
+}
 
 /**
  * Structure entity - clickable world editing structure
@@ -7,10 +22,14 @@ import * as PIXI from "pixi.js";
  */
 export class Structure extends PhysicsEntity {
   protected sprite: PIXI.Sprite | null = null;
-  protected onClick: ((structure: Structure) => void) | null = null;
   protected isClickable: boolean = true;
+  protected hoverBorder: PIXI.Graphics | null = null;
+  protected mouseCallbacks: MouseInteractionCallbacks;
+  protected state: StructureState = {
+    isHovered: false,
+  };
 
-  constructor(position: Vec2, onClick?: (structure: Structure) => void) {
+  constructor(position: Vec2, mouseCallbacks: MouseInteractionCallbacks) {
     // Create the base physics entity with 256x256 size
     super(
       position,
@@ -27,8 +46,8 @@ export class Structure extends PhysicsEntity {
     this.addTag("clickable");
     this.addTag("building");
 
-    // Store onClick callback
-    this.onClick = onClick || null;
+    // Store callbacks
+    this.mouseCallbacks = mouseCallbacks;
 
     // Set up physics properties
     this.friction = 1.0; // No sliding
@@ -41,15 +60,15 @@ export class Structure extends PhysicsEntity {
   public async initializeSprite(): Promise<void> {
     try {
       // Load the empty structure texture
-      const texture = await PIXI.Assets.load("/entities/empty-structure.png");
+      const texture = await PIXI.Assets.load(EMPTY_STRUCTURE_CONFIG.image);
 
       // Create sprite
       this.sprite = new PIXI.Sprite(texture);
       this.sprite.anchor.set(0.5); // Center anchor
 
-      // Scale to fit 100x100 size
-      const scaleX = 256 / texture.width;
-      const scaleY = 256 / texture.height;
+      // Scale to fit desired size
+      const scaleX = EMPTY_STRUCTURE_CONFIG.width / texture.width;
+      const scaleY = EMPTY_STRUCTURE_CONFIG.height / texture.height;
       this.sprite.scale.set(scaleX, scaleY);
 
       // Position sprite
@@ -61,6 +80,10 @@ export class Structure extends PhysicsEntity {
 
       // Set up click event
       this.sprite.on("pointerdown", this.handleClick.bind(this));
+
+      // Set up hover events for white border effect
+      this.sprite.on("pointerover", this.handleHoverEnter.bind(this));
+      this.sprite.on("pointerout", this.handleHoverExit.bind(this));
 
       // Set pixel-perfect rendering
       texture.source.scaleMode = "nearest";
@@ -74,23 +97,79 @@ export class Structure extends PhysicsEntity {
   }
 
   /**
+   * Update function called each frame - can be overridden by subclasses
+   */
+  public update(): void {
+    if (!mouseHandler?.isMouseInside()) return;
+
+    const mousePosition = mouseHandler.getCurrentWorldPosition();
+    const currentMousePos = new Vec2(mousePosition.x, mousePosition.y);
+    const isWithinBounds = this.isPointInEntityBounds(currentMousePos, this);
+
+    if (!isWithinBounds) {
+      if (this.state.isHovered) {
+        this.state.isHovered = false;
+        this.handleHoverExit();
+      }
+      return;
+    }
+
+    if (!this.state.isHovered) {
+      this.handleHoverEnter();
+      this.state.isHovered = true;
+    }
+
+    if (mouseHandler.wasLeftButtonClicked()) {
+      this.handleClick();
+    }
+  }
+
+  /**
+   * Check if point is inside entity bounds
+   */
+  public isPointInEntityBounds(point: Vec2, entity: PhysicsEntity): boolean {
+    const entityPos = entity.position;
+    const entitySize = entity.collider?.size || new Vec2(32, 32);
+
+    // Calculate entity bounds (assuming center anchor)
+    const halfWidth = entitySize.x / 2;
+    const halfHeight = entitySize.y / 2;
+
+    const left = entityPos.x - halfWidth;
+    const right = entityPos.x + halfWidth;
+    const top = entityPos.y - halfHeight;
+    const bottom = entityPos.y + halfHeight;
+
+    return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
+  }
+
+  /**
    * Handle click events - protected so subclasses can override
    */
-  protected handleClick(event: PIXI.FederatedPointerEvent): void {
+  protected handleClick(): void {
     if (!this.isClickable) return;
+    // call onClick if provided
+    if (this.mouseCallbacks.onClick) {
+      this.mouseCallbacks.onClick(this);
+    }
+  }
 
-    console.log("Structure clicked:", this);
-    console.log("Structure details:", {
-      id: this.id,
-      position: { x: this.position.x, y: this.position.y },
-      size: this.collider?.size || { x: 100, y: 100 },
-      tags: Array.from(this.tags),
-      isStatic: this.isStatic,
-    });
+  /**
+   * Handle hover enter - shows white border around the sprite
+   */
+  protected handleHoverEnter(): void {
+    // if has callback
+    if (this.mouseCallbacks.onEnter) {
+      this.mouseCallbacks.onEnter(this);
+    }
+  }
 
-    // Call the onClick callback if provided
-    if (this.onClick) {
-      this.onClick(this);
+  /**
+   * Handle hover exit - removes white border
+   */
+  protected handleHoverExit(): void {
+    if (this.mouseCallbacks.onLeave) {
+      this.mouseCallbacks.onLeave(this);
     }
   }
 
@@ -104,8 +183,22 @@ export class Structure extends PhysicsEntity {
   /**
    * Set the onClick callback
    */
-  public setOnClick(callback: (structure: Structure) => void): void {
-    this.onClick = callback;
+  public setOnClick(callback: (entity: Entity) => void): void {
+    this.mouseCallbacks.onClick = callback;
+  }
+
+  /**
+   * Set the onHover callback
+   */
+  public setOnEnter(callback: (entity: Entity) => void): void {
+    this.mouseCallbacks.onEnter = callback;
+  }
+
+  /**
+   * Set the onClick callback
+   */
+  public setOnLeave(callback: (entity: Entity) => void): void {
+    this.mouseCallbacks.onLeave = callback;
   }
 
   /**
@@ -132,6 +225,16 @@ export class Structure extends PhysicsEntity {
    * Cleanup when destroying the structure
    */
   public destroy(): void {
+    // Clean up hover border first
+    if (this.hoverBorder) {
+      if (this.hoverBorder.parent) {
+        this.hoverBorder.parent.removeChild(this.hoverBorder);
+      }
+      this.hoverBorder.destroy();
+      this.hoverBorder = null;
+    }
+
+    // Clean up sprite
     if (this.sprite) {
       this.sprite.removeAllListeners();
       this.sprite.destroy();
@@ -144,9 +247,9 @@ export class Structure extends PhysicsEntity {
    */
   public static async create(
     position: Vec2,
-    onClick?: (structure: Structure) => void
+    mouseCallbacks: MouseInteractionCallbacks
   ): Promise<Structure> {
-    const structure = new Structure(position, onClick);
+    const structure = new Structure(position, mouseCallbacks);
     await structure.initializeSprite();
     return structure;
   }
