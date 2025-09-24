@@ -28,7 +28,9 @@ export interface UpdateSlotConfigRequest {
 }
 
 // Level Config API calls
-export async function getUserLevelConfig(userId: string): Promise<APIResponse<UserLevelConfigData>> {
+export async function getUserLevelConfig(
+  userId: string
+): Promise<APIResponse<UserLevelConfigData>> {
   try {
     const response = await createAPIRequest(`/api/level-config/${userId}`);
     const data = await response.json();
@@ -88,7 +90,9 @@ export async function updateSlotConfig(
   }
 }
 
-export async function resetUserLevelConfig(userId: string): Promise<APIResponse<UserLevelConfigData>> {
+export async function resetUserLevelConfig(
+  userId: string
+): Promise<APIResponse<UserLevelConfigData>> {
   try {
     const response = await createAPIRequest(`/api/level-config/${userId}/reset`, {
       method: "POST",

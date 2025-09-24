@@ -2,19 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+export async function POST(request: NextRequest, { params }: { params: { userId: string } }) {
   try {
     const { userId } = params;
     const body = await request.json();
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, message: "User ID is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
     }
 
     if (!body.structure_name || typeof body.structure_name !== "string") {
@@ -49,7 +43,10 @@ export async function POST(
   } catch (error) {
     console.error("Error adding inventory item:", error);
     return NextResponse.json(
-      { success: false, message: error instanceof Error ? error.message : "Failed to add inventory item" },
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to add inventory item",
+      },
       { status: 500 }
     );
   }

@@ -10,10 +10,7 @@ export async function GET(
     const { userId, structureName } = params;
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, message: "User ID is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
     }
 
     if (!structureName) {
@@ -23,12 +20,15 @@ export async function GET(
       );
     }
 
-    const response = await fetch(`${BACKEND_URL}/api/inventory/${userId}/available/${structureName}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const response = await fetch(
+      `${BACKEND_URL}/api/inventory/${userId}/available/${structureName}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -40,7 +40,10 @@ export async function GET(
   } catch (error) {
     console.error("Error getting available structures:", error);
     return NextResponse.json(
-      { success: false, message: error instanceof Error ? error.message : "Failed to get available structures" },
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to get available structures",
+      },
       { status: 500 }
     );
   }

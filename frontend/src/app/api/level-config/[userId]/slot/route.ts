@@ -2,19 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: { userId: string } }) {
   try {
     const { userId } = params;
     const body = await request.json();
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, message: "User ID is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
     }
 
     if (typeof body.slot_index !== "number" || body.slot_index < 0 || body.slot_index > 6) {
@@ -49,7 +43,10 @@ export async function PATCH(
   } catch (error) {
     console.error("Error updating slot config:", error);
     return NextResponse.json(
-      { success: false, message: error instanceof Error ? error.message : "Failed to update slot config" },
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to update slot config",
+      },
       { status: 500 }
     );
   }

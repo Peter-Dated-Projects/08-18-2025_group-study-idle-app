@@ -2,18 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+export async function POST(request: NextRequest, { params }: { params: { userId: string } }) {
   try {
     const { userId } = params;
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, message: "User ID is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
     }
 
     const response = await fetch(`${BACKEND_URL}/api/level-config/${userId}/reset`, {
@@ -33,7 +27,10 @@ export async function POST(
   } catch (error) {
     console.error("Error resetting level config:", error);
     return NextResponse.json(
-      { success: false, message: error instanceof Error ? error.message : "Failed to reset level config" },
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to reset level config",
+      },
       { status: 500 }
     );
   }

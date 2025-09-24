@@ -2,18 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { userId: string } }) {
   try {
     const { userId } = params;
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, message: "User ID is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
     }
 
     const response = await fetch(`${BACKEND_URL}/api/level-config/${userId}`, {
@@ -38,19 +32,13 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+export async function PUT(request: NextRequest, { params }: { params: { userId: string } }) {
   try {
     const { userId } = params;
     const body = await request.json();
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, message: "User ID is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
     }
 
     if (!body.level_config || !Array.isArray(body.level_config) || body.level_config.length !== 7) {
@@ -78,7 +66,10 @@ export async function PUT(
   } catch (error) {
     console.error("Error updating level config:", error);
     return NextResponse.json(
-      { success: false, message: error instanceof Error ? error.message : "Failed to update level config" },
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to update level config",
+      },
       { status: 500 }
     );
   }

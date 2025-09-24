@@ -2,19 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { userId: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: { userId: string } }) {
   try {
     const { userId } = params;
     const body = await request.json();
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, message: "User ID is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
     }
 
     if (!body.structure_name || typeof body.structure_name !== "string") {
@@ -26,7 +20,10 @@ export async function PATCH(
 
     if (typeof body.currently_in_use !== "number" || body.currently_in_use < 0) {
       return NextResponse.json(
-        { success: false, message: "currently_in_use is required and must be a non-negative number" },
+        {
+          success: false,
+          message: "currently_in_use is required and must be a non-negative number",
+        },
         { status: 400 }
       );
     }
@@ -49,7 +46,10 @@ export async function PATCH(
   } catch (error) {
     console.error("Error updating structure usage:", error);
     return NextResponse.json(
-      { success: false, message: error instanceof Error ? error.message : "Failed to update structure usage" },
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to update structure usage",
+      },
       { status: 500 }
     );
   }

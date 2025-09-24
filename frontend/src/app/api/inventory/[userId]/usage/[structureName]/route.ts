@@ -10,10 +10,7 @@ export async function GET(
     const { userId, structureName } = params;
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, message: "User ID is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
     }
 
     if (!structureName) {
@@ -40,7 +37,10 @@ export async function GET(
   } catch (error) {
     console.error("Error getting structure usage:", error);
     return NextResponse.json(
-      { success: false, message: error instanceof Error ? error.message : "Failed to get structure usage" },
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to get structure usage",
+      },
       { status: 500 }
     );
   }

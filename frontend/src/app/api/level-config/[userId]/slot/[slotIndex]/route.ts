@@ -10,10 +10,7 @@ export async function GET(
     const { userId, slotIndex } = params;
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, message: "User ID is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
     }
 
     const slotIndexNum = parseInt(slotIndex, 10);
@@ -41,7 +38,10 @@ export async function GET(
   } catch (error) {
     console.error("Error fetching slot config:", error);
     return NextResponse.json(
-      { success: false, message: error instanceof Error ? error.message : "Failed to fetch slot config" },
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to fetch slot config",
+      },
       { status: 500 }
     );
   }

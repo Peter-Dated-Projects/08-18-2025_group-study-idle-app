@@ -66,8 +66,8 @@ export function createDefaultWorldConfig(): DefaultWorldConfig {
  * Create a structure instance based on its ID
  */
 async function createStructureById(
-  structureId: string, 
-  position: Vec2, 
+  structureId: string,
+  position: Vec2,
   callbacks: MouseInteractionCallbacks
 ): Promise<Structure> {
   if (structureId === "empty") {
@@ -106,7 +106,7 @@ async function loadUserLevelConfig(userId: string): Promise<string[]> {
   try {
     console.log("Loading level config from backend for user:", userId);
     const response = await getUserLevelConfig(userId);
-    
+
     if (response.success && response.data) {
       cachedLevelConfig = response.data.level_config;
       cachedUserId = userId;
@@ -223,12 +223,12 @@ async function createUserStructurePlots(config: DefaultWorldConfig): Promise<Str
 
   // Get the user level config
   let levelConfig = config.userLevelConfig;
-  
+
   // If no config provided, try to load it
   if (!levelConfig && config.userId) {
     levelConfig = await loadUserLevelConfig(config.userId);
   }
-  
+
   // Fallback to empty config if still no config
   if (!levelConfig) {
     levelConfig = ["empty", "empty", "empty", "empty", "empty", "empty", "empty"];
@@ -263,8 +263,12 @@ async function createUserStructurePlots(config: DefaultWorldConfig): Promise<Str
       const plot = await createStructureById(structureId, position, onPlotMouseCallbacks);
       plots.push(plot);
 
-      console.log(`Created plot ${i + 1} at position (${position.x}, ${position.y}) with structure: ${structureId}`);
-      
+      console.log(
+        `Created plot ${i + 1} at position (${position.x}, ${
+          position.y
+        }) with structure: ${structureId}`
+      );
+
       // Update usage in inventory if not empty
       if (structureId !== "empty" && config.userId) {
         try {
@@ -280,7 +284,7 @@ async function createUserStructurePlots(config: DefaultWorldConfig): Promise<Str
       }
     } catch (error) {
       console.error(`Failed to create plot ${i + 1} with structure ${structureId}:`, error);
-      
+
       // Create empty structure as fallback
       try {
         const plot = await Structure.create(position, onPlotMouseCallbacks);
@@ -328,7 +332,11 @@ export async function constructDefaultWorld(
     worldHandler.addEntity(entity);
   });
 
-  console.log(`World constructed with ${worldHandler.getEntityCount()} entities for user: ${userId || 'guest'}`);
+  console.log(
+    `World constructed with ${worldHandler.getEntityCount()} entities for user: ${
+      userId || "guest"
+    }`
+  );
 
   return worldHandler;
 }
