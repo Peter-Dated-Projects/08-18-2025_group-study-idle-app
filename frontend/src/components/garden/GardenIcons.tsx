@@ -158,6 +158,7 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
         locked={locked}
         onClose={() => setLocked(false)}
         structureName={selectedStructureName}
+        userId={user.userId}
         onShopClick={() => setShowShopModal(true)}
       />
 

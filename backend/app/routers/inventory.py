@@ -4,7 +4,7 @@ Handles retrieving and updating user structure inventory.
 """
 import logging
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 
 from ..services.inventory_service import get_inventory_service, InventoryService
@@ -41,6 +41,9 @@ class AddInventoryItemRequest(BaseModel):
 class UpdateUsageRequest(BaseModel):
     structure_name: str
     currently_in_use: int
+
+class BulkUpdateInventoryRequest(BaseModel):
+    inventory_updates: List[StructureInventoryItem] = Field(..., description="Complete inventory data with updates")
 
 class UsageResponse(BaseModel):
     success: bool
@@ -211,4 +214,35 @@ async def get_available_structures(
             
     except Exception as e:
         logger.error(f"Error getting available structures for {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+# ------------------------------------------------------------------ #
+# Bulk Update endpoints
+# ------------------------------------------------------------------ #
+
+@router.put("/{user_id}/bulk", response_model=InventoryResponse)
+async def bulk_update_inventory(
+    user_id: str,
+    request: BulkUpdateInventoryRequest,
+    inventory_service: InventoryService = Depends(get_inventory_service)
+):
+    """
+    Bulk update user's entire structure inventory.
+    """
+    try:
+        updated_inventory = inventory_service.bulk_update_inventory(
+            user_id, 
+            request.inventory_updates
+        )
+        
+        return InventoryResponse(
+            success=True,
+            data=UserInventoryData(**updated_inventory),
+            message="Bulk inventory update completed successfully"
+        )
+            
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error bulk updating inventory for {user_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")

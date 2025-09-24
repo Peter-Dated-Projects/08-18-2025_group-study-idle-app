@@ -13,8 +13,8 @@ export interface StructureConfig {
 
 export const EMPTY_STRUCTURE_CONFIG = {
   id: "default-structure",
-  width: 256,
-  height: 256,
+  width: 128,
+  height: 128,
   cost: 0,
   image: "/entities/empty-structure.png",
   name: "Default Structure",

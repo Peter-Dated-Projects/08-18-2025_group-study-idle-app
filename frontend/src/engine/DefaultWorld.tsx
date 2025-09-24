@@ -17,14 +17,12 @@ import { callGlobalStructureClickHandler } from "@/utils/globalStructureHandler"
 import { getStructureConfig, EMPTY_STRUCTURE_CONFIG } from "@/config/structureConfigs";
 import { getUserLevelConfig, updateSlotConfig } from "@/services/levelConfigService";
 import { updateStructureUsage } from "@/services/levelConfigService";
+import { localDataManager } from "@/utils/localDataManager";
+import { createStructureById as factoryCreateStructureById } from "@/utils/structureFactory";
 
 // Import design constants for map center calculation
 const DESIGN_WIDTH = 1920;
 const DESIGN_HEIGHT = 1080;
-
-// Cache for user level config to avoid multiple API calls
-let cachedLevelConfig: string[] | null = null;
-let cachedUserId: string | null = null;
 
 /**
  * Default world configuration and initial state for new players
@@ -70,64 +68,21 @@ async function createStructureById(
   position: Vec2,
   callbacks: MouseInteractionCallbacks
 ): Promise<Structure> {
-  if (structureId === "empty") {
-    // Create default empty structure
-    return await Structure.create(position, callbacks);
-  }
-
-  // Map structure IDs to their classes
-  switch (structureId) {
-    case "chicken-coop":
-      return await ChickenCoop.create(position, callbacks);
-    case "mailbox":
-      return await Mailbox.create(position, callbacks);
-    case "picnic":
-      return await Picnic.create(position, callbacks);
-    case "water-well":
-      return await WaterWell.create(position, callbacks);
-    case "workbench":
-      return await Workbench.create(position, callbacks);
-    default:
-      console.warn(`Unknown structure ID: ${structureId}, creating empty structure`);
-      return await Structure.create(position, callbacks);
-  }
+  return await factoryCreateStructureById(structureId, position, callbacks);
 }
 
 /**
  * Load user level config from backend with caching
  */
 async function loadUserLevelConfig(userId: string): Promise<string[]> {
-  // Check cache first
-  if (cachedUserId === userId && cachedLevelConfig) {
-    console.log("Using cached level config for user:", userId);
-    return cachedLevelConfig;
-  }
-
-  try {
-    console.log("Loading level config from backend for user:", userId);
-    const response = await getUserLevelConfig(userId);
-
-    if (response.success && response.data) {
-      cachedLevelConfig = response.data.level_config;
-      cachedUserId = userId;
-      console.log("Loaded level config:", cachedLevelConfig);
-      return cachedLevelConfig;
-    } else {
-      console.warn("Failed to load level config, using default empty config");
-      return ["empty", "empty", "empty", "empty", "empty", "empty", "empty"];
-    }
-  } catch (error) {
-    console.error("Error loading level config:", error);
-    return ["empty", "empty", "empty", "empty", "empty", "empty", "empty"];
-  }
+  return await localDataManager.getLevelConfig(userId);
 }
 
 /**
  * Clear the cached level config (call when user changes)
  */
 export function clearLevelConfigCache(): void {
-  cachedLevelConfig = null;
-  cachedUserId = null;
+  localDataManager.clearAllCaches();
 }
 
 /**

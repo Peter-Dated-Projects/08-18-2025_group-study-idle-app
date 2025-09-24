@@ -30,10 +30,10 @@ export class Structure extends PhysicsEntity {
   };
 
   constructor(position: Vec2, mouseCallbacks: MouseInteractionCallbacks) {
-    // Create the base physics entity with 256x256 size
+    // Create the base physics entity with 128x128 size (reduced from 256x256)
     super(
       position,
-      new Vec2(256, 256),
+      new Vec2(128, 128),
       `structure_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     );
 

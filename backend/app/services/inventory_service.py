@@ -319,6 +319,61 @@ class InventoryService:
             self.logger.error(f"Error getting available structures for user {user_id}: {e}")
             return 0
 
+    def bulk_update_inventory(self, user_id: str, inventory_updates: list) -> Dict[str, Any]:
+        """
+        Bulk update user's entire structure inventory.
+        
+        Args:
+            user_id: User ID
+            inventory_updates: List of inventory items with updated data
+            
+        Returns:
+            Dictionary with updated inventory data
+        """
+        try:
+            with self._get_db() as db:
+                # Convert inventory_updates to the expected format
+                inventory_items = []
+                for item in inventory_updates:
+                    if isinstance(item, dict):
+                        inventory_items.append(item)
+                    else:
+                        # Handle pydantic model objects
+                        inventory_items.append({
+                            "structure_name": item.structure_name,
+                            "count": item.count,
+                            "currently_in_use": item.currently_in_use
+                        })
+
+                # Update database
+                query = text("""
+                    INSERT INTO user_structure_inventory (user_id, structure_inventory)
+                    VALUES (:user_id, :inventory)
+                    ON CONFLICT (user_id) 
+                    DO UPDATE SET 
+                        structure_inventory = :inventory,
+                        updated_at = CURRENT_TIMESTAMP
+                    RETURNING user_id, structure_inventory, created_at, updated_at
+                """)
+                
+                result = db.execute(query, {
+                    "user_id": user_id,
+                    "inventory": json.dumps(inventory_items)
+                }).fetchone()
+                
+                db.commit()
+                
+                return {
+                    "user_id": result.user_id,
+                    "structure_inventory": result.structure_inventory,
+                    "created_at": result.created_at.isoformat() if result.created_at else None,
+                    "updated_at": result.updated_at.isoformat() if result.updated_at else None
+                }
+                
+        except Exception as e:
+            self.logger.error(f"Error bulk updating inventory for user {user_id}: {e}")
+            raise
+
 
 # Dependency for FastAPI
 _inventory_service = None
