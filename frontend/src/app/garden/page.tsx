@@ -269,6 +269,7 @@ function GardenPageContent() {
                 console.log("PIXI App created:", app);
                 setPixiApp(app);
               }}
+              userId={user?.userId} // Pass the real user ID to the canvas
             />
             <GardenMenu
               pixiApp={pixiApp}

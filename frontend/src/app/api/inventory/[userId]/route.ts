@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
-export async function GET(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ userId: string }> }
+) {
   try {
-    const { userId } = params;
+    const { userId } = await params;
 
     if (!userId) {
       return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
@@ -32,9 +35,12 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ userId: string }> }
+) {
   try {
-    const { userId } = params;
+    const { userId } = await params;
     const body = await request.json();
 
     if (!userId) {

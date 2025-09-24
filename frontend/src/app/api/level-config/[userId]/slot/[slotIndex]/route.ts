@@ -4,10 +4,10 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string; slotIndex: string } }
+  { params }: { params: Promise<{ userId: string; slotIndex: string }> }
 ) {
   try {
-    const { userId, slotIndex } = params;
+    const { userId, slotIndex } = await params;
 
     if (!userId) {
       return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });

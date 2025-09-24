@@ -7,6 +7,7 @@ import { getAllStructureConfigs } from "../../../config/structureConfigs";
 import { StructureInventoryItem } from "../../../services/inventoryService";
 import { localDataManager } from "../../../utils/localDataManager";
 import { worldEditingService } from "../../../utils/worldEditingService";
+import { callGlobalWorldRefreshHandler } from "../../../utils/globalWorldRefreshHandler";
 import { BsFillBuildingsFill, BsFillCartFill } from "react-icons/bs";
 
 interface StructuresModalProps {
@@ -16,6 +17,7 @@ interface StructuresModalProps {
   username?: string;
   accountBalance?: number;
   userId?: string; // Added userId prop
+  selectedPlotIndex?: number | null; // Added selectedPlotIndex prop for targeted placement
   onShopClick?: () => void; // Handler to open shop modal
 }
 
@@ -26,6 +28,7 @@ export default function StructuresModal({
   username = "Player",
   accountBalance = 0,
   userId,
+  selectedPlotIndex = null, // Default to null if not provided
   onShopClick,
 }: StructuresModalProps) {
   const [windowWidth, setWindowWidth] = useState(750); // Default width
@@ -36,33 +39,49 @@ export default function StructuresModal({
   const structureConfigs = getAllStructureConfigs();
 
   // Convert structure configs to storage items format, using actual inventory data
-  const storageItems = structureConfigs.map((config) => {
-    const inventoryItem = inventory.find((item) => item.structure_name === config.name);
-    return {
-      id: config.id,
-      image: config.image,
-      name: config.name,
-      count: inventoryItem ? inventoryItem.count : 0, // Use actual count or 0 if not in inventory
-    };
-  });
+  const storageItems = structureConfigs
+    .map((config) => {
+      const inventoryItem = inventory.find((item) => item.structure_name === config.id);
+      return {
+        id: config.id,
+        image: config.image,
+        name: config.name,
+        count: inventoryItem ? inventoryItem.count : 0, // Use actual count or 0 if not in inventory
+      };
+    })
+    .filter((item) => item.count > 0); // Only show items with count > 0
 
   // Load user inventory when modal opens or userId changes
   useEffect(() => {
     if (locked && userId) {
       setLoading(true);
 
-      // Initialize world editing service and load inventory
-      Promise.all([worldEditingService.initialize(userId), localDataManager.getInventory(userId)])
-        .then(([, inventory]) => {
-          setInventory(inventory);
-        })
-        .catch((error) => {
+      // Fetch fresh inventory data from backend
+      const fetchInventory = async () => {
+        try {
+          const response = await fetch(`/api/inventory/${userId}`);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch inventory: ${response.status}`);
+          }
+          const data = await response.json();
+
+          if (data.success && data.data) {
+            setInventory(data.data.structure_inventory);
+          } else {
+            setInventory([]);
+          }
+
+          // Initialize world editing service
+          await worldEditingService.initialize(userId);
+        } catch (error) {
           console.error("Error loading user data:", error);
           setInventory([]);
-        })
-        .finally(() => {
+        } finally {
           setLoading(false);
-        });
+        }
+      };
+
+      fetchInventory();
     }
   }, [locked, userId]);
 
@@ -102,35 +121,54 @@ export default function StructuresModal({
     }
 
     try {
-      // Check if user has available structures of this type
-      const hasAvailable = await worldEditingService.hasAvailableStructure(itemId);
-      if (!hasAvailable) {
-        console.warn(`No available structures of type ${itemId}`);
-        // TODO: Show user message about no available structures
-        return;
+      // Since we're already filtering items with count > 0 in storageItems,
+      // we know this item is available. Skip the redundant availability check.
+
+      let targetPlotIndex: number;
+
+      if (selectedPlotIndex !== null) {
+        // Use the specific plot that was clicked
+        targetPlotIndex = selectedPlotIndex;
+        console.log(`Placing ${itemId} on selected plot ${targetPlotIndex}`);
+      } else {
+        // Fallback to first available plot (original behavior)
+        const availablePlots = worldEditingService.getAvailablePlots();
+        if (availablePlots.length === 0) {
+          console.warn("No empty plots available");
+          // TODO: Show user message about no empty plots
+          return;
+        }
+        targetPlotIndex = availablePlots[0].index;
+        console.log(`No specific plot selected, using first available plot ${targetPlotIndex}`);
       }
 
-      // Get available plots
-      const availablePlots = worldEditingService.getAvailablePlots();
-      if (availablePlots.length === 0) {
-        console.warn("No empty plots available");
-        // TODO: Show user message about no empty plots
-        return;
-      }
-
-      // Place structure on first available plot
-      const targetPlot = availablePlots[0];
-      const success = await worldEditingService.placeStructure(targetPlot.index, itemId);
+      // Place structure on the target plot
+      const success = await worldEditingService.placeStructure(targetPlotIndex, itemId);
 
       if (success) {
-        console.log(`Successfully placed ${itemId} on plot ${targetPlot.index}`);
+        console.log(`Successfully placed ${itemId} on plot ${targetPlotIndex}`);
+
         // Refresh inventory to reflect changes
         if (userId) {
-          const updatedInventory = await localDataManager.getInventory(userId);
-          setInventory(updatedInventory);
+          const response = await fetch(`/api/inventory/${userId}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data) {
+              setInventory(data.data.structure_inventory);
+            }
+          }
         }
 
-        // TODO: Trigger world refresh to show new structure
+        // Close the modal after successful placement
+        onClose();
+
+        // Trigger world refresh using global handler
+        try {
+          await callGlobalWorldRefreshHandler();
+          console.log("World refresh completed after structure placement");
+        } catch (error) {
+          console.error("Error refreshing world:", error);
+        }
       } else {
         console.error(`Failed to place ${itemId}`);
         // TODO: Show error message to user

@@ -32,10 +32,60 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
   const [locked, setLocked] = useState(false);
   const [selectedStructureName, setSelectedStructureName] = useState<string>("Structure");
 
+  // State for tracking which plot was clicked
+  const [selectedPlotIndex, setSelectedPlotIndex] = useState<number | null>(null);
+
   // Structure click handler
   const handleStructureClick = (structure: Structure) => {
+    // Try to determine which plot this structure corresponds to
+    const plotIndex = findPlotIndexForStructure(structure);
+    setSelectedPlotIndex(plotIndex);
     setSelectedStructureName(structure.id);
     setLocked(true);
+  };
+
+  // Helper function to determine plot index from structure
+  const findPlotIndexForStructure = (structure: Structure): number => {
+    // Extract plot index from structure ID if it contains the information
+    // For now, let's try a simpler approach by looking at the structure position
+    // and comparing it with known plot layout from DefaultWorld
+
+    const DESIGN_WIDTH = 1920;
+    const DESIGN_HEIGHT = 1080;
+    const centerX = DESIGN_WIDTH / 2; // 960
+    const centerY = DESIGN_HEIGHT / 2; // 540
+    const plotDistance = 200; // pixels from center (from DefaultWorld)
+
+    // Expected plot positions (matching DefaultWorld.tsx)
+    const expectedPlotPositions = [
+      { x: centerX - plotDistance * 2, y: centerY + plotDistance * 0.5 }, // Plot 0
+      { x: centerX - plotDistance * 1.5, y: centerY - plotDistance * 0.5 }, // Plot 1
+      { x: centerX - plotDistance, y: centerY - plotDistance * 1.5 }, // Plot 2
+      { x: centerX, y: centerY - plotDistance * 1.5 }, // Plot 3
+      { x: centerX + plotDistance, y: centerY - plotDistance * 1.5 }, // Plot 4
+      { x: centerX + plotDistance * 1.5, y: centerY - plotDistance * 0.5 }, // Plot 5
+      { x: centerX + plotDistance * 2, y: centerY + plotDistance * 0.5 }, // Plot 6
+    ];
+
+    // Find closest plot position to structure position
+    let closestPlotIndex = 0;
+    let minDistance = Infinity;
+
+    for (let i = 0; i < expectedPlotPositions.length; i++) {
+      const distance = Math.sqrt(
+        Math.pow(structure.position.x - expectedPlotPositions[i].x, 2) +
+          Math.pow(structure.position.y - expectedPlotPositions[i].y, 2)
+      );
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestPlotIndex = i;
+      }
+    }
+
+    console.log(
+      `Structure at (${structure.position.x}, ${structure.position.y}) mapped to plot ${closestPlotIndex}`
+    );
+    return closestPlotIndex;
   };
 
   // Set up global structure click handler
@@ -156,9 +206,13 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
       {/* Structures Modal */}
       <StructuresModal
         locked={locked}
-        onClose={() => setLocked(false)}
+        onClose={() => {
+          setLocked(false);
+          setSelectedPlotIndex(null); // Reset plot selection when modal closes
+        }}
         structureName={selectedStructureName}
         userId={user.userId}
+        selectedPlotIndex={selectedPlotIndex} // Pass the selected plot index
         onShopClick={() => setShowShopModal(true)}
       />
 

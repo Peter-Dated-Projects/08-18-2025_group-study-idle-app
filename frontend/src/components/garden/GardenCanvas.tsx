@@ -15,6 +15,11 @@ import { initializeFPSManager } from "@/engine/input/DynamicFPSManager";
 import { createMouseCursor } from "@/debug/MouseCursor";
 import { RendererHandler } from "@/engine/rendering/RendererHandler";
 import { SpriteRenderer } from "@/engine/rendering/SpriteRenderer";
+import { refreshWorldStructures } from "@/engine/DefaultWorld";
+import { 
+  setGlobalWorldRefreshHandler,
+  clearGlobalWorldRefreshHandler
+} from "@/utils/globalWorldRefreshHandler";
 
 export const FRAMERATE = 6;
 export const DAYLIGHT_FRAMERATE = 0.1;
@@ -30,8 +35,10 @@ export const DESIGN_HEIGHT = 1080;
 
 export default function GardenCanvas({
   onAppCreated,
+  userId,
 }: {
   onAppCreated: (app: PIXI.Application) => void;
+  userId?: string;
 }) {
   const parentRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<PIXI.Application | null>(null);
@@ -239,12 +246,22 @@ export default function GardenCanvas({
         createMouseCursor(app);
 
         console.log("[GardenCanvas] Initializing WorldPhysicsHandler for entity management...");
-        // TODO: Replace with actual user ID from authentication system
-        const userId = "demo_user_123";
-        const worldHandler = await constructDefaultWorld(app, worldContainer, userId);
+        // Use real user ID from props, fallback to demo user
+        const worldUserId = userId || "demo_user_123";
+        const worldHandler = await constructDefaultWorld(app, worldContainer, worldUserId);
         worldHandlerRef.current = worldHandler;
+
+        // Set up global world refresh handler
+        const refreshHandler = async () => {
+          if (worldHandlerRef.current && worldUserId) {
+            await refreshWorldStructures(worldHandlerRef.current, worldUserId);
+          }
+        };
+        setGlobalWorldRefreshHandler(refreshHandler);
+
         console.log("[GardenCanvas] Default world constructed with entities:", {
           entityCount: worldHandler.getEntityCount(),
+          userId: worldUserId,
           entities: worldHandler
             .getAllEntities()
             .map((e) => ({ id: e.id, tags: e.tags, position: e.position })),
@@ -462,6 +479,9 @@ export default function GardenCanvas({
 
       // Set refs to null
       worldContainerRef.current = null;
+
+      // Clear global world refresh handler
+      clearGlobalWorldRefreshHandler();
 
       console.log("[GardenCanvas] Cleanup completed");
     };

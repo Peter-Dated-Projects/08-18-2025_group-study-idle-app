@@ -75,6 +75,9 @@ async function createStructureById(
  * Load user level config from backend with caching
  */
 async function loadUserLevelConfig(userId: string): Promise<string[]> {
+  // Force fresh data load by clearing cache first
+  // This ensures we always get the latest level config from backend
+  localDataManager.invalidateLevelConfig(userId);
   return await localDataManager.getLevelConfig(userId);
 }
 
@@ -83,6 +86,46 @@ async function loadUserLevelConfig(userId: string): Promise<string[]> {
  */
 export function clearLevelConfigCache(): void {
   localDataManager.clearAllCaches();
+}
+
+/**
+ * Refresh structure plots in an existing world based on current backend config
+ */
+export async function refreshWorldStructures(
+  worldHandler: WorldPhysicsHandler,
+  userId: string
+): Promise<void> {
+  console.log(`Refreshing world structures for user: ${userId}`);
+
+  try {
+    // Clear cached data to ensure we fetch fresh backend state
+    localDataManager.invalidateLevelConfig(userId);
+    localDataManager.invalidateInventory(userId);
+
+    // Remove existing structure plots from the world
+    const existingStructures = worldHandler
+      .getAllEntities()
+      .filter(entity => entity.hasTag("structure"));
+    
+    existingStructures.forEach(structure => {
+      worldHandler.removeEntityByReference(structure);
+    });
+
+    // Create fresh structure plots with updated config
+    const config = createDefaultWorldConfig();
+    config.userId = userId;
+    const newStructurePlots = await createUserStructurePlots(config);
+
+    // Add new structure plots to the world
+    newStructurePlots.forEach(plot => {
+      worldHandler.addEntity(plot);
+    });
+
+    console.log(`Successfully refreshed ${newStructurePlots.length} structure plots`);
+  } catch (error) {
+    console.error("Error refreshing world structures:", error);
+    throw error;
+  }
 }
 
 /**
