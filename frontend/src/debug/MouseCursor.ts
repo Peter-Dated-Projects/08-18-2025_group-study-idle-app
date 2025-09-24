@@ -55,6 +55,8 @@ export class MouseCursor {
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
 
+        this.cursor.zIndex = y;
+
         // Set position directly in screen coordinates
         this.cursor.position.set(x, y);
       }

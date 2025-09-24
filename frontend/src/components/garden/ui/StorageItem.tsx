@@ -14,8 +14,9 @@ export default function StorageItem({ id, image, name, count = 1, onClick }: Sto
     <div
       onClick={onClick}
       style={{
-        minWidth: "100px",
-        minHeight: "100px",
+        width: "100%",
+        height: "100%",
+        aspectRatio: "1", // Ensures 1:1 aspect ratio
         padding: "8px",
         backgroundColor: BORDERFILL,
         border: `2px solid ${BORDERLINE}`,
@@ -27,6 +28,7 @@ export default function StorageItem({ id, image, name, count = 1, onClick }: Sto
         cursor: onClick ? "pointer" : "default",
         transition: "all 0.2s ease",
         position: "relative",
+        boxSizing: "border-box",
       }}
       onMouseEnter={(e) => {
         if (onClick) {
@@ -44,8 +46,8 @@ export default function StorageItem({ id, image, name, count = 1, onClick }: Sto
       {/* Item Image */}
       <div
         style={{
-          width: "60px",
-          height: "60px",
+          width: "40%",
+          aspectRatio: "1",
           backgroundImage: `url(${image})`,
           backgroundSize: "contain",
           backgroundRepeat: "no-repeat",
@@ -58,10 +60,11 @@ export default function StorageItem({ id, image, name, count = 1, onClick }: Sto
       <div
         style={{
           color: FONTCOLOR,
-          fontSize: "12px",
+          fontSize: "10px",
           fontWeight: "bold",
           textAlign: "center",
           wordBreak: "break-word",
+          lineHeight: "1.1",
         }}
       >
         {name}

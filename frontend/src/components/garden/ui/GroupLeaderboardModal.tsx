@@ -12,6 +12,7 @@ import {
   BodyFont,
 } from "../../constants";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
+import { FaUsers } from "react-icons/fa";
 
 interface GroupLeaderboardEntry {
   rank: number;
@@ -160,6 +161,7 @@ export default function GroupLeaderboardModal({ isVisible, onClose }: GroupLeade
         isVisible={isVisible}
         onClose={onClose}
         title="Group Leaderboard"
+        icon={<FaUsers />}
         constrainToCanvas={true}
         zIndex={2000}
       >
@@ -174,7 +176,8 @@ export default function GroupLeaderboardModal({ isVisible, onClose }: GroupLeade
     <BaseModal
       isVisible={isVisible}
       onClose={onClose}
-      title="👥 Group Pomodoro Duration Leaderboard"
+      title="Group Pomodoro Duration Leaderboard"
+      icon={<FaUsers />}
       width="650px"
       maxHeight="700px"
       constrainToCanvas={true}

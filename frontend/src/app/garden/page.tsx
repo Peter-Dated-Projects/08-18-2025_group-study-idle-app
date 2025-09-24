@@ -15,7 +15,7 @@ import {
 import { useSessionAuth } from "@/hooks/useSessionAuth";
 
 import { FONTCOLOR, BORDERFILL, BORDERLINE, PANELFILL } from "@/components/constants";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Structure } from "@/scripts/structures/Structure";
 
@@ -57,6 +57,14 @@ function GardenPageContent() {
   const [isClicking, setIsClicking] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [pixiApp, setPixiApp] = useState<PIXI.Application | undefined>(undefined); // PIXI.js Application state
+  
+  // Shop modal opener function
+  const [shopOpenerRef, setShopOpenerRef] = useState<(() => void) | null>(null);
+
+  // Memoize the shop opener callback to prevent infinite re-renders
+  const handleShopModalOpen = useCallback((shopOpener: () => void) => {
+    setShopOpenerRef(() => shopOpener);
+  }, []);
 
   const minPanelSplit = 40;
   const maxPanelSplit = 70;
@@ -229,22 +237,21 @@ function GardenPageContent() {
   }
 
   return (
-    <NotificationProvider>
-      <main
-        className="flex flex-col min-h-screen w-full bg-black overflow-hidden"
-        style={{
-          backgroundColor: BORDERFILL,
-          border: `5px solid ${BORDERLINE}`,
-          cursor: isClicking
-            ? `url("/ui/mouse_click.png") 0 0, auto`
-            : `url("/ui/mouse_idle.png") 0 0, auto`,
-          color: FONTCOLOR,
-          textShadow: `1px 1px 1px ${BORDERFILL}`,
-        }}
-        onMouseDown={() => setIsClicking(true)}
-        onMouseUp={() => setIsClicking(false)}
-        onMouseLeave={() => setIsClicking(false)}
-      >
+    <main
+      className="flex flex-col min-h-screen w-full bg-black overflow-hidden"
+      style={{
+        backgroundColor: BORDERFILL,
+        border: `5px solid ${BORDERLINE}`,
+        cursor: isClicking
+          ? `url("/ui/mouse_click.png") 0 0, auto`
+          : `url("/ui/mouse_idle.png") 0 0, auto`,
+        color: FONTCOLOR,
+        textShadow: `1px 1px 1px ${BORDERFILL}`,
+      }}
+      onMouseDown={() => setIsClicking(true)}
+      onMouseUp={() => setIsClicking(false)}
+      onMouseLeave={() => setIsClicking(false)}
+    >
         <div className="w-full h-full" style={{ border: `8px solid ${BORDERFILL}` }}>
           <div
             className={`flex w-full h-full flex-1 gap-[10px]`}
@@ -263,9 +270,20 @@ function GardenPageContent() {
                   setPixiApp(app);
                 }}
               />
-              <GardenMenu pixiApp={pixiApp} isInLobby={isInLobby} lobbyCode={lobbyData?.code} />
+              <GardenMenu 
+                pixiApp={pixiApp} 
+                isInLobby={isInLobby} 
+                lobbyCode={lobbyData?.code} 
+                onShopClick={() => {
+                  if (shopOpenerRef) {
+                    shopOpenerRef();
+                  }
+                }}
+              />
               <GardenSettings />
-              <GardenIcons />
+              <GardenIcons 
+                onShopModalOpen={handleShopModalOpen}
+              />
             </div>
 
             <div
@@ -368,6 +386,5 @@ function GardenPageContent() {
           </div>
         </div>
       </main>
-    </NotificationProvider>
-  );
-}
+    );
+  }

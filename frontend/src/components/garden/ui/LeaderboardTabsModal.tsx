@@ -10,6 +10,7 @@ import {
 } from "../../constants";
 import GlobalLeaderboardModal from "./GlobalLeaderboardModal";
 import GroupLeaderboardModal from "./GroupLeaderboardModal";
+import { FaChartBar } from "react-icons/fa";
 
 interface LeaderboardTabsModalProps {
   isVisible: boolean;
@@ -30,6 +31,7 @@ export default function LeaderboardTabsModal({ isVisible, onClose }: Leaderboard
         isVisible={isVisible}
         onClose={onClose}
         title="Leaderboards"
+        icon={<FaChartBar />}
         constrainToCanvas={true}
       >
         <div

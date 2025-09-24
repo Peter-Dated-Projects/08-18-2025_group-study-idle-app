@@ -41,6 +41,11 @@ export class Picnic extends Structure {
       // Position sprite
       this.sprite.position.set(this.position.x, this.position.y);
 
+      // Set z-index based on bottom of picnic structure
+      const halfHeight = PICNIC_CONFIG.height / 2;
+      const bottomY = this.position.y + halfHeight;
+      this.sprite.zIndex = bottomY;
+
       // Enable interactivity
       this.sprite.interactive = true;
       this.sprite.cursor = "pointer";

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { BaseModal } from "../../common";
 import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 import { useCachedUserFriends, useCacheActions } from "@/hooks/useCachedData";
+import { FaUserFriends } from "react-icons/fa";
 import type { Friend } from "@/utils/cacheManager";
 
 interface FriendsModalProps {
@@ -125,7 +126,8 @@ export default function FriendsModal({ isVisible, onClose, userId }: FriendsModa
     <BaseModal
       isVisible={isVisible}
       onClose={onClose}
-      title="👫 Friends List"
+      title="Friends List"
+      icon={<FaUserFriends />}
       width="650px"
       maxHeight="700px"
       constrainToCanvas={true}

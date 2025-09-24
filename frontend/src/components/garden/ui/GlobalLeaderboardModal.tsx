@@ -13,13 +13,8 @@ import {
 } from "../../constants";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
 import { useCachedGlobalLeaderboard } from "@/hooks/useCachedData";
+import { FaTrophy } from "react-icons/fa";
 import type { LeaderboardEntry } from "@/utils/cacheManager";
-
-interface LeaderboardResponse {
-  success: boolean;
-  period: string;
-  entries: LeaderboardEntry[];
-}
 
 interface GlobalLeaderboardModalProps {
   isVisible: boolean;
@@ -136,7 +131,8 @@ export default function GlobalLeaderboardModal({
     <BaseModal
       isVisible={isVisible}
       onClose={onClose}
-      title="🏆 Global Pomodoro Duration Leaderboard"
+      title="Global Pomodoro Duration Leaderboard"
+      icon={<FaTrophy />}
       width="650px"
       maxHeight="700px"
       constrainToCanvas={true}

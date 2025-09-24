@@ -2,18 +2,26 @@ import React, { useState, useEffect } from "react";
 import { BaseModal } from "../../common";
 import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 import StorageItem from "./StorageItem";
+import AccountHeader from "./AccountHeader";
 import { getAllStructureConfigs } from "../../../config/structureConfigs";
+import { BsFillBuildingsFill, BsFillCartFill } from "react-icons/bs";
 
 interface StructuresModalProps {
   locked: boolean;
   onClose: () => void;
   structureName?: string;
+  username?: string;
+  accountBalance?: number;
+  onShopClick?: () => void; // Handler to open shop modal
 }
 
 export default function StructuresModal({
   locked,
   onClose,
   structureName = "Structure",
+  username = "Player",
+  accountBalance = 0,
+  onShopClick,
 }: StructuresModalProps) {
   const [windowWidth, setWindowWidth] = useState(750); // Default width
 
@@ -48,7 +56,7 @@ export default function StructuresModal({
     const padding = 40; // Modal padding
     const availableWidth = windowWidth - padding;
 
-    const maxColumns = 4;
+    const maxColumns = 3; // Match ShopModal with 3 columns max
     let columns = Math.floor((availableWidth + gap) / (itemMinWidth + gap));
     columns = Math.max(1, Math.min(maxColumns, columns));
 
@@ -68,7 +76,8 @@ export default function StructuresModal({
     <BaseModal
       isVisible={locked}
       onClose={onClose}
-      title="🏗️ Structures Storage"
+      title="Structures Storage"
+      icon={<BsFillBuildingsFill />}
       width="750px"
       maxHeight="600px"
       constrainToCanvas={true}
@@ -92,15 +101,77 @@ export default function StructuresModal({
           }}
         >
           {storageItems.map((item) => (
-            <StorageItem
-              key={item.id}
-              id={item.id}
-              image={item.image}
-              name={item.name}
-              count={item.count}
-              onClick={() => handleItemClick(item.id)}
-            />
+            <div key={item.id} style={{ position: "relative", width: "100%" }}>
+              <div
+                style={{
+                  width: "100%",
+                  aspectRatio: "1", // Ensures 1:1 aspect ratio
+                  minWidth: "100px",
+                }}
+              >
+                <StorageItem
+                  key={item.id}
+                  id={item.id}
+                  image={item.image}
+                  name={item.name}
+                  count={item.count}
+                  onClick={() => handleItemClick(item.id)}
+                />
+              </div>
+            </div>
           ))}
+
+          {/* Shop Access Item */}
+          <div style={{ position: "relative", width: "100%" }}>
+            <div
+              style={{
+                width: "100%",
+                aspectRatio: "1", // Ensures 1:1 aspect ratio
+                minWidth: "100px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: PANELFILL,
+                border: `2px solid ${BORDERLINE}`,
+                borderRadius: "8px",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                flexDirection: "column",
+                gap: "4px",
+              }}
+              onClick={() => {
+                if (onShopClick) {
+                  onShopClick();
+                  onClose(); // Close structures modal when switching to shop
+                }
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = BORDERFILL;
+                e.currentTarget.style.borderColor = FONTCOLOR;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = PANELFILL;
+                e.currentTarget.style.borderColor = BORDERLINE;
+              }}
+            >
+              <BsFillCartFill
+                style={{
+                  fontSize: "2rem",
+                  color: "#f6e05e", // Gold color like in GardenMenu
+                }}
+              />
+              <span
+                style={{
+                  color: FONTCOLOR,
+                  fontSize: "0.8rem",
+                  fontWeight: "bold",
+                  textAlign: "center",
+                }}
+              >
+                Shop
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Storage Info */}

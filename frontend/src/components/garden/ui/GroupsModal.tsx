@@ -4,6 +4,7 @@ import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
 import { useCachedUserGroups, useCacheActions } from "@/hooks/useCachedData";
 import { useUsersInfo } from "@/utils/userInfo";
+import { FaUsers } from "react-icons/fa";
 import type { Group } from "@/utils/cacheManager";
 
 interface GroupsModalProps {
@@ -188,7 +189,8 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
       <BaseModal
         isVisible={isVisible}
         onClose={onClose}
-        title="👥 Groups"
+        title="Groups"
+        icon={<FaUsers />}
         width="650px"
         maxHeight="700px"
         constrainToCanvas={true}
@@ -205,7 +207,8 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
     <BaseModal
       isVisible={isVisible}
       onClose={onClose}
-      title="👥 Groups"
+      title="Groups"
+      icon={<FaUsers />}
       width="650px"
       maxHeight="700px"
       constrainToCanvas={true}

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../constants";
 import FriendsModal from "./ui/FriendsModal";
 import UserProfile from "./UserProfile";
 import GroupsModal from "./ui/GroupsModal";
 import GlobalLeaderboardModal from "./ui/GlobalLeaderboardModal";
 import GroupLeaderboardModal from "./ui/GroupLeaderboardModal";
+import ShopModal from "./ui/ShopModal";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
 import { Structure } from "@/scripts/structures/Structure";
 import StructuresModal from "./ui/StructuresModal";
@@ -12,19 +12,21 @@ import {
   clearGlobalStructureClickHandler,
   setGlobalStructureClickHandler,
 } from "@/utils/globalStructureHandler";
+import GardenIcon from "./ui/GardenIcon";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface GardenIconsProps {
-  // No specific props needed for now
+  onShopModalOpen?: (openFunction: () => void) => void; // Callback to provide shop opener to parent
 }
 
-export default function GardenIcons({}: GardenIconsProps) {
+export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
   const { user } = useSessionAuth();
   const [showFriendsMenu, setShowFriendsMenu] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [showGroups, setShowGroups] = useState(false);
   const [showGlobalLeaderboard, setShowGlobalLeaderboard] = useState(false);
   const [showGroupLeaderboard, setShowGroupLeaderboard] = useState(false);
+  const [showShopModal, setShowShopModal] = useState(false);
 
   // Structures modal state - moved before handleStructureClick function
   const [locked, setLocked] = useState(false);
@@ -43,6 +45,13 @@ export default function GardenIcons({}: GardenIconsProps) {
       clearGlobalStructureClickHandler();
     };
   }, []);
+
+  // Provide shop modal opener to parent
+  useEffect(() => {
+    if (onShopModalOpen) {
+      onShopModalOpen(() => setShowShopModal(true));
+    }
+  }, [onShopModalOpen]);
 
   // Early return AFTER all hooks have been called
   if (!user) return null;
@@ -68,127 +77,32 @@ export default function GardenIcons({}: GardenIconsProps) {
           zIndex: 1000,
         }}
       >
-        {/* Friends Icon */}
-        <button
+        <GardenIcon
           onClick={() => setShowFriendsMenu(true)}
-          style={{
-            width: "50px",
-            height: "50px",
-            backgroundColor: BORDERFILL,
-            border: `3px solid ${BORDERLINE}`,
-            borderRadius: "8px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            fontSize: "20px",
-            color: FONTCOLOR,
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = PANELFILL;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = BORDERFILL;
-          }}
           title="Friends"
-        >
-          <i className="fas fa-user-friends"></i>
-        </button>
-
-        {/* Groups Icon */}
-        <button
+          iconClassName="fas fa-user-friends"
+        />
+        <GardenIcon
           onClick={() => setShowGroups(true)}
-          style={{
-            width: "50px",
-            height: "50px",
-            backgroundColor: BORDERFILL,
-            border: `3px solid ${BORDERLINE}`,
-            borderRadius: "8px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            fontSize: "20px",
-            color: FONTCOLOR,
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = PANELFILL;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = BORDERFILL;
-          }}
           title="Groups"
-        >
-          <i className="fas fa-users-cog"></i>
-        </button>
-
-        {/* Global Leaderboard Button */}
-        <button
+          iconClassName="fas fa-users-cog"
+        />
+        <GardenIcon
           onClick={() => {
             console.log("Global Leaderboard clicked");
             setShowGlobalLeaderboard(true);
           }}
-          style={{
-            width: "50px",
-            height: "50px",
-            backgroundColor: BORDERFILL,
-            border: `3px solid ${BORDERLINE}`,
-            borderRadius: "8px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            fontSize: "20px",
-            color: FONTCOLOR,
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = PANELFILL;
-            e.currentTarget.style.transform = "scale(1.05)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = BORDERFILL;
-            e.currentTarget.style.transform = "scale(1)";
-          }}
           title="Global Leaderboard"
-        >
-          <i className="fas fa-trophy"></i>
-        </button>
-
-        {/* Group Leaderboard Button */}
-        <button
+          iconClassName="fas fa-trophy"
+        />
+        <GardenIcon
           onClick={() => {
             console.log("Group Leaderboard clicked");
             setShowGroupLeaderboard(true);
           }}
-          style={{
-            width: "50px",
-            height: "50px",
-            backgroundColor: BORDERFILL,
-            border: `3px solid ${BORDERLINE}`,
-            borderRadius: "8px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            fontSize: "20px",
-            color: FONTCOLOR,
-            transition: "all 0.2s ease",
-            position: "relative",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = PANELFILL;
-            e.currentTarget.style.transform = "scale(1.05)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = BORDERFILL;
-            e.currentTarget.style.transform = "scale(1)";
-          }}
           title="Group Leaderboard"
+          iconClassName="fas fa-trophy"
         >
-          <i className="fas fa-trophy"></i>
           <i
             className="fas fa-users"
             style={{
@@ -198,35 +112,12 @@ export default function GardenIcons({}: GardenIconsProps) {
               fontSize: "10px",
             }}
           ></i>
-        </button>
-
-        {/* User Profile Icon */}
-        <button
+        </GardenIcon>
+        <GardenIcon
           onClick={() => setShowUserProfile(true)}
-          style={{
-            width: "50px",
-            height: "50px",
-            backgroundColor: BORDERFILL,
-            border: `3px solid ${BORDERLINE}`,
-            borderRadius: "8px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            fontSize: "20px",
-            color: FONTCOLOR,
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = PANELFILL;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = BORDERFILL;
-          }}
           title="User Profile"
-        >
-          <i className="fas fa-user-circle"></i>
-        </button>
+          iconClassName="fas fa-user-circle"
+        />
       </div>
 
       {/* Modals */}
@@ -267,7 +158,18 @@ export default function GardenIcons({}: GardenIconsProps) {
         locked={locked}
         onClose={() => setLocked(false)}
         structureName={selectedStructureName}
+        onShopClick={() => setShowShopModal(true)}
       />
+
+      {/* Shop Modal */}
+      {showShopModal && (
+        <ShopModal
+          locked={showShopModal}
+          onClose={() => setShowShopModal(false)}
+          username={user.userName || user.userEmail}
+          userId={user.userId}
+        />
+      )}
     </>
   );
 }

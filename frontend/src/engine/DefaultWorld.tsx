@@ -1,6 +1,8 @@
 import { WorldPhysicsHandler } from "./WorldPhysicsHandler";
 import { PhysicsEntity, Vec2 } from "./physics";
 import { MouseInteractionCallbacks, Structure } from "../scripts/structures/Structure";
+import { AnimationLoader } from "./graphics/AnimationLoader";
+import BabyCowEntity from "../entities/BabyCowEntity";
 import * as PIXI from "pixi.js";
 
 // AGENT_LOG -- to be removed when user enters staging/testing
@@ -54,6 +56,54 @@ function createDecorationEntities(config: DefaultWorldConfig): PhysicsEntity[] {
   const decorations: PhysicsEntity[] = [];
 
   return decorations;
+}
+
+/**
+ * Create baby cow entities for the default world
+ * Creates 3 baby cows within 150px of camera center as requested
+ */
+async function createBabyCowEntities(
+  pixiApp: PIXI.Application,
+  worldContainer: PIXI.Container
+): Promise<BabyCowEntity[]> {
+  const babyCows: BabyCowEntity[] = [];
+
+  // Create animation loader for baby cows
+  const animationLoader = new AnimationLoader();
+
+  // Calculate camera center
+  const centerX = DESIGN_WIDTH / 2;
+  const centerY = DESIGN_HEIGHT / 2;
+
+  // Create 3 baby cows at different positions around the center
+  const positions = [
+    new Vec2(centerX - 80, centerY - 60), // Top-left of center
+    new Vec2(centerX + 100, centerY + 40), // Bottom-right of center
+    new Vec2(centerX - 30, centerY + 90), // Bottom of center
+  ];
+
+  for (let i = 0; i < positions.length; i++) {
+    try {
+      const position = positions[i];
+      const babyCow = await BabyCowEntity.create(
+        pixiApp,
+        animationLoader,
+        position,
+        worldContainer
+      );
+
+      // Set the center constraint to camera center with 150px radius
+      babyCow.setCenterConstraint(new Vec2(centerX, centerY));
+      babyCow.setMaxRadius(150);
+
+      babyCows.push(babyCow);
+      console.log(`Created baby cow ${i + 1} at position (${position.x}, ${position.y})`);
+    } catch (error) {
+      console.error(`Failed to create baby cow ${i + 1}:`, error);
+    }
+  }
+
+  return babyCows;
 }
 
 /**
@@ -156,13 +206,14 @@ export async function constructDefaultWorld(
   // Set physics properties
   worldHandler.setGravity(config.physics.gravity);
 
-  // Create entities (including async structure plots)
+  // Create entities (including async structure plots and baby cows)
   const decorations = createDecorationEntities(config);
   const interactive = createInteractiveEntities(config);
   const structurePlots = await createDefaultStructurePlots(config);
+  const babyCows = await createBabyCowEntities(pixiApp, worldContainer);
 
   // Combine all entities
-  config.entities = [...decorations, ...interactive, ...structurePlots];
+  config.entities = [...decorations, ...interactive, ...structurePlots, ...babyCows];
 
   // Add all entities to the world
   config.entities.forEach((entity) => {

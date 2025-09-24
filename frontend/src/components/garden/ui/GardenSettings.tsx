@@ -86,11 +86,9 @@ export default function GardenSettings() {
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.backgroundColor = HOVER_COLOR;
-          e.currentTarget.style.transform = "scale(1.05)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.backgroundColor = BORDERFILL;
-          e.currentTarget.style.transform = "scale(1)";
         }}
         title="Settings"
       >

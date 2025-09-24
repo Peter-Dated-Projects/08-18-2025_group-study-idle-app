@@ -9,6 +9,7 @@ import {
   MessageDisplay,
   User,
 } from "../common";
+import { FaUser } from "react-icons/fa";
 
 interface UserProfileProps {
   isVisible: boolean;
@@ -25,7 +26,8 @@ export default function UserProfile({ isVisible, onClose, user }: UserProfilePro
     <BaseModal
       isVisible={isVisible}
       onClose={onClose}
-      title="👤 User Profile"
+      title="User Profile"
+      icon={<FaUser />}
       width="650px"
       maxHeight="700px"
       constrainToCanvas={true}

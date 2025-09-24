@@ -5,6 +5,7 @@ interface BaseModalProps {
   isVisible: boolean;
   onClose: () => void;
   title?: string;
+  icon?: ReactNode;
   children: ReactNode;
   width?: string;
   maxHeight?: string;
@@ -21,6 +22,7 @@ export default function BaseModal({
   isVisible,
   onClose,
   title,
+  icon,
   children,
   width = "500px",
   maxHeight = "600px",
@@ -95,6 +97,18 @@ export default function BaseModal({
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              {icon && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    fontSize: "18px",
+                    color: FONTCOLOR,
+                  }}
+                >
+                  {icon}
+                </div>
+              )}
               {title && (
                 <h2 style={{ color: FONTCOLOR, margin: 0, fontSize: "18px", fontWeight: "bold" }}>
                   {title}

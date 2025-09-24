@@ -258,7 +258,7 @@ export default function GardenCanvas({
         tilemapSprite.anchor.set(0.5);
         tilemapSprite.position.set(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2);
         tilemapSprite.scale.set(initialScale);
-        tilemapSprite.zIndex = -100;
+        tilemapSprite.zIndex = -999999999; // Set background to lowest z-index as requested
         tilemapTexture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
         worldContainer.addChild(tilemapSprite);
 

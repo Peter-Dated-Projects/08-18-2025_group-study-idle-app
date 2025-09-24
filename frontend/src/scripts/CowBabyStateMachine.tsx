@@ -6,6 +6,7 @@ import {
 import { AnimatedTile } from "../engine/resources/Tilemap";
 import { AnimationLoader } from "@/engine/graphics/AnimationLoader";
 import { Rigidbody } from "@/engine/physics/Rigidbody";
+import { Vec2 } from "@/engine/physics/Vec2";
 import { RectangleCollider, createRectangleCollider, isCollided } from "@/engine/physics/Collider";
 import * as PIXI from "pixi.js";
 import { DESIGN_WIDTH, DESIGN_HEIGHT } from "../components/garden/GardenCanvas";
@@ -68,7 +69,6 @@ export class CowBaby {
     }
 
     // Handle movement based on current state
-
     if (currentStateId === "walk") {
       // If just entered walk state and no target set, create one
       if (!this.walkTarget) {
@@ -77,23 +77,26 @@ export class CowBaby {
 
       if (this.walkTarget) {
         // Store previous position for collision resolution
-        const prevX = this.rigidbody.rect.position.x;
-        const prevY = this.rigidbody.rect.position.y;
+        const prevX = this.rigidbody.position.x;
+        const prevY = this.rigidbody.position.y;
 
         // Move towards target when walking
-        const dx = this.walkTarget.x - this.rigidbody.rect.position.x;
-        const dy = this.walkTarget.y - this.rigidbody.rect.position.y;
+        const dx = this.walkTarget.x - this.rigidbody.position.x;
+        const dy = this.walkTarget.y - this.rigidbody.position.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // Set max speed to 30 pixels per second
-        this.rigidbody.setMaxSpeed(30);
+        // Use variable speed between 30-80 pixels per second as requested
+        const minSpeed = 30;
+        const maxSpeed = 80;
+        const currentSpeed = minSpeed + Math.random() * (maxSpeed - minSpeed);
+        this.rigidbody.setMaxSpeed(currentSpeed);
 
         // Check if we're within 5% of the target distance (minimum 5 pixels)
         const targetThreshold = Math.max(5, distance * 0.05);
 
         if (distance > targetThreshold) {
           // Use moveTowards with desired speed for smooth movement
-          this.rigidbody.moveTowards(this.walkTarget.x, this.walkTarget.y, 30);
+          this.rigidbody.moveTowards(this.walkTarget.x, this.walkTarget.y, currentSpeed);
         } else {
           // We're close enough - stop and clear target
           this.rigidbody.stop();
@@ -101,12 +104,12 @@ export class CowBaby {
         }
 
         // Update rigidbody physics first
-        this.rigidbody.update(deltaTime);
+        this.rigidbody.update();
 
         // Check for collisions with static objects
         if (staticColliders && this.checkCollisionWith(staticColliders)) {
           // Revert position if collision detected
-          this.rigidbody.setPosition(prevX, prevY);
+          this.rigidbody.setPosition(new Vec2(prevX, prevY));
           this.rigidbody.stop();
           this.walkTarget = null;
           // Force transition to idle state instead of returning early
@@ -119,42 +122,43 @@ export class CowBaby {
       this.walkTarget = null;
 
       // Update rigidbody physics
-      this.rigidbody.update(deltaTime);
+      this.rigidbody.update();
     }
 
-    // Boundary checking - keep cow babies within 200px of the island center
+    // Boundary checking - keep cow babies within 150px of the camera center as requested
     const centerX = DESIGN_WIDTH / 2;
     const centerY = DESIGN_HEIGHT / 2;
-    const deltaX = this.rigidbody.rect.position.x - centerX;
-    const deltaY = this.rigidbody.rect.position.y - centerY;
+    const deltaX = this.rigidbody.position.x - centerX;
+    const deltaY = this.rigidbody.position.y - centerY;
     const centerDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     let boundsChanged = false;
 
-    if (centerDistance > 200) {
-      // Move cow back to 200px radius from the island center
-      const scale = 200 / centerDistance;
+    if (centerDistance > 150) {
+      // Changed from 200px to 150px as requested
+      // Move cow back to 150px radius from the camera center
+      const scale = 150 / centerDistance;
       const constrainedX = centerX + deltaX * scale;
       const constrainedY = centerY + deltaY * scale;
-      this.rigidbody.setPosition(constrainedX, constrainedY);
+      this.rigidbody.setPosition(new Vec2(constrainedX, constrainedY));
       boundsChanged = true;
     }
 
     // Also apply screen boundaries as secondary constraint (fallback)
     const padding = 50;
 
-    if (this.rigidbody.rect.position.x < padding) {
-      this.rigidbody.setPosition(padding, this.rigidbody.rect.position.y);
+    if (this.rigidbody.position.x < padding) {
+      this.rigidbody.setPosition(new Vec2(padding, this.rigidbody.position.y));
       boundsChanged = true;
-    } else if (this.rigidbody.rect.position.x > 1920 - padding) {
-      this.rigidbody.setPosition(1920 - padding, this.rigidbody.rect.position.y);
+    } else if (this.rigidbody.position.x > DESIGN_WIDTH - padding) {
+      this.rigidbody.setPosition(new Vec2(DESIGN_WIDTH - padding, this.rigidbody.position.y));
       boundsChanged = true;
     }
 
-    if (this.rigidbody.rect.position.y < padding) {
-      this.rigidbody.setPosition(this.rigidbody.rect.position.x, padding);
+    if (this.rigidbody.position.y < padding) {
+      this.rigidbody.setPosition(new Vec2(this.rigidbody.position.x, padding));
       boundsChanged = true;
-    } else if (this.rigidbody.rect.position.y > 1080 - padding) {
-      this.rigidbody.setPosition(this.rigidbody.rect.position.x, 1080 - padding);
+    } else if (this.rigidbody.position.y > DESIGN_HEIGHT - padding) {
+      this.rigidbody.setPosition(new Vec2(this.rigidbody.position.x, DESIGN_HEIGHT - padding));
       boundsChanged = true;
     }
 
@@ -171,33 +175,41 @@ export class CowBaby {
       sprite.visible = true;
       sprite.alpha = 1.0;
       // Ensure sprite position matches rigidbody position
-      sprite.position.set(this.rigidbody.rect.position.x, this.rigidbody.rect.position.y);
+      sprite.position.set(this.rigidbody.position.x, this.rigidbody.position.y);
+
+      // Set z-index to negative y-value as requested
+      sprite.zIndex = this.rigidbody.position.y;
     }
   }
 
   public startWalking(): void {
-    // Set random target position within 50-150px but constrain to 200px radius from center (0, 0)
-    const currentX = this.rigidbody.rect.position.x;
-    const currentY = this.rigidbody.rect.position.y;
+    // Set random target position within 50-100px with constraints for 150px radius from center
+    const currentX = this.rigidbody.position.x;
+    const currentY = this.rigidbody.position.y;
 
     const angle = Math.random() * 2 * Math.PI;
-    const distance = Math.random() * 100 + 50; // 50-150 pixels
+    const distance = Math.random() * 50 + 50; // 50-100 pixels (smaller range for 150px constraint)
 
     let targetX = currentX + Math.cos(angle) * distance;
     let targetY = currentY + Math.sin(angle) * distance;
 
-    // Constrain target to 200px radius from center (0, 0)
-    const centerDistance = Math.sqrt(targetX * targetX + targetY * targetY);
-    if (centerDistance > 200) {
-      const scale = 200 / centerDistance;
-      targetX *= scale;
-      targetY *= scale;
+    // Constrain target to 150px radius from camera center as requested
+    const centerX = DESIGN_WIDTH / 2;
+    const centerY = DESIGN_HEIGHT / 2;
+    const centerDeltaX = targetX - centerX;
+    const centerDeltaY = targetY - centerY;
+    const centerDistance = Math.sqrt(centerDeltaX * centerDeltaX + centerDeltaY * centerDeltaY);
+
+    if (centerDistance > 150) {
+      const scale = 150 / centerDistance;
+      targetX = centerX + centerDeltaX * scale;
+      targetY = centerY + centerDeltaY * scale;
     }
 
     // Also constrain to screen boundaries (with padding) as fallback
     const padding = 50;
-    targetX = Math.max(padding, Math.min(1920 - padding, targetX));
-    targetY = Math.max(padding, Math.min(1080 - padding, targetY));
+    targetX = Math.max(padding, Math.min(DESIGN_WIDTH - padding, targetX));
+    targetY = Math.max(padding, Math.min(DESIGN_HEIGHT - padding, targetY));
 
     this.walkTarget = {
       x: targetX,
@@ -207,10 +219,10 @@ export class CowBaby {
 
   public getCollider(): RectangleCollider {
     return createRectangleCollider(
-      this.rigidbody.rect.position.x,
-      this.rigidbody.rect.position.y,
-      this.rigidbody.rect.area.width,
-      this.rigidbody.rect.area.height
+      this.rigidbody.position.x,
+      this.rigidbody.position.y,
+      this.rigidbody.collider?.size.x || 32 * 3,
+      this.rigidbody.collider?.size.y || 32 * 3
     );
   }
 
@@ -230,17 +242,18 @@ export class CowBaby {
 
 /**
  * Idle animation state for cow baby
+ * Uses proper delta time and weighted random state selection
  */
 export class CowIdleAnimationState extends AnimationState {
   public idleTransitions = [
-    "idle_blink",
-    "walk",
-    "hop",
-    "stand",
-    "sit",
-    "sniff_ground",
-    "eat_grass_idle",
-    "idle_heart",
+    { state: "idle_blink", weight: 15 },
+    { state: "walk", weight: 20 },
+    { state: "hop", weight: 10 },
+    { state: "stand", weight: 12 },
+    { state: "sit", weight: 8 },
+    { state: "sniff_ground", weight: 15 },
+    { state: "eat_grass_idle", weight: 12 },
+    { state: "idle_heart", weight: 8 },
   ];
 
   constructor(animatedTile: AnimatedTile) {
@@ -251,19 +264,31 @@ export class CowIdleAnimationState extends AnimationState {
     this.animatedTile.currentFrame = 0;
     this.animatedTile.lastFrameTime = Date.now();
 
-    // Random wait time between 2-4 seconds
-    this.waitTime = Math.floor(Math.random() * 2000) + 2000;
+    // Random wait time between 1.5-3.5 seconds (more reasonable for pets)
+    this.waitTime = (Math.random() * 2.0 + 1.5) * 1000; // 1500-3500ms
     this.counter = 0;
   }
 
   onUpdate(deltaTime: number): string | null {
     this.counter += deltaTime * 1000;
 
-    if (this.counter > this.waitTime) {
-      // Randomly transition to an action state
-      const randomState =
-        this.idleTransitions[Math.floor(Math.random() * this.idleTransitions.length)];
-      return randomState;
+    if (this.counter >= this.waitTime) {
+      // Weighted random state selection
+      const totalWeight = this.idleTransitions.reduce(
+        (sum, transition) => sum + transition.weight,
+        0
+      );
+      let randomValue = Math.random() * totalWeight;
+
+      for (const transition of this.idleTransitions) {
+        randomValue -= transition.weight;
+        if (randomValue <= 0) {
+          return transition.state;
+        }
+      }
+
+      // Fallback to first transition
+      return this.idleTransitions[0].state;
     }
 
     return null;
@@ -274,6 +299,7 @@ export class CowIdleAnimationState extends AnimationState {
 
 /**
  * Idle blink animation state
+ * Short animation with precise timing
  */
 export class CowIdleBlinkAnimationState extends AnimationState {
   constructor(animatedTile: AnimatedTile) {
@@ -284,7 +310,7 @@ export class CowIdleBlinkAnimationState extends AnimationState {
     this.animatedTile.currentFrame = 0;
     this.animatedTile.lastFrameTime = Date.now();
 
-    // Calculate animation length (2 frames)
+    // Calculate animation length (2 frames) - precise timing
     this.waitTime = 2 * this.animatedTile.frameDuration;
     this.counter = 0;
   }
@@ -304,10 +330,9 @@ export class CowIdleBlinkAnimationState extends AnimationState {
 
 /**
  * Walk animation state
+ * Manages movement duration with delta time
  */
 export class CowWalkAnimationState extends AnimationState {
-  private targetPosition: { x: number; y: number } = { x: 0, y: 0 };
-
   constructor(animatedTile: AnimatedTile) {
     super("walk", animatedTile);
   }
@@ -316,11 +341,11 @@ export class CowWalkAnimationState extends AnimationState {
     this.animatedTile.currentFrame = 0;
     this.animatedTile.lastFrameTime = Date.now();
 
-    // Set walk duration between 1-3 seconds
-    this.waitTime = Math.floor(Math.random() * 2000) + 1000;
+    // Set walk duration between 2-5 seconds (longer for more natural movement)
+    this.waitTime = (Math.random() * 3.0 + 2.0) * 1000; // 2000-5000ms
     this.counter = 0;
 
-    // Note: Movement will be handled by the CowBaby class that manages this state machine
+    // Note: Movement will be handled by the BabyCowEntity class that manages this state machine
   }
 
   onUpdate(deltaTime: number): string | null {
@@ -338,6 +363,7 @@ export class CowWalkAnimationState extends AnimationState {
 
 /**
  * Hop animation state
+ * Quick playful animation
  */
 export class CowHopAnimationState extends AnimationState {
   constructor(animatedTile: AnimatedTile) {
@@ -348,8 +374,8 @@ export class CowHopAnimationState extends AnimationState {
     this.animatedTile.currentFrame = 0;
     this.animatedTile.lastFrameTime = Date.now();
 
-    // Calculate animation length (3 frames)
-    this.waitTime = 3 * this.animatedTile.frameDuration;
+    // Calculate animation length (3 frames) with slight pause after
+    this.waitTime = 3 * this.animatedTile.frameDuration + 300; // Animation + 300ms pause
     this.counter = 0;
   }
 
@@ -368,6 +394,7 @@ export class CowHopAnimationState extends AnimationState {
 
 /**
  * Stand animation state
+ * Alert watching pose
  */
 export class CowStandAnimationState extends AnimationState {
   constructor(animatedTile: AnimatedTile) {
@@ -378,8 +405,8 @@ export class CowStandAnimationState extends AnimationState {
     this.animatedTile.currentFrame = 0;
     this.animatedTile.lastFrameTime = Date.now();
 
-    // Hold stand pose for 2-4 seconds
-    this.waitTime = Math.floor(Math.random() * 2000) + 2000;
+    // Hold stand pose for 2-4 seconds (variable attention span)
+    this.waitTime = (Math.random() * 2.0 + 2.0) * 1000; // 2000-4000ms
     this.counter = 0;
   }
 
@@ -398,6 +425,7 @@ export class CowStandAnimationState extends AnimationState {
 
 /**
  * Sit animation state
+ * Resting/relaxed pose
  */
 export class CowSitAnimationState extends AnimationState {
   constructor(animatedTile: AnimatedTile) {
@@ -408,8 +436,8 @@ export class CowSitAnimationState extends AnimationState {
     this.animatedTile.currentFrame = 0;
     this.animatedTile.lastFrameTime = Date.now();
 
-    // Sit for 3-5 seconds
-    this.waitTime = Math.floor(Math.random() * 2000) + 3000;
+    // Sit for 3-6 seconds (variable rest duration)
+    this.waitTime = (Math.random() * 3.0 + 3.0) * 1000; // 3000-6000ms
     this.counter = 0;
   }
 
@@ -428,6 +456,7 @@ export class CowSitAnimationState extends AnimationState {
 
 /**
  * Sniff ground animation state
+ * Exploring/investigating behavior
  */
 export class CowSniffGroundAnimationState extends AnimationState {
   constructor(animatedTile: AnimatedTile) {
@@ -438,8 +467,10 @@ export class CowSniffGroundAnimationState extends AnimationState {
     this.animatedTile.currentFrame = 0;
     this.animatedTile.lastFrameTime = Date.now();
 
-    // Calculate animation length (8 frames)
-    this.waitTime = 8 * this.animatedTile.frameDuration;
+    // Calculate animation length (8 frames) with possible repeat
+    const baseAnimationTime = 8 * this.animatedTile.frameDuration;
+    const shouldRepeat = Math.random() < 0.3; // 30% chance to do it twice
+    this.waitTime = shouldRepeat ? baseAnimationTime * 2 : baseAnimationTime;
     this.counter = 0;
   }
 
@@ -507,6 +538,7 @@ export class CowEatGrassIdleAnimationState extends AnimationState {
 
 /**
  * Idle heart animation state
+ * Shows affection/happiness
  */
 export class CowIdleHeartAnimationState extends AnimationState {
   constructor(animatedTile: AnimatedTile) {
@@ -517,8 +549,8 @@ export class CowIdleHeartAnimationState extends AnimationState {
     this.animatedTile.currentFrame = 0;
     this.animatedTile.lastFrameTime = Date.now();
 
-    // Calculate animation length (11 frames)
-    this.waitTime = 11 * this.animatedTile.frameDuration;
+    // Calculate animation length (11 frames) with brief pause after
+    this.waitTime = 11 * this.animatedTile.frameDuration + 500; // Animation + 500ms pause
     this.counter = 0;
   }
 
@@ -526,7 +558,6 @@ export class CowIdleHeartAnimationState extends AnimationState {
     this.counter += deltaTime * 1000;
 
     if (this.counter >= this.waitTime) {
-      // Can only exit to idle
       return "idle";
     }
 
@@ -538,6 +569,7 @@ export class CowIdleHeartAnimationState extends AnimationState {
 
 /**
  * Fall asleep animation state
+ * Rare sleepy behavior
  */
 export class CowFallAsleepAnimationState extends AnimationState {
   constructor(animatedTile: AnimatedTile) {
@@ -548,8 +580,8 @@ export class CowFallAsleepAnimationState extends AnimationState {
     this.animatedTile.currentFrame = 0;
     this.animatedTile.lastFrameTime = Date.now();
 
-    // Calculate animation length (2 frames)
-    this.waitTime = 2 * this.animatedTile.frameDuration;
+    // Calculate animation length (2 frames) with longer sleep duration
+    this.waitTime = 2 * this.animatedTile.frameDuration + (Math.random() * 3000 + 2000); // Animation + 2-5 seconds sleep
     this.counter = 0;
   }
 
@@ -665,11 +697,11 @@ export async function createCowBaby(
 
   // Create rigidbody with the same sprite
   const sprite = characterAnimation.getSprite();
-  const rigidbody = new Rigidbody(sprite, {
-    position: { x, y },
-    area: { width: 32 * 3, height: 32 * 3 }, // Based on cow_baby frame size
-    velocity: { x: 0, y: 0 },
-  });
+  const size = new Vec2(32 * 3, 32 * 3); // Based on cow_baby frame size scaled by 3
+  const rigidbody = new Rigidbody(sprite, size, 80); // Max speed 80 px/s as requested
+
+  // Set position
+  rigidbody.setPosition(new Vec2(x, y));
 
   // Set up sprite properties
   sprite.anchor.set(0.5);

@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import * as PIXI from "pixi.js";
 import { AnimationLoader, AnimatedSpriteWrapper } from "@/engine/graphics/AnimationLoader";
 import { CharacterAnimation } from "@/engine/graphics/AnimationStateMachine";
-import { buildAvatarStateMachine, CheerIdleAnimationState } from "@/scripts/AvatarStateMachine";
+import { buildAvatarStateMachine } from "@/scripts/AvatarStateMachine";
 import {
   updateSignals,
   registerSignalHandler,
@@ -16,6 +16,7 @@ import { AVATAR_BOX } from "../../constants";
 import { FRAMERATE } from "../GardenCanvas";
 import PlayerChat from "./PlayerChat";
 import BankBalance from "./BankBalance";
+import { BsFillCartFill } from "react-icons/bs";
 
 interface MenuTextures {
   avatar: PIXI.RenderTexture | null;
@@ -29,9 +30,11 @@ interface GardenMenuProps {
   isInLobby?: boolean;
   // Current lobby code for clearing chat when switching lobbies
   lobbyCode?: string;
+  // Handler to open the shop modal
+  onShopClick?: () => void;
 }
 
-export default function GardenMenu({ pixiApp, isInLobby = false, lobbyCode }: GardenMenuProps) {
+export default function GardenMenu({ pixiApp, isInLobby = false, lobbyCode, onShopClick }: GardenMenuProps) {
   const canvasRefs = {
     avatar: useRef<HTMLCanvasElement>(null),
     inventory: useRef<HTMLCanvasElement>(null),
@@ -266,6 +269,12 @@ export default function GardenMenu({ pixiApp, isInLobby = false, lobbyCode }: Ga
     emitSignal("avatarCharacterClicked");
   };
 
+  const handleShopClick = () => {
+    if (onShopClick) {
+      onShopClick();
+    }
+  };
+
   return (
     <div
       className="
@@ -312,6 +321,44 @@ export default function GardenMenu({ pixiApp, isInLobby = false, lobbyCode }: Ga
 
         {/* Bank Balance Component */}
         <BankBalance />
+        
+        {/* Shop Icon Button */}
+        <button
+          onClick={handleShopClick}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "8px 12px",
+            backgroundColor: "#2d3748",
+            border: "1px solid #4a5568",
+            borderRadius: "8px",
+            fontSize: "0.9rem",
+            color: "#e2e8f0",
+            cursor: "pointer",
+            pointerEvents: "auto",
+            width: "150px", // Fixed width to match avatar and balance
+            marginLeft: "2px",
+            boxSizing: "border-box",
+            transition: "background-color 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "#4a5568";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "#2d3748";
+          }}
+        >
+          <BsFillCartFill
+            style={{
+              fontSize: "1.2rem",
+              color: "#f6e05e",
+              display: "flex",
+              alignItems: "center",
+            }}
+          />
+          <span style={{ fontWeight: "bold" }}>Shop</span>
+        </button>
       </div>
 
       {/* PlayerChat - spans bottom left and bottom center */}

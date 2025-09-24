@@ -74,6 +74,11 @@ export class Structure extends PhysicsEntity {
       // Position sprite
       this.sprite.position.set(this.position.x, this.position.y);
 
+      // Set initial z-index based on bottom of structure
+      const halfHeight = EMPTY_STRUCTURE_CONFIG.height / 2;
+      const bottomY = this.position.y + halfHeight;
+      this.sprite.zIndex = bottomY;
+
       // Enable interactivity
       this.sprite.interactive = true;
       this.sprite.cursor = "pointer";
@@ -162,6 +167,11 @@ export class Structure extends PhysicsEntity {
     if (this.mouseCallbacks.onEnter) {
       this.mouseCallbacks.onEnter(this);
     }
+
+    // add a white border if not already present
+    if (this.sprite! && !this.hoverBorder) {
+      this.sprite.filters = [new OutlineFilter(4, 0xffffff)];
+    }
   }
 
   /**
@@ -170,6 +180,10 @@ export class Structure extends PhysicsEntity {
   protected handleHoverExit(): void {
     if (this.mouseCallbacks.onLeave) {
       this.mouseCallbacks.onLeave(this);
+    }
+
+    if (this.sprite! && this.hoverBorder) {
+      this.sprite.filters = null;
     }
   }
 
@@ -213,11 +227,17 @@ export class Structure extends PhysicsEntity {
   }
 
   /**
-   * Update sprite position to match physics position
+   * Update sprite position and z-index to match physics position
+   * Uses bottom-based z-indexing as requested
    */
   public updateSpritePosition(): void {
     if (this.sprite) {
       this.sprite.position.set(this.position.x, this.position.y);
+
+      // Set z-index based on the bottom of the structure (position.y + half height)
+      const halfHeight = this.collider?.size.y || 128; // Default half height
+      const bottomY = this.position.y + halfHeight / 2;
+      this.sprite.zIndex = bottomY;
     }
   }
 

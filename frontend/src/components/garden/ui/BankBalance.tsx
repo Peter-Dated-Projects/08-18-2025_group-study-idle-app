@@ -124,7 +124,8 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
         fontSize: "0.9rem",
         fontFamily: BodyFont,
         color: FONTCOLOR,
-        maxWidth: "150px",
+        width: "150px", // Fixed width to match avatar
+        boxSizing: "border-box",
         ...style,
       }}
     >
