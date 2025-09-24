@@ -57,7 +57,7 @@ function GardenPageContent() {
   const [isClicking, setIsClicking] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [pixiApp, setPixiApp] = useState<PIXI.Application | undefined>(undefined); // PIXI.js Application state
-  
+
   // Shop modal opener function
   const [shopOpenerRef, setShopOpenerRef] = useState<(() => void) | null>(null);
 
@@ -252,139 +252,137 @@ function GardenPageContent() {
       onMouseUp={() => setIsClicking(false)}
       onMouseLeave={() => setIsClicking(false)}
     >
-        <div className="w-full h-full" style={{ border: `8px solid ${BORDERFILL}` }}>
+      <div className="w-full h-full" style={{ border: `8px solid ${BORDERFILL}` }}>
+        <div
+          className={`flex w-full h-full flex-1 gap-[10px]`}
+          style={{ border: `2px solid ${BORDERFILL}` }}
+        >
           <div
-            className={`flex w-full h-full flex-1 gap-[10px]`}
-            style={{ border: `2px solid ${BORDERFILL}` }}
+            className="w-7/10 flex-1"
+            style={{
+              border: `5px solid ${BORDERLINE}`,
+              position: "relative", // Add relative positioning here
+            }}
+          >
+            <GardenCanvas
+              onAppCreated={(app) => {
+                console.log("PIXI App created:", app);
+                setPixiApp(app);
+              }}
+            />
+            <GardenMenu
+              pixiApp={pixiApp}
+              isInLobby={isInLobby}
+              lobbyCode={lobbyData?.code}
+              onShopClick={() => {
+                if (shopOpenerRef) {
+                  shopOpenerRef();
+                }
+              }}
+            />
+            <GardenSettings />
+            <GardenIcons onShopModalOpen={handleShopModalOpen} />
+          </div>
+
+          <div
+            className="w-3/10 flex flex-col h-full"
+            style={{ border: `5px solid ${BORDERLINE}`, backgroundColor: BORDERFILL }}
           >
             <div
-              className="w-7/10 flex-1"
               style={{
-                border: `5px solid ${BORDERLINE}`,
-                position: "relative", // Add relative positioning here
+                height: isMinimized ? "calc(100% - 40px)" : `${panelSplit}%`,
+                minHeight: 100,
+                padding: "10px",
+                backgroundColor: PANELFILL,
+                display: "flex",
+                flexDirection: "column",
               }}
             >
-              <GardenCanvas
-                onAppCreated={(app) => {
-                  console.log("PIXI App created:", app);
-                  setPixiApp(app);
-                }}
-              />
-              <GardenMenu 
-                pixiApp={pixiApp} 
-                isInLobby={isInLobby} 
-                lobbyCode={lobbyData?.code} 
-                onShopClick={() => {
-                  if (shopOpenerRef) {
-                    shopOpenerRef();
-                  }
-                }}
-              />
-              <GardenSettings />
-              <GardenIcons 
-                onShopModalOpen={handleShopModalOpen}
-              />
+              <GardenTasks />
             </div>
 
-            <div
-              className="w-3/10 flex flex-col h-full"
-              style={{ border: `5px solid ${BORDERLINE}`, backgroundColor: BORDERFILL }}
-            >
+            {/* Draggable divider - only show when not minimized */}
+            {!isMinimized && (
               <div
                 style={{
-                  height: isMinimized ? "calc(100% - 40px)" : `${panelSplit}%`,
-                  minHeight: 100,
-                  padding: "10px",
+                  height: "10px",
+                  backgroundColor: isDragging ? FONTCOLOR : BORDERLINE,
+                  cursor: "ns-resize",
+                  position: "relative",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderTop: `2px solid ${BORDERFILL}`,
+                  borderBottom: `2px solid ${BORDERFILL}`,
+                  transition: isDragging ? "none" : "background-color 0.2s ease",
+                }}
+                onMouseDown={handleDragStart}
+                onDoubleClick={handleDoubleClick}
+                onMouseEnter={(e) => {
+                  if (!isDragging) {
+                    e.currentTarget.style.backgroundColor = FONTCOLOR;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isDragging) {
+                    e.currentTarget.style.backgroundColor = BORDERLINE;
+                  }
+                }}
+              >
+                {/* Drag handle indicator */}
+                <div
+                  style={{
+                    width: "30px",
+                    height: "3px",
+                    backgroundColor: BORDERFILL,
+                    borderRadius: "2px",
+                    opacity: 0.8,
+                    boxShadow: isDragging ? `0 0 5px ${BORDERFILL}` : "none",
+                  }}
+                />
+              </div>
+            )}
+
+            {!isMinimized ? (
+              <div
+                style={{
+                  height: `${100 - panelSplit}%`,
                   backgroundColor: PANELFILL,
                   display: "flex",
                   flexDirection: "column",
+                  overflow: "hidden",
                 }}
               >
-                <GardenTasks />
+                <MinimizableToolsPanel
+                  isMinimized={isMinimized}
+                  setIsMinimized={setIsMinimized}
+                  lobbyState={lobbyState}
+                  lobbyData={lobbyData}
+                  onLobbyStateChange={setLobbyState}
+                  onLobbyDataChange={setLobbyData}
+                />
               </div>
-
-              {/* Draggable divider - only show when not minimized */}
-              {!isMinimized && (
-                <div
-                  style={{
-                    height: "10px",
-                    backgroundColor: isDragging ? FONTCOLOR : BORDERLINE,
-                    cursor: "ns-resize",
-                    position: "relative",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderTop: `2px solid ${BORDERFILL}`,
-                    borderBottom: `2px solid ${BORDERFILL}`,
-                    transition: isDragging ? "none" : "background-color 0.2s ease",
-                  }}
-                  onMouseDown={handleDragStart}
-                  onDoubleClick={handleDoubleClick}
-                  onMouseEnter={(e) => {
-                    if (!isDragging) {
-                      e.currentTarget.style.backgroundColor = FONTCOLOR;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isDragging) {
-                      e.currentTarget.style.backgroundColor = BORDERLINE;
-                    }
-                  }}
-                >
-                  {/* Drag handle indicator */}
-                  <div
-                    style={{
-                      width: "30px",
-                      height: "3px",
-                      backgroundColor: BORDERFILL,
-                      borderRadius: "2px",
-                      opacity: 0.8,
-                      boxShadow: isDragging ? `0 0 5px ${BORDERFILL}` : "none",
-                    }}
-                  />
-                </div>
-              )}
-
-              {!isMinimized ? (
-                <div
-                  style={{
-                    height: `${100 - panelSplit}%`,
-                    backgroundColor: PANELFILL,
-                    display: "flex",
-                    flexDirection: "column",
-                    overflow: "hidden",
-                  }}
-                >
-                  <MinimizableToolsPanel
-                    isMinimized={isMinimized}
-                    setIsMinimized={setIsMinimized}
-                    lobbyState={lobbyState}
-                    lobbyData={lobbyData}
-                    onLobbyStateChange={setLobbyState}
-                    onLobbyDataChange={setLobbyData}
-                  />
-                </div>
-              ) : (
-                <div
-                  style={{
-                    height: "40px",
-                    backgroundColor: PANELFILL,
-                    borderTop: `5px solid ${BORDERLINE}`,
-                  }}
-                >
-                  <MinimizableToolsPanel
-                    isMinimized={isMinimized}
-                    setIsMinimized={setIsMinimized}
-                    lobbyState={lobbyState}
-                    lobbyData={lobbyData}
-                    onLobbyStateChange={setLobbyState}
-                    onLobbyDataChange={setLobbyData}
-                  />
-                </div>
-              )}
-            </div>
+            ) : (
+              <div
+                style={{
+                  height: "40px",
+                  backgroundColor: PANELFILL,
+                  borderTop: `5px solid ${BORDERLINE}`,
+                }}
+              >
+                <MinimizableToolsPanel
+                  isMinimized={isMinimized}
+                  setIsMinimized={setIsMinimized}
+                  lobbyState={lobbyState}
+                  lobbyData={lobbyData}
+                  onLobbyStateChange={setLobbyState}
+                  onLobbyDataChange={setLobbyData}
+                />
+              </div>
+            )}
           </div>
         </div>
-      </main>
-    );
-  }
+      </div>
+    </main>
+  );
+}

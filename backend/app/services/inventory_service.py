@@ -133,7 +133,8 @@ class InventoryService:
                 if not found and count > 0:
                     inventory_items.append({
                         "structure_name": structure_name,
-                        "count": count
+                        "count": count,
+                        "currently_in_use": 0  # Default to 0 for new items
                     })
                 
                 # Update database
@@ -200,6 +201,122 @@ class InventoryService:
             
         except Exception as e:
             self.logger.error(f"Error getting structure count for user {user_id}: {e}")
+            return 0
+
+    def update_structure_usage(self, user_id: str, structure_name: str, currently_in_use: int) -> Dict[str, Any]:
+        """
+        Update the currently_in_use count for a specific structure.
+        
+        Args:
+            user_id: User ID
+            structure_name: Name of the structure
+            currently_in_use: Number currently in use
+            
+        Returns:
+            Dictionary with updated inventory data
+        """
+        try:
+            with self._get_db() as db:
+                # Get current inventory
+                current_inventory = self.get_user_inventory(user_id)
+                
+                if not current_inventory:
+                    raise ValueError(f"No inventory found for user {user_id}")
+                
+                # Parse current inventory
+                inventory_items = current_inventory.get("structure_inventory", [])
+                
+                # Find and update the item
+                found = False
+                for item in inventory_items:
+                    if item["structure_name"] == structure_name:
+                        # Ensure currently_in_use doesn't exceed count
+                        max_usage = item.get("count", 0)
+                        item["currently_in_use"] = min(currently_in_use, max_usage)
+                        found = True
+                        break
+                
+                if not found:
+                    raise ValueError(f"Structure {structure_name} not found in inventory for user {user_id}")
+                
+                # Update database
+                query = text("""
+                    UPDATE user_structure_inventory
+                    SET structure_inventory = :inventory, updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = :user_id
+                    RETURNING user_id, structure_inventory, created_at, updated_at
+                """)
+                
+                result = db.execute(query, {
+                    "user_id": user_id,
+                    "inventory": json.dumps(inventory_items)
+                }).fetchone()
+                
+                db.commit()
+                
+                return {
+                    "user_id": result.user_id,
+                    "structure_inventory": result.structure_inventory,
+                    "created_at": result.created_at.isoformat() if result.created_at else None,
+                    "updated_at": result.updated_at.isoformat() if result.updated_at else None
+                }
+                
+        except Exception as e:
+            self.logger.error(f"Error updating structure usage for user {user_id}: {e}")
+            raise
+
+    def get_structure_usage(self, user_id: str, structure_name: str) -> int:
+        """
+        Get the currently_in_use count for a specific structure.
+        
+        Args:
+            user_id: User ID
+            structure_name: Name of the structure
+            
+        Returns:
+            Number currently in use (0 if not found)
+        """
+        try:
+            inventory = self.get_user_inventory(user_id)
+            if not inventory:
+                return 0
+            
+            for item in inventory.get("structure_inventory", []):
+                if item["structure_name"] == structure_name:
+                    return item.get("currently_in_use", 0)
+            
+            return 0
+            
+        except Exception as e:
+            self.logger.error(f"Error getting structure usage for user {user_id}: {e}")
+            return 0
+
+    def get_available_structures(self, user_id: str, structure_name: str) -> int:
+        """
+        Get the number of available (not in use) structures.
+        
+        Args:
+            user_id: User ID
+            structure_name: Name of the structure
+            
+        Returns:
+            Number available for use (total count - currently_in_use)
+        """
+        try:
+            inventory = self.get_user_inventory(user_id)
+            if not inventory:
+                return 0
+            
+            for item in inventory.get("structure_inventory", []):
+                if item["structure_name"] == structure_name:
+                    total_count = item.get("count", 0)
+                    in_use = item.get("currently_in_use", 0)
+                    return max(0, total_count - in_use)
+            
+            return 0
+            
+        except Exception as e:
+            self.logger.error(f"Error getting available structures for user {user_id}: {e}")
             return 0
 
 

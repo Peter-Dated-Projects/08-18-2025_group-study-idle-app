@@ -239,7 +239,9 @@ export default function GardenCanvas({
         createMouseCursor(app);
 
         console.log("[GardenCanvas] Initializing WorldPhysicsHandler for entity management...");
-        const worldHandler = await constructDefaultWorld(app, worldContainer);
+        // TODO: Replace with actual user ID from authentication system
+        const userId = "demo_user_123"; 
+        const worldHandler = await constructDefaultWorld(app, worldContainer, userId);
         worldHandlerRef.current = worldHandler;
         console.log("[GardenCanvas] Default world constructed with entities:", {
           entityCount: worldHandler.getEntityCount(),

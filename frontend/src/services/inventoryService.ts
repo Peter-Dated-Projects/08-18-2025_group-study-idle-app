@@ -7,6 +7,7 @@ import { createAPIRequest } from "../config/api";
 export interface StructureInventoryItem {
   structure_name: string;
   count: number;
+  currently_in_use: number;
 }
 
 export interface UserInventoryData {

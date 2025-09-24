@@ -34,7 +34,12 @@ interface GardenMenuProps {
   onShopClick?: () => void;
 }
 
-export default function GardenMenu({ pixiApp, isInLobby = false, lobbyCode, onShopClick }: GardenMenuProps) {
+export default function GardenMenu({
+  pixiApp,
+  isInLobby = false,
+  lobbyCode,
+  onShopClick,
+}: GardenMenuProps) {
   const canvasRefs = {
     avatar: useRef<HTMLCanvasElement>(null),
     inventory: useRef<HTMLCanvasElement>(null),
@@ -321,7 +326,7 @@ export default function GardenMenu({ pixiApp, isInLobby = false, lobbyCode, onSh
 
         {/* Bank Balance Component */}
         <BankBalance />
-        
+
         {/* Shop Icon Button */}
         <button
           onClick={handleShopClick}

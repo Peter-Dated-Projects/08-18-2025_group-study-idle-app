@@ -5,7 +5,7 @@ import { AnimationLoader } from "./graphics/AnimationLoader";
 import BabyCowEntity from "../entities/BabyCowEntity";
 import * as PIXI from "pixi.js";
 
-// AGENT_LOG -- to be removed when user enters staging/testing
+// Import structure classes
 import ChickenCoop from "@/scripts/structures/ChickenCoop";
 import Mailbox from "@/scripts/structures/Mailbox";
 import Picnic from "@/scripts/structures/Picnic";
@@ -13,9 +13,18 @@ import WaterWell from "@/scripts/structures/WaterWell";
 import Workbench from "@/scripts/structures/Workbench";
 import { callGlobalStructureClickHandler } from "@/utils/globalStructureHandler";
 
+// Import configuration and services
+import { getStructureConfig, EMPTY_STRUCTURE_CONFIG } from "@/config/structureConfigs";
+import { getUserLevelConfig, updateSlotConfig } from "@/services/levelConfigService";
+import { updateStructureUsage } from "@/services/levelConfigService";
+
 // Import design constants for map center calculation
 const DESIGN_WIDTH = 1920;
 const DESIGN_HEIGHT = 1080;
+
+// Cache for user level config to avoid multiple API calls
+let cachedLevelConfig: string[] | null = null;
+let cachedUserId: string | null = null;
 
 /**
  * Default world configuration and initial state for new players
@@ -31,6 +40,10 @@ export interface DefaultWorldConfig {
 
   // Initial entities
   entities: PhysicsEntity[];
+
+  // User level configuration (optional)
+  userLevelConfig?: string[];
+  userId?: string;
 }
 
 /**
@@ -47,6 +60,74 @@ export function createDefaultWorldConfig(): DefaultWorldConfig {
 
     entities: [],
   };
+}
+
+/**
+ * Create a structure instance based on its ID
+ */
+async function createStructureById(
+  structureId: string, 
+  position: Vec2, 
+  callbacks: MouseInteractionCallbacks
+): Promise<Structure> {
+  if (structureId === "empty") {
+    // Create default empty structure
+    return await Structure.create(position, callbacks);
+  }
+
+  // Map structure IDs to their classes
+  switch (structureId) {
+    case "chicken-coop":
+      return await ChickenCoop.create(position, callbacks);
+    case "mailbox":
+      return await Mailbox.create(position, callbacks);
+    case "picnic":
+      return await Picnic.create(position, callbacks);
+    case "water-well":
+      return await WaterWell.create(position, callbacks);
+    case "workbench":
+      return await Workbench.create(position, callbacks);
+    default:
+      console.warn(`Unknown structure ID: ${structureId}, creating empty structure`);
+      return await Structure.create(position, callbacks);
+  }
+}
+
+/**
+ * Load user level config from backend with caching
+ */
+async function loadUserLevelConfig(userId: string): Promise<string[]> {
+  // Check cache first
+  if (cachedUserId === userId && cachedLevelConfig) {
+    console.log("Using cached level config for user:", userId);
+    return cachedLevelConfig;
+  }
+
+  try {
+    console.log("Loading level config from backend for user:", userId);
+    const response = await getUserLevelConfig(userId);
+    
+    if (response.success && response.data) {
+      cachedLevelConfig = response.data.level_config;
+      cachedUserId = userId;
+      console.log("Loaded level config:", cachedLevelConfig);
+      return cachedLevelConfig;
+    } else {
+      console.warn("Failed to load level config, using default empty config");
+      return ["empty", "empty", "empty", "empty", "empty", "empty", "empty"];
+    }
+  } catch (error) {
+    console.error("Error loading level config:", error);
+    return ["empty", "empty", "empty", "empty", "empty", "empty", "empty"];
+  }
+}
+
+/**
+ * Clear the cached level config (call when user changes)
+ */
+export function clearLevelConfigCache(): void {
+  cachedLevelConfig = null;
+  cachedUserId = null;
 }
 
 /**
@@ -116,10 +197,10 @@ function createInteractiveEntities(config: DefaultWorldConfig): PhysicsEntity[] 
 }
 
 /**
- * Generate 5 Structure plots positioned around the center of the map
- * Creates plots in a cross pattern with one at center and four around it
+ * Generate structure plots positioned around the center of the map based on user's level config
+ * Creates 7 plots in a pattern and loads structures from user's saved configuration
  */
-async function createDefaultStructurePlots(config: DefaultWorldConfig): Promise<Structure[]> {
+async function createUserStructurePlots(config: DefaultWorldConfig): Promise<Structure[]> {
   const plots: Structure[] = [];
 
   // Calculate map center position
@@ -129,7 +210,7 @@ async function createDefaultStructurePlots(config: DefaultWorldConfig): Promise<
   // Distance from center for the outer plots
   const plotDistance = 200; // pixels from center
 
-  // Plot positions in a cross pattern
+  // Plot positions in a pattern (7 positions)
   const plotPositions = [
     new Vec2(centerX - plotDistance * 2, centerY + plotDistance * 0.5),
     new Vec2(centerX - plotDistance * 1.5, centerY - plotDistance * 0.5),
@@ -140,7 +221,20 @@ async function createDefaultStructurePlots(config: DefaultWorldConfig): Promise<
     new Vec2(centerX + plotDistance * 2, centerY + plotDistance * 0.5),
   ];
 
-  // Optional: Add a click handler for the structures
+  // Get the user level config
+  let levelConfig = config.userLevelConfig;
+  
+  // If no config provided, try to load it
+  if (!levelConfig && config.userId) {
+    levelConfig = await loadUserLevelConfig(config.userId);
+  }
+  
+  // Fallback to empty config if still no config
+  if (!levelConfig) {
+    levelConfig = ["empty", "empty", "empty", "empty", "empty", "empty", "empty"];
+  }
+
+  // Mouse interaction callbacks with save functionality
   const onPlotMouseCallbacks: MouseInteractionCallbacks = {
     onClick: (entity) => {
       console.log("Structure plot clicked:", entity.id);
@@ -159,32 +253,44 @@ async function createDefaultStructurePlots(config: DefaultWorldConfig): Promise<
     },
   };
 
-  // Create Structure objects for each position
-  for (let i = 0; i < plotPositions.length; i++) {
+  // Create Structure objects for each position based on level config
+  for (let i = 0; i < plotPositions.length && i < levelConfig.length; i++) {
     const position = plotPositions[i];
+    const structureId = levelConfig[i];
 
     try {
-      // Use the static factory method to create and initialize the structure
-      const plot = await Structure.create(position, onPlotMouseCallbacks);
+      // Create structure based on ID from level config
+      const plot = await createStructureById(structureId, position, onPlotMouseCallbacks);
       plots.push(plot);
 
-      console.log(`Created plot ${i + 1} at position (${position.x}, ${position.y})`);
+      console.log(`Created plot ${i + 1} at position (${position.x}, ${position.y}) with structure: ${structureId}`);
+      
+      // Update usage in inventory if not empty
+      if (structureId !== "empty" && config.userId) {
+        try {
+          // Get the structure name from config
+          const structureConfig = getStructureConfig(structureId);
+          if (structureConfig) {
+            await updateStructureUsage(config.userId, structureConfig.name, 1);
+            console.log(`Updated usage for ${structureConfig.name}`);
+          }
+        } catch (error) {
+          console.error(`Error updating usage for structure ${structureId}:`, error);
+        }
+      }
     } catch (error) {
-      console.error(`Failed to create plot ${i + 1}:`, error);
+      console.error(`Failed to create plot ${i + 1} with structure ${structureId}:`, error);
+      
+      // Create empty structure as fallback
+      try {
+        const plot = await Structure.create(position, onPlotMouseCallbacks);
+        plots.push(plot);
+        console.log(`Created fallback empty plot ${i + 1}`);
+      } catch (fallbackError) {
+        console.error(`Failed to create fallback plot ${i + 1}:`, fallbackError);
+      }
     }
   }
-
-  // AGENT LOG -- important note for any agents
-  // setting default world state. when user decides to enter staging or actual feature testing please remove
-
-  // change slots to certain structures like mailbox, chicken coop, water well, etc.
-  plots[0] = await ChickenCoop.create(plotPositions[0], onPlotMouseCallbacks);
-  plots[1] = await Mailbox.create(plotPositions[1], onPlotMouseCallbacks);
-  plots[2] = await Picnic.create(plotPositions[2], onPlotMouseCallbacks);
-  plots[3] = await WaterWell.create(plotPositions[3], onPlotMouseCallbacks);
-  plots[4] = await Workbench.create(plotPositions[4], onPlotMouseCallbacks);
-  plots[5] = await Picnic.create(plotPositions[5], onPlotMouseCallbacks);
-  plots[6] = await WaterWell.create(plotPositions[6], onPlotMouseCallbacks);
 
   return plots;
 }
@@ -195,13 +301,15 @@ async function createDefaultStructurePlots(config: DefaultWorldConfig): Promise<
  */
 export async function constructDefaultWorld(
   pixiApp: PIXI.Application,
-  worldContainer: PIXI.Container
+  worldContainer: PIXI.Container,
+  userId?: string
 ): Promise<WorldPhysicsHandler> {
   // Create the world physics handler
   const worldHandler = new WorldPhysicsHandler(pixiApp, worldContainer);
 
   // Create the default configuration
   const config = createDefaultWorldConfig();
+  config.userId = userId;
 
   // Set physics properties
   worldHandler.setGravity(config.physics.gravity);
@@ -209,7 +317,7 @@ export async function constructDefaultWorld(
   // Create entities (including async structure plots and baby cows)
   const decorations = createDecorationEntities(config);
   const interactive = createInteractiveEntities(config);
-  const structurePlots = await createDefaultStructurePlots(config);
+  const structurePlots = await createUserStructurePlots(config);
   const babyCows = await createBabyCowEntities(pixiApp, worldContainer);
 
   // Combine all entities
@@ -220,7 +328,7 @@ export async function constructDefaultWorld(
     worldHandler.addEntity(entity);
   });
 
-  console.log(`Default world constructed with ${worldHandler.getEntityCount()} entities`);
+  console.log(`World constructed with ${worldHandler.getEntityCount()} entities for user: ${userId || 'guest'}`);
 
   return worldHandler;
 }

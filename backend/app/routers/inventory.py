@@ -26,6 +26,7 @@ router = APIRouter(
 class StructureInventoryItem(BaseModel):
     structure_name: str
     count: int
+    currently_in_use: int = 0
 
 class UserInventoryData(BaseModel):
     user_id: str
@@ -36,6 +37,16 @@ class UserInventoryData(BaseModel):
 class AddInventoryItemRequest(BaseModel):
     structure_name: str
     count: int
+
+class UpdateUsageRequest(BaseModel):
+    structure_name: str
+    currently_in_use: int
+
+class UsageResponse(BaseModel):
+    success: bool
+    currently_in_use: Optional[int] = None
+    available: Optional[int] = None
+    message: Optional[str] = None
 
 class InventoryResponse(BaseModel):
     success: bool
@@ -124,4 +135,80 @@ async def remove_inventory_item(
             
     except Exception as e:
         logger.error(f"Error removing inventory item for {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+# ------------------------------------------------------------------ #
+# Structure Usage endpoints
+# ------------------------------------------------------------------ #
+
+@router.patch("/{user_id}/usage", response_model=InventoryResponse)
+async def update_structure_usage(
+    user_id: str,
+    request: UpdateUsageRequest,
+    inventory_service: InventoryService = Depends(get_inventory_service)
+):
+    """
+    Update the currently_in_use count for a specific structure.
+    """
+    try:
+        updated_inventory = inventory_service.update_structure_usage(
+            user_id, 
+            request.structure_name, 
+            request.currently_in_use
+        )
+        
+        return InventoryResponse(
+            success=True,
+            data=UserInventoryData(**updated_inventory),
+            message=f"Updated usage for {request.structure_name} to {request.currently_in_use}"
+        )
+            
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error updating structure usage for {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/{user_id}/usage/{structure_name}", response_model=UsageResponse)
+async def get_structure_usage(
+    user_id: str,
+    structure_name: str,
+    inventory_service: InventoryService = Depends(get_inventory_service)
+):
+    """
+    Get the currently_in_use count for a specific structure.
+    """
+    try:
+        usage_count = inventory_service.get_structure_usage(user_id, structure_name)
+        
+        return UsageResponse(
+            success=True,
+            currently_in_use=usage_count,
+            message=f"Usage for {structure_name}: {usage_count}"
+        )
+            
+    except Exception as e:
+        logger.error(f"Error getting structure usage for {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/{user_id}/available/{structure_name}", response_model=UsageResponse)
+async def get_available_structures(
+    user_id: str,
+    structure_name: str,
+    inventory_service: InventoryService = Depends(get_inventory_service)
+):
+    """
+    Get the number of available (not in use) structures.
+    """
+    try:
+        available_count = inventory_service.get_available_structures(user_id, structure_name)
+        
+        return UsageResponse(
+            success=True,
+            available=available_count,
+            message=f"Available {structure_name}: {available_count}"
+        )
+            
+    except Exception as e:
+        logger.error(f"Error getting available structures for {user_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
