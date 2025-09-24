@@ -60,6 +60,25 @@ StudyGarden is an engaging idle app designed to gamify productivity. Users grow 
     ```
     The frontend will be available at `http://localhost:3000`.
 
+## Docker Development
+
+For a containerized development environment, you can use the provided Docker setup to run the backend services (PostgreSQL, Redis).
+
+1.  **Ensure you have a `.env` file** in `backend/config/` with the required variables (`DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, `REDIS_PORT`).
+2.  **Run the script** from the root directory:
+
+    ```bash
+    # Start all services in the background
+    ./run_docker_containers.sh
+
+    # Stop all services
+    ./run_docker_containers.sh --down
+
+    # View logs
+    ./run_docker_containers.sh --logs
+    ```
+    For more options, run `./run_docker_containers.sh --help`.
+
 ## Deployment
 
 - **Frontend:** Hosted on Vercel for fast, scalable CI/CD.
