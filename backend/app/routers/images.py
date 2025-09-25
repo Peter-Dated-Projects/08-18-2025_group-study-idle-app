@@ -4,13 +4,18 @@ Image management router for handling profile picture uploads, retrieval, and del
 
 import logging
 from typing import Optional
-from fastapi import APIRouter, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, HTTPException, UploadFile, File, Query, Depends
 from fastapi.responses import JSONResponse
 
 try:
     from ..services.minio_image_service import minio_service
 except ImportError:
     from services.minio_image_service import minio_service
+
+try:
+    from ..services.user_service_arangodb import get_user_service, UserService
+except ImportError:
+    from services.user_service_arangodb import get_user_service, UserService
 
 router = APIRouter(prefix="/images", tags=["images"])
 logger = logging.getLogger(__name__)
@@ -19,6 +24,41 @@ logger = logging.getLogger(__name__)
 async def image_service_health():
     """Health check for image service."""
     return {"status": "healthy", "service": "image_service"}
+
+@router.get("/user/{user_id}")
+async def get_image_url_by_user_id(
+    user_id: str,
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Get a presigned URL for a user's profile picture by fetching their user_picture_url from the user service.
+    If user has no picture URL set, returns the default profile picture URL.
+    """
+    try:
+        # Get user info from user service (includes user_picture_url from ArangoDB)
+        user_info = user_service.get_user_info(user_id)
+        
+        if not user_info:
+            logger.warning(f"User {user_id} not found in user service, returning default image")
+            image_id = None  # Will return default
+        else:
+            # Get the user's picture URL (could be None)
+            image_id = user_info.get('user_picture_url')
+            logger.debug(f"User {user_id} has picture URL: {image_id}")
+        
+        # Get presigned URL from minIO (handles None -> default)
+        url = minio_service.get_image_url(image_id)
+        
+        return {
+            "success": True,
+            "user_id": user_id,
+            "image_id": image_id if image_id else "default_pfp.png",
+            "url": url
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting image URL for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve user profile picture URL")
 
 @router.get("/{image_id}")
 async def get_image_url(image_id: str = None):

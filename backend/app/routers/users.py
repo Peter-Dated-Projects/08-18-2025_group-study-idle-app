@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
 
-from ..services.user_service_firestore import get_user_service, UserService
+from ..services.user_service_arangodb import get_user_service, UserService
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -31,6 +31,7 @@ class UserInfo(BaseModel):
     created_at: Optional[str] = None
     last_login: Optional[str] = None
     provider: Optional[str] = None
+    user_picture_url: Optional[str] = None  # From ArangoDB users collection
 
 class UsersRequest(BaseModel):
     user_ids: List[str]

@@ -628,7 +628,12 @@ export async function buildCowBabyStateMachine(
   const builder = new CharacterAnimationBuilder(sprite);
 
   if (idleFrames)
-    builder.addState("idle", CowIdleAnimationState, idleFrames.frames as AnimationFrameData[], cowFrameDuration);
+    builder.addState(
+      "idle",
+      CowIdleAnimationState,
+      idleFrames.frames as AnimationFrameData[],
+      cowFrameDuration
+    );
   if (idleBlinkFrames)
     builder.addState(
       "idle_blink",
@@ -637,9 +642,19 @@ export async function buildCowBabyStateMachine(
       cowFrameDuration
     );
   if (walkFrames)
-    builder.addState("walk", CowWalkAnimationState, walkFrames.frames as AnimationFrameData[], cowFrameDuration);
+    builder.addState(
+      "walk",
+      CowWalkAnimationState,
+      walkFrames.frames as AnimationFrameData[],
+      cowFrameDuration
+    );
   if (hopFrames)
-    builder.addState("hop", CowHopAnimationState, hopFrames.frames as AnimationFrameData[], cowFrameDuration);
+    builder.addState(
+      "hop",
+      CowHopAnimationState,
+      hopFrames.frames as AnimationFrameData[],
+      cowFrameDuration
+    );
   if (standFrames)
     builder.addState(
       "stand",
@@ -648,7 +663,12 @@ export async function buildCowBabyStateMachine(
       cowFrameDuration
     );
   if (sitFrames)
-    builder.addState("sit", CowSitAnimationState, sitFrames.frames as AnimationFrameData[], cowFrameDuration);
+    builder.addState(
+      "sit",
+      CowSitAnimationState,
+      sitFrames.frames as AnimationFrameData[],
+      cowFrameDuration
+    );
   if (fallAsleepFrames)
     builder.addState(
       "fall_asleep",

@@ -8,6 +8,7 @@ export interface ImageResponse {
   success: boolean;
   image_id: string;
   url: string;
+  user_id?: string; // For user-based requests
 }
 
 export interface UploadImageResponse {
@@ -35,6 +36,53 @@ export async function getImageUrl(imageId: string | null | undefined): Promise<I
   }
 
   return response.json();
+}
+
+/**
+ * Get an image URL by user_id from minIO (fetches user's profile picture)
+ * This will look up the user's user_picture_url and return the appropriate image
+ * @param userId - The user ID to get profile picture for
+ * @returns Promise with image URL response
+ */
+export async function getImageUrlByUserId(userId: string): Promise<ImageResponse> {
+  const url = createBackendURL(`/images/user/${encodeURIComponent(userId)}`);
+
+  const response = await fetch(url, {
+    method: "GET",
+    credentials: API_CONFIG.credentials,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get user profile picture: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Smart image URL getter - determines if ID is a user ID or image ID
+ * If imageId is provided, uses that directly
+ * If userId is provided (and no imageId), fetches user's profile picture
+ * If neither, returns default image
+ * @param imageId - Specific image ID to fetch (takes priority)  
+ * @param userId - User ID to fetch profile picture for (fallback)
+ * @returns Promise with image URL response
+ */
+export async function getImageUrlSmart(
+  imageId?: string | null, 
+  userId?: string | null
+): Promise<ImageResponse> {
+  // Priority: imageId (including null) -> userId -> default
+  if (imageId !== undefined) {
+    // Explicit image ID provided (including null for default)
+    return getImageUrl(imageId);
+  } else if (userId) {
+    // No image ID but user ID provided - fetch user's profile picture
+    return getImageUrlByUserId(userId);
+  } else {
+    // Neither provided - get default
+    return getImageUrl(null);
+  }
 }
 
 /**

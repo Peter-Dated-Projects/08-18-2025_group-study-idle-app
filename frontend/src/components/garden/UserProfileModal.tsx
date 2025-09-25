@@ -34,9 +34,15 @@ export default function UserProfile({ isVisible, onClose, user }: UserProfilePro
       zIndex={2000}
     >
       {/* Profile Content */}
-      <div style={{ padding: "30px" }}>
+      <div style={{ padding: "30px", justifyContent: "center", alignItems: "center" }}>
         {/* Profile Picture */}
-        <ProfilePicture size="100px" />
+        <div className="w-full flex justify-center mb-4">
+          <ProfilePicture
+            size="100px"
+            userId={user.id || user.userId}
+            imageId={(user as any).user_picture_url}
+          />
+        </div>
 
         {/* User Information */}
         <FormGroup>
