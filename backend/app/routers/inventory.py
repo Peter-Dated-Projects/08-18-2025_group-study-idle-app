@@ -153,6 +153,8 @@ async def update_structure_usage(
     """
     Update the currently_in_use count for a specific structure.
     """
+
+    logger.info(f"Updating structure usage for user_id: {user_id}, structure_name: {request.structure_name}, currently_in_use: {request.currently_in_use}")
     try:
         updated_inventory = inventory_service.update_structure_usage(
             user_id, 
@@ -167,6 +169,7 @@ async def update_structure_usage(
         )
             
     except ValueError as e:
+        logger.error(f"Validation error updating structure usage for {user_id}: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error updating structure usage for {user_id}: {e}")
