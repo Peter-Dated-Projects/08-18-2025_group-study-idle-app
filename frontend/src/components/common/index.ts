@@ -6,6 +6,7 @@ export * from "./FormComponents";
 export * from "./LoadingComponents";
 export * from "./ProfileComponents";
 export * from "./apiUtils";
+export * from "./imageApi";
 export * from "./engineUtils";
 
 // Component exports
@@ -18,4 +19,5 @@ export { MessageDisplay, LoadingSpinner, LoadingOverlay } from "./LoadingCompone
 export { ProfilePicture, UserDisplayName, UserCard } from "./ProfileComponents";
 export { commonStyles, hoverEffects } from "./styles";
 export { apiGet, apiPost, apiPut, apiDelete, handleAPICall } from "./apiUtils";
+export { getImageUrl, uploadImage, deleteImage } from "./imageApi";
 export { MathUtils, CollisionUtils, VectorUtils, AnimationUtils, FileUtils } from "./engineUtils";

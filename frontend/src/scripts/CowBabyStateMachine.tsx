@@ -605,8 +605,9 @@ export async function buildCowBabyStateMachine(
   pixiApp: PIXI.Application,
   animationLoader: AnimationLoader
 ): Promise<CharacterAnimation> {
-  // Load the animations first
-  await animationLoader.load("/entities/cow_baby.png", "/entities/cow_baby.json", 150); // 150ms per frame
+  // Load the animations first - use 167ms per frame for 6 FPS (1000/6 ≈ 167)
+  const cowFrameDuration = 167; // 6 FPS for cows
+  await animationLoader.load("/entities/cow_baby.png", "/entities/cow_baby.json", cowFrameDuration);
 
   // Create a sprite for the character animation
   const sprite = new PIXI.Sprite();
@@ -623,58 +624,58 @@ export async function buildCowBabyStateMachine(
   const eatGrassIdleFrames = animationLoader.getAnimation("eat_grass_idle");
   const idleHeartFrames = animationLoader.getAnimation("idle_heart");
 
-  // Use the builder with proper state classes
+  // Use the builder with proper state classes - all using 6 FPS frame duration
   const builder = new CharacterAnimationBuilder(sprite);
 
   if (idleFrames)
-    builder.addState("idle", CowIdleAnimationState, idleFrames.frames as AnimationFrameData[], 150);
+    builder.addState("idle", CowIdleAnimationState, idleFrames.frames as AnimationFrameData[], cowFrameDuration);
   if (idleBlinkFrames)
     builder.addState(
       "idle_blink",
       CowIdleBlinkAnimationState,
       idleBlinkFrames.frames as AnimationFrameData[],
-      150
+      cowFrameDuration
     );
   if (walkFrames)
-    builder.addState("walk", CowWalkAnimationState, walkFrames.frames as AnimationFrameData[], 150);
+    builder.addState("walk", CowWalkAnimationState, walkFrames.frames as AnimationFrameData[], cowFrameDuration);
   if (hopFrames)
-    builder.addState("hop", CowHopAnimationState, hopFrames.frames as AnimationFrameData[], 150);
+    builder.addState("hop", CowHopAnimationState, hopFrames.frames as AnimationFrameData[], cowFrameDuration);
   if (standFrames)
     builder.addState(
       "stand",
       CowStandAnimationState,
       standFrames.frames as AnimationFrameData[],
-      150
+      cowFrameDuration
     );
   if (sitFrames)
-    builder.addState("sit", CowSitAnimationState, sitFrames.frames as AnimationFrameData[], 150);
+    builder.addState("sit", CowSitAnimationState, sitFrames.frames as AnimationFrameData[], cowFrameDuration);
   if (fallAsleepFrames)
     builder.addState(
       "fall_asleep",
       CowFallAsleepAnimationState,
       fallAsleepFrames.frames as AnimationFrameData[],
-      150
+      cowFrameDuration
     );
   if (sniffGroundFrames)
     builder.addState(
       "sniff_ground",
       CowSniffGroundAnimationState,
       sniffGroundFrames.frames as AnimationFrameData[],
-      150
+      cowFrameDuration
     );
   if (eatGrassIdleFrames)
     builder.addState(
       "eat_grass_idle",
       CowEatGrassIdleAnimationState,
       eatGrassIdleFrames.frames as AnimationFrameData[],
-      150
+      cowFrameDuration
     );
   if (idleHeartFrames)
     builder.addState(
       "idle_heart",
       CowIdleHeartAnimationState,
       idleHeartFrames.frames as AnimationFrameData[],
-      150
+      cowFrameDuration
     );
 
   const characterAnimation = builder.build("idle");

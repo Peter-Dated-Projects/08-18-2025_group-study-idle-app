@@ -14,12 +14,12 @@ load_dotenv(env_file)
 
 # Import routers - handle both direct execution and module import
 try:
-    from .routers import health, websockets, lobbies, friends, groups, leaderboard, redis_leaderboard, group_leaderboard, periodic_sync, periodic_reset, users, user_stats, username_resolution, chat, pomo_bank, inventory, balance, shop, level_config
+    from .routers import health, websockets, lobbies, friends, groups, leaderboard, redis_leaderboard, group_leaderboard, periodic_sync, periodic_reset, users, user_stats, username_resolution, chat, pomo_bank, inventory, balance, shop, level_config, images
     from .utils.redis_json_utils import ping_redis_json
     from .models.database import create_tables
 except ImportError:
     # Direct execution from app directory
-    from routers import health, websockets, lobbies, friends, groups, leaderboard, redis_leaderboard, group_leaderboard, periodic_sync, periodic_reset, users, user_stats, username_resolution, chat, pomo_bank, inventory, balance, shop, level_config
+    from routers import health, websockets, lobbies, friends, groups, leaderboard, redis_leaderboard, group_leaderboard, periodic_sync, periodic_reset, users, user_stats, username_resolution, chat, pomo_bank, inventory, balance, shop, level_config, images
     from utils.redis_json_utils import ping_redis_json
     from models.database import create_tables
 
@@ -121,6 +121,7 @@ def create_app() -> FastAPI:
     app.include_router(level_config.router)  # User level/world configuration system
     app.include_router(balance.router)  # User balance management
     app.include_router(shop.router)  # Item shop for purchasing structures
+    app.include_router(images.router)  # Image storage and retrieval for profile pictures
 
     @app.exception_handler(Exception)
     async def global_exception_handler(request, exc):

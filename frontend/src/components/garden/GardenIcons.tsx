@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import FriendsModal from "./ui/FriendsModal";
-import UserProfile from "./UserProfile";
+import UserProfile from "./UserProfileModal";
 import GroupsModal from "./ui/GroupsModal";
 import GlobalLeaderboardModal from "./ui/GlobalLeaderboardModal";
 import GroupLeaderboardModal from "./ui/GroupLeaderboardModal";
