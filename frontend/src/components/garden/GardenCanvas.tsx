@@ -16,9 +16,9 @@ import { createMouseCursor } from "@/debug/MouseCursor";
 import { RendererHandler } from "@/engine/rendering/RendererHandler";
 import { SpriteRenderer } from "@/engine/rendering/SpriteRenderer";
 import { refreshWorldStructures } from "@/engine/DefaultWorld";
-import { 
+import {
   setGlobalWorldRefreshHandler,
-  clearGlobalWorldRefreshHandler
+  clearGlobalWorldRefreshHandler,
 } from "@/utils/globalWorldRefreshHandler";
 
 export const FRAMERATE = 6;

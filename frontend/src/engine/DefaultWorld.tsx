@@ -105,9 +105,9 @@ export async function refreshWorldStructures(
     // Remove existing structure plots from the world
     const existingStructures = worldHandler
       .getAllEntities()
-      .filter(entity => entity.hasTag("structure"));
-    
-    existingStructures.forEach(structure => {
+      .filter((entity) => entity.hasTag("structure"));
+
+    existingStructures.forEach((structure) => {
       worldHandler.removeEntityByReference(structure);
     });
 
@@ -117,7 +117,7 @@ export async function refreshWorldStructures(
     const newStructurePlots = await createUserStructurePlots(config);
 
     // Add new structure plots to the world
-    newStructurePlots.forEach(plot => {
+    newStructurePlots.forEach((plot) => {
       worldHandler.addEntity(plot);
     });
 
