@@ -4,8 +4,10 @@
  */
 
 import { localDataManager } from "./localDataManager";
+import { fetchJSON, AuthenticationError, triggerAuthFlow } from "./authUtils";
 import { updateSlotConfig, updateStructureUsage } from "../services/levelConfigService";
 import { getStructureConfig } from "../config/structureConfigs";
+import { visualWorldUpdateService } from "./visualWorldUpdateService";
 
 export interface StructurePlot {
   index: number; // 0-6, corresponding to the 7 plots
@@ -148,11 +150,31 @@ class WorldEditingService {
       }
       await Promise.all(updates);
 
+      // Update visual representation
+      console.log(`Updating visual plot ${plotIndex} to ${structureId}`);
+      const visualUpdateSuccess = await visualWorldUpdateService.updateStructurePlot(
+        plotIndex,
+        structureId
+      );
+
+      if (!visualUpdateSuccess) {
+        console.warn(
+          `Visual update failed for plot ${plotIndex}, structure will be visible after next refresh`
+        );
+      }
+
       console.log(`Successfully placed ${structureId} on plot ${plotIndex}`);
       return true;
     } catch (error) {
       // Revert local changes on error
       plot.currentStructureId = previousStructureId;
+
+      if (error instanceof AuthenticationError) {
+        console.error("Authentication error placing structure:", error);
+        // Don't show generic error - auth flow already triggered
+        return false;
+      }
+
       console.error("Failed to place structure:", error);
       return false;
     }
@@ -194,6 +216,21 @@ class WorldEditingService {
 
       // Batch update to backend
       await this.updateLevelConfigBulk(currentConfig);
+
+      // Update visual representations
+      console.log(
+        `Updating visual swap: plot ${fromPlotIndex} to ${toStructureId}, plot ${toPlotIndex} to ${fromStructureId}`
+      );
+      const visualUpdates = await Promise.all([
+        visualWorldUpdateService.updateStructurePlot(fromPlotIndex, toStructureId),
+        visualWorldUpdateService.updateStructurePlot(toPlotIndex, fromStructureId),
+      ]);
+
+      if (!visualUpdates.every((success) => success)) {
+        console.warn(
+          `Some visual updates failed during swap, structures will be visible after next refresh`
+        );
+      }
 
       console.log(
         `Successfully swapped structures between plots ${fromPlotIndex} and ${toPlotIndex}`
@@ -286,22 +323,21 @@ class WorldEditingService {
     if (!this.userId) throw new Error("User ID not set");
 
     try {
-      const response = await fetch("/api/inventory/bulk-update", {
+      const response = await fetchJSON("/api/inventory/bulk-update", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ inventory_updates: inventory }),
+        body: { inventory_updates: inventory },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Failed to bulk update inventory`);
-      }
-
-      // Update local cache
+      // Update local cache on success
       localDataManager.updateInventoryCache(this.userId, inventory);
     } catch (error) {
+      if (error instanceof AuthenticationError) {
+        console.error("Authentication error in bulk inventory update:", error);
+        // Trigger login flow instead of throwing generic error
+        triggerAuthFlow();
+        throw new Error("Authentication required. Redirecting to login...");
+      }
+
       console.error("Error in bulk inventory update:", error);
       throw error;
     }

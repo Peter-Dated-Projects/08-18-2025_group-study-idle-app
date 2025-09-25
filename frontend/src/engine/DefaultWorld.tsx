@@ -20,6 +20,9 @@ import { updateStructureUsage } from "@/services/levelConfigService";
 import { localDataManager } from "@/utils/localDataManager";
 import { createStructureById as factoryCreateStructureById } from "@/utils/structureFactory";
 
+// Import rendering system
+import { SpriteRenderer } from "./rendering/SpriteRenderer";
+
 // Import design constants for map center calculation
 const DESIGN_WIDTH = 1920;
 const DESIGN_HEIGHT = 1080;
@@ -102,12 +105,18 @@ export async function refreshWorldStructures(
     localDataManager.invalidateLevelConfig(userId);
     localDataManager.invalidateInventory(userId);
 
+    // Get the renderer handler for setting up renderers for new entities
+    const rendererHandler = worldHandler.getRendererHandler();
+
     // Remove existing structure plots from the world
     const existingStructures = worldHandler
       .getAllEntities()
       .filter((entity) => entity.hasTag("structure"));
 
     existingStructures.forEach((structure) => {
+      // Clean up renderer before removing entity
+      worldHandler.removeEntityRenderer(structure.id);
+      // Remove entity from physics handler
       worldHandler.removeEntityByReference(structure);
     });
 
@@ -116,12 +125,19 @@ export async function refreshWorldStructures(
     config.userId = userId;
     const newStructurePlots = await createUserStructurePlots(config);
 
-    // Add new structure plots to the world
+    // Add new structure plots to the world and create renderers for them
     newStructurePlots.forEach((plot) => {
       worldHandler.addEntity(plot);
+
+      // Create and register renderer for the new entity
+      const spriteRenderer = new SpriteRenderer();
+      spriteRenderer.setDebugMode(true); // Enable debug mode to match other renderers
+      worldHandler.registerEntityRenderer(plot.id, spriteRenderer);
     });
 
-    console.log(`Successfully refreshed ${newStructurePlots.length} structure plots`);
+    console.log(
+      `Successfully refreshed ${newStructurePlots.length} structure plots with renderers`
+    );
   } catch (error) {
     console.error("Error refreshing world structures:", error);
     throw error;

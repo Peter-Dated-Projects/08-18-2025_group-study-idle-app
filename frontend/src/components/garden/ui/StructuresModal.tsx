@@ -148,7 +148,9 @@ export default function StructuresModal({
 
         // Refresh inventory to reflect changes
         if (userId) {
-          const response = await fetch(`/api/inventory/${userId}`);
+          const response = await fetch(`/api/inventory/${userId}`, {
+            credentials: "include", // Include cookies for auth
+          });
           if (response.ok) {
             const data = await response.json();
             if (data.success && data.data) {

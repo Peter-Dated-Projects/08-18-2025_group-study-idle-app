@@ -22,6 +22,47 @@ class InventoryService:
         """Get database session."""
         return SessionLocal()
     
+    def _convert_storage_to_api_format(self, storage_inventory) -> list:
+        """
+        Convert storage format (object) to API format (array of dicts).
+        Storage format: {"structure_name": {"count": 2, "currently_in_use": 0}}
+        API format: [{"structure_name": "structure_name", "count": 2, "currently_in_use": 0}]
+        """
+        if isinstance(storage_inventory, list):
+            # Already in old array format, return as is for backward compatibility
+            return storage_inventory
+        
+        if isinstance(storage_inventory, str):
+            storage_inventory = json.loads(storage_inventory)
+        
+        if not isinstance(storage_inventory, dict):
+            return []
+            
+        api_format = []
+        for structure_name, data in storage_inventory.items():
+            api_format.append({
+                "structure_name": structure_name,
+                "count": data.get("count", 0),
+                "currently_in_use": data.get("currently_in_use", 0)
+            })
+        return api_format
+    
+    def _convert_api_to_storage_format(self, api_inventory) -> dict:
+        """
+        Convert API format (array of dicts) to storage format (object).
+        API format: [{"structure_name": "structure_name", "count": 2, "currently_in_use": 0}]
+        Storage format: {"structure_name": {"count": 2, "currently_in_use": 0}}
+        """
+        storage_format = {}
+        for item in api_inventory:
+            structure_name = item.get("structure_name")
+            if structure_name:
+                storage_format[structure_name] = {
+                    "count": item.get("count", 0),
+                    "currently_in_use": item.get("currently_in_use", 0)
+                }
+        return storage_format
+    
     def get_user_inventory(self, user_id: str) -> Optional[Dict[str, Any]]:
         """
         Get user's structure inventory from database.
@@ -45,7 +86,7 @@ class InventoryService:
                 if result:
                     return {
                         "user_id": result.user_id,
-                        "structure_inventory": result.structure_inventory,
+                        "structure_inventory": self._convert_storage_to_api_format(result.structure_inventory),
                         "created_at": result.created_at.isoformat() if result.created_at else None,
                         "updated_at": result.updated_at.isoformat() if result.updated_at else None
                     }
@@ -76,7 +117,7 @@ class InventoryService:
                 
                 result = db.execute(query, {
                     "user_id": user_id,
-                    "inventory": json.dumps([])
+                    "inventory": json.dumps({})  # Changed from [] to {}
                 }).fetchone()
                 
                 db.commit()
@@ -84,7 +125,7 @@ class InventoryService:
                 if result:
                     return {
                         "user_id": result.user_id,
-                        "structure_inventory": result.structure_inventory,
+                        "structure_inventory": self._convert_storage_to_api_format(result.structure_inventory),
                         "created_at": result.created_at.isoformat() if result.created_at else None,
                         "updated_at": result.updated_at.isoformat() if result.updated_at else None
                     }
@@ -117,27 +158,24 @@ class InventoryService:
                     # Create new inventory if doesn't exist
                     current_inventory = self.create_user_inventory(user_id)
                 
-                # Parse current inventory
-                inventory_items = current_inventory.get("structure_inventory", [])
+                # Convert API format to storage format for manipulation
+                api_inventory = current_inventory.get("structure_inventory", [])
+                storage_inventory = self._convert_api_to_storage_format(api_inventory)
                 
-                # Find existing item or add new one
-                found = False
-                for item in inventory_items:
-                    if item["structure_name"] == structure_name:
-                        item["count"] += count
-                        if item["count"] <= 0:
-                            inventory_items.remove(item)
-                        found = True
-                        break
-                
-                if not found and count > 0:
-                    inventory_items.append({
-                        "structure_name": structure_name,
+                # Update or add the structure
+                if structure_name in storage_inventory:
+                    storage_inventory[structure_name]["count"] += count
+                    # Remove structure if count becomes 0 or negative
+                    if storage_inventory[structure_name]["count"] <= 0:
+                        del storage_inventory[structure_name]
+                elif count > 0:
+                    # Add new structure with default currently_in_use of 0
+                    storage_inventory[structure_name] = {
                         "count": count,
-                        "currently_in_use": 0  # Default to 0 for new items
-                    })
+                        "currently_in_use": 0
+                    }
                 
-                # Update database
+                # Update database with storage format
                 query = text("""
                     UPDATE user_structure_inventory
                     SET structure_inventory = :inventory, updated_at = CURRENT_TIMESTAMP
@@ -147,14 +185,14 @@ class InventoryService:
                 
                 result = db.execute(query, {
                     "user_id": user_id,
-                    "inventory": json.dumps(inventory_items)
+                    "inventory": json.dumps(storage_inventory)
                 }).fetchone()
                 
                 db.commit()
                 
                 return {
                     "user_id": result.user_id,
-                    "structure_inventory": result.structure_inventory,
+                    "structure_inventory": self._convert_storage_to_api_format(result.structure_inventory),
                     "created_at": result.created_at.isoformat() if result.created_at else None,
                     "updated_at": result.updated_at.isoformat() if result.updated_at else None
                 }
@@ -193,11 +231,12 @@ class InventoryService:
             if not inventory:
                 return 0
             
+            # API format is always a list, search through it
             for item in inventory.get("structure_inventory", []):
                 if item["structure_name"] == structure_name:
                     return item["count"]
             
-            return 0
+            return 0  # Return 0 if structure not found
             
         except Exception as e:
             self.logger.error(f"Error getting structure count for user {user_id}: {e}")
@@ -206,6 +245,7 @@ class InventoryService:
     def update_structure_usage(self, user_id: str, structure_name: str, currently_in_use: int) -> Dict[str, Any]:
         """
         Update the currently_in_use count for a specific structure.
+        If structure doesn't exist in inventory, create it with count 0.
         
         Args:
             user_id: User ID
@@ -221,25 +261,26 @@ class InventoryService:
                 current_inventory = self.get_user_inventory(user_id)
                 
                 if not current_inventory:
-                    raise ValueError(f"No inventory found for user {user_id}")
+                    # Create new inventory if doesn't exist
+                    current_inventory = self.create_user_inventory(user_id)
                 
-                # Parse current inventory
-                inventory_items = current_inventory.get("structure_inventory", [])
+                # Convert API format to storage format for manipulation
+                api_inventory = current_inventory.get("structure_inventory", [])
+                storage_inventory = self._convert_api_to_storage_format(api_inventory)
                 
-                # Find and update the item
-                found = False
-                for item in inventory_items:
-                    if item["structure_name"] == structure_name:
-                        # Ensure currently_in_use doesn't exceed count
-                        max_usage = item.get("count", 0)
-                        item["currently_in_use"] = min(currently_in_use, max_usage)
-                        found = True
-                        break
+                # If structure doesn't exist, create it with count 0
+                if structure_name not in storage_inventory:
+                    storage_inventory[structure_name] = {
+                        "count": 0,
+                        "currently_in_use": 0
+                    }
                 
-                if not found:
-                    raise ValueError(f"Structure {structure_name} not found in inventory for user {user_id}")
+                # Update the currently_in_use count
+                # Ensure currently_in_use doesn't exceed count
+                max_usage = storage_inventory[structure_name].get("count", 0)
+                storage_inventory[structure_name]["currently_in_use"] = min(currently_in_use, max_usage)
                 
-                # Update database
+                # Update database with storage format
                 query = text("""
                     UPDATE user_structure_inventory
                     SET structure_inventory = :inventory, updated_at = CURRENT_TIMESTAMP
@@ -249,14 +290,14 @@ class InventoryService:
                 
                 result = db.execute(query, {
                     "user_id": user_id,
-                    "inventory": json.dumps(inventory_items)
+                    "inventory": json.dumps(storage_inventory)
                 }).fetchone()
                 
                 db.commit()
                 
                 return {
                     "user_id": result.user_id,
-                    "structure_inventory": result.structure_inventory,
+                    "structure_inventory": self._convert_storage_to_api_format(result.structure_inventory),
                     "created_at": result.created_at.isoformat() if result.created_at else None,
                     "updated_at": result.updated_at.isoformat() if result.updated_at else None
                 }
@@ -281,11 +322,12 @@ class InventoryService:
             if not inventory:
                 return 0
             
+            # API format is always a list, search through it
             for item in inventory.get("structure_inventory", []):
                 if item["structure_name"] == structure_name:
                     return item.get("currently_in_use", 0)
             
-            return 0
+            return 0  # Return 0 if structure not found
             
         except Exception as e:
             self.logger.error(f"Error getting structure usage for user {user_id}: {e}")
@@ -307,13 +349,14 @@ class InventoryService:
             if not inventory:
                 return 0
             
+            # API format is always a list, search through it
             for item in inventory.get("structure_inventory", []):
                 if item["structure_name"] == structure_name:
                     total_count = item.get("count", 0)
                     in_use = item.get("currently_in_use", 0)
                     return max(0, total_count - in_use)
             
-            return 0
+            return 0  # Return 0 if structure not found
             
         except Exception as e:
             self.logger.error(f"Error getting available structures for user {user_id}: {e}")
@@ -332,20 +375,23 @@ class InventoryService:
         """
         try:
             with self._get_db() as db:
-                # Convert inventory_updates to the expected format
-                inventory_items = []
+                # Convert inventory_updates to the expected API format
+                api_inventory = []
                 for item in inventory_updates:
                     if isinstance(item, dict):
-                        inventory_items.append(item)
+                        api_inventory.append(item)
                     else:
                         # Handle pydantic model objects
-                        inventory_items.append({
+                        api_inventory.append({
                             "structure_name": item.structure_name,
                             "count": item.count,
                             "currently_in_use": item.currently_in_use
                         })
 
-                # Update database
+                # Convert API format to storage format
+                storage_inventory = self._convert_api_to_storage_format(api_inventory)
+
+                # Update database with storage format
                 query = text("""
                     INSERT INTO user_structure_inventory (user_id, structure_inventory)
                     VALUES (:user_id, :inventory)
@@ -358,14 +404,14 @@ class InventoryService:
                 
                 result = db.execute(query, {
                     "user_id": user_id,
-                    "inventory": json.dumps(inventory_items)
+                    "inventory": json.dumps(storage_inventory)
                 }).fetchone()
                 
                 db.commit()
                 
                 return {
                     "user_id": result.user_id,
-                    "structure_inventory": result.structure_inventory,
+                    "structure_inventory": self._convert_storage_to_api_format(result.structure_inventory),
                     "created_at": result.created_at.isoformat() if result.created_at else None,
                     "updated_at": result.updated_at.isoformat() if result.updated_at else None
                 }

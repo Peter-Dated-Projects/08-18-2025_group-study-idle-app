@@ -20,6 +20,7 @@ import {
   setGlobalWorldRefreshHandler,
   clearGlobalWorldRefreshHandler,
 } from "@/utils/globalWorldRefreshHandler";
+import { visualWorldUpdateService } from "@/utils/visualWorldUpdateService";
 
 export const FRAMERATE = 6;
 export const DAYLIGHT_FRAMERATE = 0.1;
@@ -254,6 +255,7 @@ export default function GardenCanvas({
         // Set up global world refresh handler
         const refreshHandler = async () => {
           if (worldHandlerRef.current && worldUserId) {
+            console.log("[GardenCanvas] Refreshing world structures");
             await refreshWorldStructures(worldHandlerRef.current, worldUserId);
           }
         };
@@ -318,6 +320,10 @@ export default function GardenCanvas({
 
         // Sort children by zIndex for proper layering
         worldContainer.sortChildren();
+
+        // Initialize the visual world update service
+        console.log("[GardenCanvas] Initializing visual world update service...");
+        visualWorldUpdateService.initialize(worldHandler, rendererHandler, worldUserId);
 
         // Use the app's built-in ticker for FPS management integration
         const ticker = app.ticker;
@@ -434,6 +440,10 @@ export default function GardenCanvas({
       console.log("[GardenCanvas] Cleanup function called");
       disposed = true;
       const app = appRef.current;
+
+      // Clean up visual world update service
+      console.log("[GardenCanvas] Cleaning up visual world update service...");
+      visualWorldUpdateService.cleanup();
 
       // Clean up renderer handler
       if (rendererHandlerRef.current) {
