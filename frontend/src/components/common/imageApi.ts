@@ -64,12 +64,12 @@ export async function getImageUrlByUserId(userId: string): Promise<ImageResponse
  * If imageId is provided, uses that directly
  * If userId is provided (and no imageId), fetches user's profile picture
  * If neither, returns default image
- * @param imageId - Specific image ID to fetch (takes priority)  
+ * @param imageId - Specific image ID to fetch (takes priority)
  * @param userId - User ID to fetch profile picture for (fallback)
  * @returns Promise with image URL response
  */
 export async function getImageUrlSmart(
-  imageId?: string | null, 
+  imageId?: string | null,
   userId?: string | null
 ): Promise<ImageResponse> {
   // Priority: imageId (including null) -> userId -> default
