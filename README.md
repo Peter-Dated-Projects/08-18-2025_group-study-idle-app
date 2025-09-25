@@ -10,14 +10,15 @@ StudyGarden is an engaging idle app designed to gamify productivity. Users grow 
 
 - **Idle Gameplay:** Encourages consistent focus with rewards.
 - **Virtual Garden:** Reflects user progress visually.
+- **World Saving & Customization:** Save and load your world layout, and customize your garden with different structures.
 - **Task Management:** Organize and prioritize study sessions.
 - **Focus Timers:** Stay on track with built-in timers.
 - **User Authentication:** Securely track progress across devices.
 
 ## Tech Stack
 
-- **Frontend:** React, TypeScript, Tailwind CSS
-- **Backend:** Node.js, Express, MongoDB
+- **Frontend:** Next.js (React), TypeScript, Tailwind CSS, Pixi.js
+- **Backend:** Python, FastAPI, PostgreSQL, ArangoDB, Redis
 - **Deployment:** Vercel (Frontend), Google Cloud Run (Backend)
 
 ## Project Structure
@@ -27,35 +28,56 @@ StudyGarden is an engaging idle app designed to gamify productivity. Users grow 
 
 ## Local Development
 
-### Frontend
-
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the development server:
-   ```bash
-   npm start
-   ```
-
 ### Backend
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the server:
-   ```bash
-   npm run dev
-   ```
+1.  Navigate to the backend directory:
+    ```bash
+    cd backend
+    ```
+2.  Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3.  Start the development server:
+    ```bash
+    python run_server.py
+    ```
+    The backend will be available at `http://localhost:8000`.
+
+### Frontend
+
+1.  Navigate to the frontend directory:
+    ```bash
+    cd frontend
+    ```
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Start the development server:
+    ```bash
+    npm run dev
+    ```
+    The frontend will be available at `http://localhost:3000`.
+
+## Docker Development
+
+For a containerized development environment, you can use the provided Docker setup to run the backend services (PostgreSQL, Redis).
+
+1.  **Ensure you have a `.env` file** in `backend/config/` with the required variables (`DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, `REDIS_PORT`).
+2.  **Run the script** from the root directory:
+
+    ```bash
+    # Start all services in the background
+    ./run_docker_containers.sh
+
+    # Stop all services
+    ./run_docker_containers.sh --down
+
+    # View logs
+    ./run_docker_containers.sh --logs
+    ```
+    For more options, run `./run_docker_containers.sh --help`.
 
 ## Deployment
 
