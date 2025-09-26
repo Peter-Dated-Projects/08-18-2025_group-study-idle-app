@@ -1,11 +1,11 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 
 export interface WalletState {
-  balance: number
-  pendingTransactions: number
-  isLoading: boolean
-  error: string | null
-  lastUpdated: number | null
+  balance: number;
+  pendingTransactions: number;
+  isLoading: boolean;
+  error: string | null;
+  lastUpdated: number | null;
 }
 
 const initialState: WalletState = {
@@ -14,70 +14,78 @@ const initialState: WalletState = {
   isLoading: false,
   error: null,
   lastUpdated: null,
-}
+};
 
 // Async thunks
 export const fetchBalance = createAsyncThunk(
-  'wallet/fetchBalance',
+  "wallet/fetchBalance",
   async (userId: string, { rejectWithValue }) => {
     try {
       const response = await fetch(`/api/pomo-bank/${userId}`, {
-        credentials: 'include',
-      })
-      
+        credentials: "include",
+      });
+
       if (!response.ok) {
-        return rejectWithValue('Failed to fetch balance')
+        return rejectWithValue("Failed to fetch balance");
       }
-      
-      const data = await response.json()
-      return data.balance
+
+      const data = await response.json();
+      return data.balance;
     } catch (error) {
-      return rejectWithValue('Network error')
+      return rejectWithValue("Network error");
     }
   }
-)
+);
 
 const walletSlice = createSlice({
-  name: 'wallet',
+  name: "wallet",
   initialState,
   reducers: {
     updateBalance: (state, action: PayloadAction<number>) => {
-      state.balance = action.payload
-      state.lastUpdated = Date.now()
+      state.balance = action.payload;
+      state.lastUpdated = Date.now();
     },
     addPendingTransaction: (state, action: PayloadAction<number>) => {
-      state.pendingTransactions += action.payload
+      state.pendingTransactions += action.payload;
     },
     clearPendingTransactions: (state) => {
-      state.pendingTransactions = 0
+      state.pendingTransactions = 0;
     },
     clearError: (state) => {
-      state.error = null
+      state.error = null;
+    },
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.isLoading = action.payload;
+    },
+    setError: (state, action: PayloadAction<string | null>) => {
+      state.error = action.payload;
     },
   },
   extraReducers: (builder) => {
     builder
       .addCase(fetchBalance.pending, (state) => {
-        state.isLoading = true
-        state.error = null
+        state.isLoading = true;
+        state.error = null;
       })
       .addCase(fetchBalance.fulfilled, (state, action) => {
-        state.isLoading = false
-        state.balance = action.payload
-        state.lastUpdated = Date.now()
+        state.isLoading = false;
+        state.balance = action.payload;
+        state.lastUpdated = Date.now();
       })
       .addCase(fetchBalance.rejected, (state, action) => {
-        state.isLoading = false
-        state.error = action.payload as string
-      })
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
   },
-})
+});
 
 export const {
   updateBalance,
   addPendingTransaction,
   clearPendingTransactions,
   clearError,
-} = walletSlice.actions
+  setLoading,
+  setError,
+} = walletSlice.actions;
 
-export default walletSlice.reducer
+export default walletSlice.reducer;

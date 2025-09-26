@@ -1,37 +1,50 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch } from "../../../store/store";
 import { BaseModal } from "../../common";
 import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 import StorageItem from "./StorageItem";
 import { getAllStructureConfigs } from "../../../config/structureConfigs";
-import { StructureInventoryItem } from "../../../services/inventoryService";
-import { worldEditingService } from "../../../utils/worldEditingService";
-import { callGlobalWorldRefreshHandler } from "../../../utils/globalWorldRefreshHandler";
+import {
+  fetchStructureInventory,
+  placeStructureWithInventory,
+  optimisticPlaceStructure,
+  optimisticUpdateInventory,
+  closeStructuresModal,
+} from "../../../store/slices/worldSlice";
+import {
+  selectStructureInventory,
+  selectIsWorldLoading,
+  selectIsWorldSaving,
+  selectSelectedPlotIndex,
+  selectIsStructuresModalOpen,
+} from "../../../store/selectors/worldSelectors";
 import { BsFillBuildingsFill, BsFillCartFill } from "react-icons/bs";
 
 interface StructuresModalProps {
-  locked: boolean;
-  onClose: () => void;
-  structureName?: string;
   username?: string;
   accountBalance?: number;
   userId?: string; // Added userId prop
-  selectedPlotIndex?: number | null; // Added selectedPlotIndex prop for targeted placement
   onShopClick?: () => void; // Handler to open shop modal
 }
 
 export default function StructuresModal({
-  locked,
-  onClose,
-  structureName = "Structure",
   username = "Player",
   accountBalance = 0,
   userId,
-  selectedPlotIndex = null, // Default to null if not provided
   onShopClick,
 }: StructuresModalProps) {
-  const [windowWidth, setWindowWidth] = useState(750); // Default width
-  const [inventory, setInventory] = useState<StructureInventoryItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch<AppDispatch>();
+
+  // Redux selectors
+  const inventory = useSelector(selectStructureInventory);
+  const isLoading = useSelector(selectIsWorldLoading);
+  const isSaving = useSelector(selectIsWorldSaving);
+  const selectedPlotIndex = useSelector(selectSelectedPlotIndex);
+  const isModalOpen = useSelector(selectIsStructuresModalOpen);
+
+  // Local state for window sizing
+  const [windowWidth, setWindowWidth] = useState(750);
 
   // Get structure configurations
   const structureConfigs = getAllStructureConfigs();
@@ -51,37 +64,10 @@ export default function StructuresModal({
 
   // Load user inventory when modal opens or userId changes
   useEffect(() => {
-    if (locked && userId) {
-      setLoading(true);
-
-      // Fetch fresh inventory data from backend
-      const fetchInventory = async () => {
-        try {
-          const response = await fetch(`/api/inventory/${userId}`);
-          if (!response.ok) {
-            throw new Error(`Failed to fetch inventory: ${response.status}`);
-          }
-          const data = await response.json();
-
-          if (data.success && data.data) {
-            setInventory(data.data.structure_inventory);
-          } else {
-            setInventory([]);
-          }
-
-          // Initialize world editing service
-          await worldEditingService.initialize(userId);
-        } catch (error) {
-          console.error("Error loading user data:", error);
-          setInventory([]);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchInventory();
+    if (isModalOpen && userId) {
+      dispatch(fetchStructureInventory(userId));
     }
-  }, [locked, userId]);
+  }, [isModalOpen, userId, dispatch]);
 
   // Update window width for responsive grid
   useEffect(() => {
@@ -119,9 +105,6 @@ export default function StructuresModal({
     }
 
     try {
-      // Since we're already filtering items with count > 0 in storageItems,
-      // we know this item is available. Skip the redundant availability check.
-
       let targetPlotIndex: number;
 
       if (selectedPlotIndex !== null) {
@@ -129,64 +112,54 @@ export default function StructuresModal({
         targetPlotIndex = selectedPlotIndex;
         console.log(`Placing ${itemId} on selected plot ${targetPlotIndex}`);
       } else {
-        // Fallback to first available plot (original behavior)
-        const availablePlots = worldEditingService.getAvailablePlots();
-        if (availablePlots.length === 0) {
-          console.warn("No empty plots available");
-          // TODO: Show user message about no empty plots
-          return;
-        }
-        targetPlotIndex = availablePlots[0].index;
-        console.log(`No specific plot selected, using first available plot ${targetPlotIndex}`);
+        // For now, require a selected plot (can enhance later with fallback logic)
+        console.warn("No plot selected for structure placement");
+        return;
       }
 
-      // Place structure on the target plot
-      const success = await worldEditingService.placeStructure(targetPlotIndex, itemId);
+      // Find the structure config to get the proper name for inventory
+      const structureConfig = structureConfigs.find((config) => config.id === itemId);
+      if (!structureConfig) {
+        console.error(`Structure config not found for ${itemId}`);
+        return;
+      }
 
-      if (success) {
+      // Dispatch optimistic updates for immediate UI feedback
+      dispatch(optimisticPlaceStructure({ plotIndex: targetPlotIndex, structureId: itemId }));
+      dispatch(optimisticUpdateInventory({ structureName: structureConfig.name, delta: -1 }));
+
+      // Close modal immediately for better UX
+      dispatch(closeStructuresModal());
+
+      // Perform actual placement and inventory update via Redux thunk
+      const result = await dispatch(
+        placeStructureWithInventory({
+          userId,
+          plotIndex: targetPlotIndex,
+          structureId: itemId,
+        })
+      );
+
+      if (placeStructureWithInventory.fulfilled.match(result)) {
         console.log(`Successfully placed ${itemId} on plot ${targetPlotIndex}`);
-
-        // Refresh inventory to reflect changes
-        if (userId) {
-          const response = await fetch(`/api/inventory/${userId}`, {
-            credentials: "include", // Include cookies for auth
-          });
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.data) {
-              setInventory(data.data.structure_inventory);
-            }
-          }
-        }
-
-        // Close the modal after successful placement
-        onClose();
-
-        // Trigger world refresh using global handler
-        try {
-          await callGlobalWorldRefreshHandler();
-          console.log("World refresh completed after structure placement");
-        } catch (error) {
-          console.error("Error refreshing world:", error);
-        }
       } else {
-        console.error(`Failed to place ${itemId}`);
-        // TODO: Show error message to user
+        console.error(`Failed to place ${itemId}:`, result.payload);
+        // TODO: Show error message to user and revert optimistic updates
       }
     } catch (error) {
       console.error("Error placing structure:", error);
-      // TODO: Show error message to user
+      // TODO: Show error message to user and revert optimistic updates
     }
   };
 
-  if (!locked) return null;
+  if (!isModalOpen) return null;
 
   const gridColumns = getGridColumns();
 
   return (
     <BaseModal
-      isVisible={locked}
-      onClose={onClose}
+      isVisible={isModalOpen}
+      onClose={() => dispatch(closeStructuresModal())}
       title="Structures Storage"
       icon={<BsFillBuildingsFill />}
       width="750px"
@@ -202,7 +175,7 @@ export default function StructuresModal({
           gap: "15px",
         }}
       >
-        {loading ? (
+        {isLoading ? (
           /* Loading State */
           <div
             style={{
@@ -268,7 +241,7 @@ export default function StructuresModal({
                   onClick={() => {
                     if (onShopClick) {
                       onShopClick();
-                      onClose(); // Close structures modal when switching to shop
+                      dispatch(closeStructuresModal()); // Close structures modal when switching to shop
                     }
                   }}
                   onMouseEnter={(e) => {

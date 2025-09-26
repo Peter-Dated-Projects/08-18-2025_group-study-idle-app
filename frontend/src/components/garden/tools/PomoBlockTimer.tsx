@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import {
   FONTCOLOR,
   SECONDARY_TEXT,
@@ -10,32 +10,47 @@ import {
   SUCCESS_COLOR,
   BORDERFILL,
 } from "../../constants";
-import { useSessionAuth } from "@/hooks/useSessionAuth";
-
-type PomoBlockPhase = "work" | "idle";
-
-interface PomoBlockSettings {
-  workDuration: number; // in minutes
-}
-
-const defaultSettings: PomoBlockSettings = {
-  workDuration: 25,
-};
+import { useAppSelector, useAppDispatch, useTimer } from "../../../store/hooks";
+import { useReduxAuth } from "../../../hooks/useReduxAuth";
+import { updateBalance } from "../../../store/slices/walletSlice";
+import {
+  startTimer,
+  pauseTimer,
+  resetTimer,
+  tick,
+  completePhase,
+  skipSession,
+  updateSettings,
+  setEditingTime,
+  setEditHours,
+  setEditMinutes,
+  applyTimeEdit,
+} from "../../../store/slices/timerSlice";
 
 export default function PomoBlockTimer() {
-  const { user } = useSessionAuth();
-  const [settings, setSettings] = useState<PomoBlockSettings>(defaultSettings);
-  const [currentPhase, setCurrentPhase] = useState<PomoBlockPhase>("idle");
-  const [timeLeft, setTimeLeft] = useState(settings.workDuration * 60); // in seconds
-  const [isRunning, setIsRunning] = useState(false);
-  const [completedSessions, setCompletedSessions] = useState(0);
-  const [isEditingTime, setIsEditingTime] = useState(false);
-  const [editHours, setEditHours] = useState("0");
-  const [editMinutes, setEditMinutes] = useState(settings.workDuration.toString());
-  const [hasProcessedCompletion, setHasProcessedCompletion] = useState(false);
-  const hasProcessedCompletionRef = useRef(false);
+  const { user } = useReduxAuth();
+  const dispatch = useAppDispatch();
+
+  // Get all timer state from Redux
+  const {
+    currentPhase,
+    timeLeft,
+    isRunning,
+    completedSessions,
+    settings,
+    hasProcessedCompletion,
+    isEditingTime,
+    editHours,
+    editMinutes,
+  } = useTimer();
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const hasProcessedCompletionRef = useRef(false);
+
+  // Sync the ref with Redux state
+  useEffect(() => {
+    hasProcessedCompletionRef.current = hasProcessedCompletion;
+  }, [hasProcessedCompletion]);
 
   // Initialize audio for notifications
   useEffect(() => {
@@ -117,40 +132,32 @@ export default function PomoBlockTimer() {
       return;
     }
 
-    setIsRunning(false);
-    hasProcessedCompletionRef.current = true;
-    setHasProcessedCompletion(true);
+    // Dispatch Redux action
+    dispatch(completePhase());
 
-    // Play notification sound (simple beep)
+    // Play notification sound
     playNotificationSound();
 
+    // Update leaderboard and pomo bank for completed work sessions
     if (currentPhase === "work") {
-      const newCompletedSessions = completedSessions + 1;
-      setCompletedSessions(newCompletedSessions);
-
       // Update leaderboard and Redis cache
       updateLeaderboard();
 
       // Update pomo bank with normal completion
       updatePomoBank("normal");
-
-      // Work session completed, go back to idle
-      setCurrentPhase("idle");
-      setTimeLeft(settings.workDuration * 60);
     }
-  }, [currentPhase, completedSessions, settings, timeLeft, user]);
+  }, [currentPhase, dispatch]);
 
   // Timer effect
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            handlePhaseComplete();
-            return 0;
-          }
-          return prev - 1;
-        });
+        dispatch(tick());
+
+        // Check if we should complete the phase
+        if (timeLeft <= 1) {
+          handlePhaseComplete();
+        }
       }, 1000);
     } else {
       if (intervalRef.current) {
@@ -164,7 +171,7 @@ export default function PomoBlockTimer() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isRunning, timeLeft, handlePhaseComplete]);
+  }, [isRunning, timeLeft, handlePhaseComplete, dispatch]);
 
   const playNotificationSound = () => {
     // Simple beep using Web Audio API
@@ -190,129 +197,53 @@ export default function PomoBlockTimer() {
     }
   };
 
-  const startTimer = () => {
-    if (currentPhase === "idle") {
-      setCurrentPhase("work");
-      setTimeLeft(settings.workDuration * 60);
-    }
-    setIsRunning(true);
-    hasProcessedCompletionRef.current = false; // Reset completion flag for new session
-    setHasProcessedCompletion(false);
+  const handleStartTimer = () => {
+    dispatch(startTimer());
   };
 
-  const pauseTimer = () => {
-    setIsRunning(false);
+  const handlePauseTimer = () => {
+    dispatch(pauseTimer());
   };
 
-  const resetTimer = () => {
-    setIsRunning(false);
-    setCurrentPhase("idle");
-    setTimeLeft(settings.workDuration * 60);
-    setCompletedSessions(0);
-    hasProcessedCompletionRef.current = false; // Reset completion flag
-    setHasProcessedCompletion(false);
+  const handleResetTimer = () => {
+    dispatch(resetTimer());
   };
 
-  const skipPhase = () => {
-    if (currentPhase === "work" && !hasProcessedCompletionRef.current) {
-      // Update pomo bank with partial completion
+  const handleSkipSession = () => {
+    // Update pomo bank with skipped session before resetting
+    if (currentPhase === "work") {
       updatePomoBank("skipped");
-
-      // Count it as a completed session for UI purposes
-      setCompletedSessions((prev) => prev + 1);
     }
-
-    // Reset to idle state
-    setIsRunning(false);
-    setCurrentPhase("idle");
-    setTimeLeft(settings.workDuration * 60);
-    hasProcessedCompletionRef.current = false; // Reset completion flag
-    setHasProcessedCompletion(false);
+    dispatch(skipSession());
   };
 
-  const formatTime = (seconds: number): string => {
-    const totalMinutes = Math.floor(seconds / 60);
-    const hours = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
+  const handleTimerSettingsChange = (newSettings: { workDuration: number }) => {
+    dispatch(updateSettings(newSettings));
+  };
+
+  const handleEditTimeStart = () => {
+    dispatch(setEditingTime(true));
+  };
+
+  const handleEditTimeCancel = () => {
+    dispatch(setEditingTime(false));
+  };
+
+  const handleEditTimeApply = () => {
+    dispatch(applyTimeEdit());
+  };
+
+  // Format time display
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
-
-    if (hours > 0) {
-      return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs
-        .toString()
-        .padStart(2, "0")}`;
-    } else {
-      return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-    }
+    return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const getPhaseDisplay = (phase: PomoBlockPhase): string => {
-    switch (phase) {
-      case "work":
-        return "Focus Time";
-      case "idle":
-        return "Ready to Start";
-    }
-  };
-
-  const getPhaseColor = (phase: PomoBlockPhase): string => {
-    switch (phase) {
-      case "work":
-        return ACCENT_COLOR;
-      case "idle":
-        return SECONDARY_TEXT;
-    }
-  };
-
-  const updateSetting = (key: keyof PomoBlockSettings, totalMinutes: number) => {
-    setSettings((prev) => ({ ...prev, [key]: totalMinutes }));
-
-    // Update current timer if we're idle and changing work duration
-    if (currentPhase === "idle" && key === "workDuration") {
-      setTimeLeft(totalMinutes * 60);
-    }
-  };
-
-  const handleTimeEdit = () => {
-    if (currentPhase !== "idle" || isRunning) return;
-    setIsEditingTime(true);
-    const totalMinutes = Math.floor(timeLeft / 60);
+  const formatTimeForEdit = (totalMinutes: number) => {
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
-    setEditHours(hours.toString());
-    setEditMinutes(minutes.toString());
-  };
-
-  const handleTimeSubmit = () => {
-    const newHours = parseInt(editHours) || 0;
-    const newMinutes = parseInt(editMinutes) || 0;
-    const totalMinutes = newHours * 60 + newMinutes;
-
-    if (totalMinutes > 0 && totalMinutes <= 1440) {
-      // Max 24 hours
-      updateSetting("workDuration", totalMinutes);
-    } else {
-      // Reset to current values if invalid
-      const currentTotalMinutes = Math.floor(timeLeft / 60);
-      const currentHours = Math.floor(currentTotalMinutes / 60);
-      const currentMinutes = currentTotalMinutes % 60;
-      setEditHours(currentHours.toString());
-      setEditMinutes(currentMinutes.toString());
-    }
-
-    setIsEditingTime(false);
-  };
-
-  const handleTimeKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleTimeSubmit();
-    } else if (e.key === "Escape") {
-      const currentTotalMinutes = Math.floor(timeLeft / 60);
-      const currentHours = Math.floor(currentTotalMinutes / 60);
-      const currentMinutes = currentTotalMinutes % 60;
-      setEditHours(currentHours.toString());
-      setEditMinutes(currentMinutes.toString());
-      setIsEditingTime(false);
-    }
+    return { hours: hours.toString(), minutes: minutes.toString() };
   };
 
   return (
@@ -328,204 +259,214 @@ export default function PomoBlockTimer() {
         textAlign: "center",
       }}
     >
-      {/* All content grouped together */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px" }}>
-        {/* Current Phase */}
+      {/* Main timer container */}
+      <div
+        style={{
+          backgroundColor: PANELFILL,
+          border: `2px solid ${BORDERLINE}`,
+          borderRadius: "12px",
+          padding: "16px",
+          minWidth: "280px",
+          backdropFilter: "blur(8px)",
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
+        }}
+      >
+        {/* Header */}
         <div
           style={{
-            color: getPhaseColor(currentPhase),
-            fontSize: "16px",
-            fontWeight: "bold",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "12px",
           }}
         >
-          {getPhaseDisplay(currentPhase)}
+          <h3
+            style={{
+              fontFamily: HeaderFont,
+              color: FONTCOLOR,
+              margin: 0,
+              fontSize: "16px",
+            }}
+          >
+            🍅 Pomodoro Timer
+          </h3>
+          <div
+            style={{
+              fontFamily: BodyFont,
+              color: SECONDARY_TEXT,
+              fontSize: "12px",
+            }}
+          >
+            Sessions: {completedSessions}
+          </div>
         </div>
 
-        {/* Timer Display */}
+        {/* Time Display */}
         <div
           style={{
-            fontSize: "48px",
-            fontWeight: "bold",
-            color: getPhaseColor(currentPhase),
-            fontFamily: "monospace",
-            cursor: currentPhase === "idle" && !isRunning ? "pointer" : "default",
-            padding: "4px",
-            border: isEditingTime ? `1px solid ${BORDERLINE}` : "1px solid transparent",
-            borderRadius: "4px",
-            transition: "border-color 0.2s ease",
-            minHeight: "60px", // Reserve space for consistent height
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minWidth: "200px", // Reserve space for consistent width
+            textAlign: "center",
+            marginBottom: "16px",
           }}
-          onClick={handleTimeEdit}
         >
-          {isEditingTime ? (
+          {!isEditingTime ? (
             <div
-              style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}
+              onClick={handleEditTimeStart}
+              style={{
+                fontFamily: HeaderFont,
+                fontSize: "36px",
+                color: currentPhase === "work" ? ACCENT_COLOR : FONTCOLOR,
+                cursor: "pointer",
+                padding: "8px",
+                borderRadius: "8px",
+                transition: "background-color 0.2s",
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = BORDERFILL)}
+              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                }}
-              >
-                <input
-                  type="number"
-                  min="0"
-                  max="23"
-                  value={editHours}
-                  onChange={(e) => setEditHours(e.target.value)}
-                  onKeyDown={handleTimeKeyPress}
-                  autoFocus
-                  style={{
-                    fontSize: "48px",
-                    fontWeight: "bold",
-                    color: getPhaseColor(currentPhase),
-                    fontFamily: "monospace",
-                    background: "transparent",
-                    border: "none",
-                    textAlign: "center",
-                    width: "80px",
-                    outline: "none",
-                  }}
-                />
-                <span style={{ fontSize: "48px", fontWeight: "bold", fontFamily: "monospace" }}>
-                  :
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  max="59"
-                  value={editMinutes}
-                  onChange={(e) => setEditMinutes(e.target.value)}
-                  onKeyDown={handleTimeKeyPress}
-                  style={{
-                    fontSize: "48px",
-                    fontWeight: "bold",
-                    color: getPhaseColor(currentPhase),
-                    fontFamily: "monospace",
-                    background: "transparent",
-                    border: "none",
-                    textAlign: "center",
-                    width: "80px",
-                    outline: "none",
-                  }}
-                />
-                <span style={{ fontSize: "48px", fontWeight: "bold", fontFamily: "monospace" }}>
-                  :00
-                </span>
-              </div>
-              {/* Save/Cancel buttons */}
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button
-                  onClick={handleTimeSubmit}
-                  style={{
-                    backgroundColor: SUCCESS_COLOR,
-                    color: "white",
-                    border: "none",
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                    fontSize: "12px",
-                    cursor: "pointer",
-                  }}
-                >
-                  ✓
-                </button>
-                <button
-                  onClick={() => {
-                    const currentTotalMinutes = Math.floor(timeLeft / 60);
-                    const currentHours = Math.floor(currentTotalMinutes / 60);
-                    const currentMinutes = currentTotalMinutes % 60;
-                    setEditHours(currentHours.toString());
-                    setEditMinutes(currentMinutes.toString());
-                    setIsEditingTime(false);
-                  }}
-                  style={{
-                    backgroundColor: "#FF6B6B",
-                    color: "white",
-                    border: "none",
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                    fontSize: "12px",
-                    cursor: "pointer",
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-              <div style={{ fontSize: "10px", color: SECONDARY_TEXT, textAlign: "center" }}>
-                Press Enter to save, Esc to cancel
-              </div>
+              {formatTime(timeLeft)}
             </div>
           ) : (
-            <span>{formatTime(timeLeft)}</span>
-          )}
-        </div>
-
-        {/* Session Counter */}
-        <div
-          style={{
-            color: SECONDARY_TEXT,
-            fontSize: "14px",
-          }}
-        >
-          Completed Sessions: {completedSessions}
-        </div>
-
-        {/* Controls */}
-        <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
-          {!isRunning && currentPhase !== "idle" && (
-            <button
-              onClick={startTimer}
+            <div
               style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                justifyContent: "center",
+              }}
+            >
+              <input
+                type="number"
+                value={editHours}
+                onChange={(e) => dispatch(setEditHours(e.target.value))}
+                min="0"
+                max="23"
+                style={{
+                  width: "50px",
+                  padding: "4px",
+                  fontSize: "16px",
+                  textAlign: "center",
+                  border: `1px solid ${BORDERLINE}`,
+                  borderRadius: "4px",
+                  backgroundColor: PANELFILL,
+                  color: FONTCOLOR,
+                }}
+              />
+              <span style={{ color: FONTCOLOR, fontSize: "16px" }}>h</span>
+              <input
+                type="number"
+                value={editMinutes}
+                onChange={(e) => dispatch(setEditMinutes(e.target.value))}
+                min="1"
+                max="59"
+                style={{
+                  width: "50px",
+                  padding: "4px",
+                  fontSize: "16px",
+                  textAlign: "center",
+                  border: `1px solid ${BORDERLINE}`,
+                  borderRadius: "4px",
+                  backgroundColor: PANELFILL,
+                  color: FONTCOLOR,
+                }}
+              />
+              <span style={{ color: FONTCOLOR, fontSize: "16px" }}>m</span>
+            </div>
+          )}
+
+          {/* Phase Indicator */}
+          <div
+            style={{
+              fontFamily: BodyFont,
+              color: SECONDARY_TEXT,
+              fontSize: "12px",
+              marginTop: "4px",
+              textTransform: "uppercase",
+              letterSpacing: "1px",
+            }}
+          >
+            {currentPhase === "work" ? "Work Session" : "Ready to Start"}
+          </div>
+        </div>
+
+        {/* Edit Time Controls */}
+        {isEditingTime && (
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              marginBottom: "12px",
+              justifyContent: "center",
+            }}
+          >
+            <button
+              onClick={handleEditTimeApply}
+              style={{
+                padding: "4px 12px",
+                fontSize: "12px",
                 backgroundColor: SUCCESS_COLOR,
                 color: "white",
                 border: "none",
-                padding: "10px 16px",
-                borderRadius: "6px",
+                borderRadius: "4px",
                 cursor: "pointer",
-                fontSize: "14px",
-                fontWeight: "bold",
               }}
             >
-              Resume
+              Apply
             </button>
-          )}
-
-          {!isRunning && currentPhase === "idle" && (
             <button
-              onClick={startTimer}
+              onClick={handleEditTimeCancel}
               style={{
-                backgroundColor: ACCENT_COLOR,
-                color: "white",
-                border: "none",
-                padding: "10px 16px",
-                borderRadius: "6px",
+                padding: "4px 12px",
+                fontSize: "12px",
+                backgroundColor: BORDERFILL,
+                color: FONTCOLOR,
+                border: `1px solid ${BORDERLINE}`,
+                borderRadius: "4px",
                 cursor: "pointer",
-                fontSize: "14px",
-                fontWeight: "bold",
               }}
             >
-              Start
+              Cancel
             </button>
-          )}
+          </div>
+        )}
 
-          {isRunning && (
+        {/* Control Buttons */}
+        <div
+          style={{
+            display: "flex",
+            gap: "8px",
+            marginBottom: "12px",
+          }}
+        >
+          {!isRunning ? (
             <button
-              onClick={pauseTimer}
+              onClick={handleStartTimer}
               style={{
-                backgroundColor: "#FF6B6B",
+                flex: 1,
+                padding: "12px",
+                fontSize: "14px",
+                backgroundColor: SUCCESS_COLOR,
                 color: "white",
                 border: "none",
-                padding: "10px 16px",
-                borderRadius: "6px",
+                borderRadius: "8px",
                 cursor: "pointer",
+                fontFamily: BodyFont,
+              }}
+            >
+              {currentPhase === "idle" ? "Start Work" : "Resume"}
+            </button>
+          ) : (
+            <button
+              onClick={handlePauseTimer}
+              style={{
+                flex: 1,
+                padding: "12px",
                 fontSize: "14px",
-                fontWeight: "bold",
+                backgroundColor: "#ff6b6b",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontFamily: BodyFont,
               }}
             >
               Pause
@@ -533,36 +474,63 @@ export default function PomoBlockTimer() {
           )}
 
           <button
-            onClick={resetTimer}
+            onClick={handleResetTimer}
             style={{
+              padding: "12px",
+              fontSize: "12px",
               backgroundColor: BORDERFILL,
               color: FONTCOLOR,
               border: `1px solid ${BORDERLINE}`,
-              padding: "10px 16px",
-              borderRadius: "6px",
+              borderRadius: "8px",
               cursor: "pointer",
-              fontSize: "14px",
+              fontFamily: BodyFont,
             }}
           >
             Reset
           </button>
+        </div>
 
-          {currentPhase !== "idle" && (
-            <button
-              onClick={skipPhase}
-              style={{
-                backgroundColor: BORDERFILL,
-                color: FONTCOLOR,
-                border: `1px solid ${BORDERLINE}`,
-                padding: "10px 16px",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontSize: "14px",
-              }}
-            >
-              Skip
-            </button>
-          )}
+        {/* Skip Session Button (only show during work) */}
+        {currentPhase === "work" && (
+          <button
+            onClick={handleSkipSession}
+            style={{
+              width: "100%",
+              padding: "8px",
+              fontSize: "12px",
+              backgroundColor: "transparent",
+              color: SECONDARY_TEXT,
+              border: `1px dashed ${BORDERLINE}`,
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontFamily: BodyFont,
+              marginBottom: "8px",
+            }}
+          >
+            Skip Session (Partial Credit)
+          </button>
+        )}
+
+        {/* Progress Bar */}
+        <div
+          style={{
+            width: "100%",
+            height: "4px",
+            backgroundColor: BORDERFILL,
+            borderRadius: "2px",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              width: `${
+                ((settings.workDuration * 60 - timeLeft) / (settings.workDuration * 60)) * 100
+              }%`,
+              height: "100%",
+              backgroundColor: currentPhase === "work" ? ACCENT_COLOR : SUCCESS_COLOR,
+              transition: "width 0.5s ease",
+            }}
+          />
         </div>
       </div>
     </div>

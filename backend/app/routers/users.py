@@ -45,6 +45,15 @@ class SingleUserResponse(BaseModel):
     success: bool
     user: Optional[UserInfo] = None
 
+class UpdateProfilePictureRequest(BaseModel):
+    user_id: str
+    image_id: str
+
+class UpdateProfilePictureResponse(BaseModel):
+    success: bool
+    message: str
+    user: Optional[UserInfo] = None
+
 # ------------------------------------------------------------------ #
 # User Information endpoints
 # ------------------------------------------------------------------ #
@@ -120,6 +129,36 @@ async def get_user_info(
             
     except Exception as e:
         logger.error(f"Error getting user info for {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.post("/update-profile-picture", response_model=UpdateProfilePictureResponse)
+async def update_user_profile_picture(
+    request: UpdateProfilePictureRequest,
+    background_tasks: BackgroundTasks,
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Update a user's profile picture URL in ArangoDB.
+    """
+    try:
+        # Update the user's profile picture URL
+        success = user_service.update_user_picture_url(request.user_id, request.image_id)
+        
+        if success:
+            # Get updated user info
+            updated_user_data = user_service.get_user_info(request.user_id)
+            updated_user = UserInfo(**updated_user_data) if updated_user_data else None
+            
+            return UpdateProfilePictureResponse(
+                success=True,
+                message="Profile picture updated successfully",
+                user=updated_user
+            )
+        else:
+            raise HTTPException(status_code=500, detail="Failed to update profile picture URL")
+            
+    except Exception as e:
+        logger.error(f"Error updating profile picture for {request.user_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/cache/cleanup")

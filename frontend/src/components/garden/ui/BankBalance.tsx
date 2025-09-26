@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { useSessionAuth } from "@/hooks/useSessionAuth";
-import { useWebSocket } from "@/hooks/useWebSocket";
+import React, { useEffect } from "react";
+import { useReduxAuth } from "../../../hooks/useReduxAuth";
+import { useWebSocket } from "../../../hooks/useWebSocket";
+import { useAppDispatch, useAppSelector } from "../../../store/hooks";
+import type { RootState } from "../../../store/store";
+import { updateBalance, setLoading, setError } from "../../../store/slices/walletSlice";
 import {
   FONTCOLOR,
   SECONDARY_TEXT,
@@ -8,7 +11,6 @@ import {
   PANELFILL,
   BORDERLINE,
   BodyFont,
-  HeaderFont,
 } from "@/components/constants";
 
 interface BankBalanceProps {
@@ -17,23 +19,26 @@ interface BankBalanceProps {
 }
 
 export default function BankBalance({ className, style }: BankBalanceProps) {
-  const { user } = useSessionAuth();
+  const { user } = useReduxAuth();
   const { onPomoBankEvent } = useWebSocket();
-  const [balance, setBalance] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
+
+  // Get wallet state from Redux
+  const { balance, isLoading, error, lastUpdated } = useAppSelector(
+    (state: RootState) => state.wallet
+  );
 
   // Fetch user's bank balance
   const fetchBalance = async () => {
     if (!user?.userId) {
-      setBalance(0);
-      setLoading(false);
+      dispatch(updateBalance(0));
+      dispatch(setLoading(false));
       return;
     }
 
     try {
-      setLoading(true);
-      setError(null);
+      dispatch(setLoading(true));
+      dispatch(setError(null));
 
       // Call the backend API through the Next.js proxy
       const response = await fetch("/api/pomo-bank/balance", {
@@ -47,21 +52,21 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setBalance(data.balance || 0);
+          dispatch(updateBalance(data.balance || 0));
         } else {
-          setError(data.message || "Failed to load balance");
-          setBalance(0);
+          dispatch(setError(data.message || "Failed to load balance"));
+          dispatch(updateBalance(0));
         }
       } else {
-        setError("Failed to load balance");
-        setBalance(0);
+        dispatch(setError("Failed to load balance"));
+        dispatch(updateBalance(0));
       }
     } catch (err) {
       console.error("Error fetching bank balance:", err);
-      setError("Failed to load balance");
-      setBalance(0);
+      dispatch(setError("Failed to load balance"));
+      dispatch(updateBalance(0));
     } finally {
-      setLoading(false);
+      dispatch(setLoading(false));
     }
   };
 
@@ -90,13 +95,13 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
         console.log(
           `💰 Real-time balance update: ${event.old_balance} → ${event.new_balance} (${event.reason})`
         );
-        setBalance(event.new_balance);
-        setError(null); // Clear any previous errors since we got a successful update
+        dispatch(updateBalance(event.new_balance));
+        dispatch(setError(null)); // Clear any previous errors since we got a successful update
       }
     });
 
     return cleanup;
-  }, [user?.userId, onPomoBankEvent]);
+  }, [user?.userId, onPomoBankEvent, dispatch]);
 
   // Format balance for display
   const formatBalance = (amount: number): string => {
@@ -142,7 +147,7 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
 
       {/* Balance Display */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        {loading ? (
+        {isLoading ? (
           <span style={{ color: SECONDARY_TEXT }}>...</span>
         ) : error ? (
           <span style={{ color: "#ff6b6b", fontSize: "0.8rem" }}>Error</span>
@@ -158,6 +163,23 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
           </span>
         )}
       </div>
+
+      {/* Debug info - remove in production */}
+      {lastUpdated && (
+        <div
+          style={{
+            fontSize: "8px",
+            color: SECONDARY_TEXT,
+            position: "absolute",
+            top: "-12px",
+            right: "0px",
+            opacity: 0.7,
+          }}
+          title={`Last updated: ${new Date(lastUpdated).toLocaleTimeString()}`}
+        >
+          Redux
+        </div>
+      )}
     </div>
   );
 }

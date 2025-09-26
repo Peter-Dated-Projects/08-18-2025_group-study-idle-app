@@ -237,6 +237,101 @@ class UserService:
         
         return user_info_map
     
+    def update_user_picture_url(self, user_id: str, picture_url: Optional[str]) -> bool:
+        """
+        Update user's picture URL in ArangoDB.
+        
+        Args:
+            user_id: The user ID to update
+            picture_url: The new picture URL (image_id from minIO) or None for default
+            
+        Returns:
+            bool: True if updated successfully, False otherwise
+        """
+        if not ARANGODB_AVAILABLE or not self.arango_db:
+            logger.error(f"ArangoDB not available for updating user {user_id} picture URL")
+            return False
+        
+        try:
+            users_collection = self.arango_db.collection(USERS_COLLECTION)
+            
+            if users_collection.has(user_id):
+                # Update existing user using AQL for reliable updates
+                user_doc = users_collection.get(user_id)
+                logger.debug(f"Retrieved user document type: {type(user_doc)}, content: {user_doc}")
+                
+                # Ensure user_doc is a dictionary
+                if isinstance(user_doc, dict):
+                    # Use AQL query for reliable updates (avoids Python driver issues)
+                    try:
+                        aql_query = '''
+                        FOR user IN users
+                        FILTER user._key == @user_id
+                        UPDATE user WITH { user_picture_url: @picture_url, user_id: @user_id_field } IN users
+                        RETURN NEW
+                        '''
+                        
+                        result = self.arango_db.aql.execute(
+                            aql_query,
+                            bind_vars={
+                                'user_id': user_id,
+                                'picture_url': picture_url,
+                                'user_id_field': user_id
+                            }
+                        )
+                        
+                        updated_docs = list(result)
+                        if updated_docs:
+                            logger.info(f"Updated picture URL for existing user {user_id}: {picture_url}")
+                        else:
+                            logger.error(f"AQL update returned no results for user {user_id}")
+                            return False
+                        
+                    except Exception as update_error:
+                        logger.error(f"Error during AQL update operation: {update_error}")
+                        return False
+                else:
+                    # If user_doc is not a dict, create a new one
+                    logger.warning(f"User document is not a dict (type: {type(user_doc)}), creating new document")
+                    new_user = {
+                        '_key': user_id,
+                        'user_id': user_id,
+                        'user_picture_url': picture_url,
+                        'display_name': None,
+                        'email': None,
+                        'photo_url': None,
+                        'created_at': None,
+                        'last_login': None,
+                        'provider': 'arangodb'
+                    }
+                    users_collection.replace(user_id, new_user)
+                    logger.info(f"Replaced user document with picture URL {user_id}: {picture_url}")
+            else:
+                # Create new user entry with picture URL
+                new_user = {
+                    '_key': user_id,
+                    'user_id': user_id,
+                    'user_picture_url': picture_url,
+                    'display_name': None,
+                    'email': None,
+                    'photo_url': None,
+                    'created_at': None,
+                    'last_login': None,
+                    'provider': 'arangodb'
+                }
+                users_collection.insert(new_user, overwrite=False)
+                logger.info(f"Created new user entry with picture URL {user_id}: {picture_url}")
+            
+            # Invalidate cache for this user
+            self.cache_service.remove_user_from_cache(user_id)
+            logger.debug(f"Invalidated cache for user {user_id}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating picture URL for user {user_id}: {e}")
+            return False
+
     def is_available(self) -> bool:
         """Check if ArangoDB service is available."""
         return self.arango_db is not None and ARANGODB_AVAILABLE

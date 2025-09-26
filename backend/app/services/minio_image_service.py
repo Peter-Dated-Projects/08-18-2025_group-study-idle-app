@@ -11,6 +11,7 @@ from minio.error import S3Error
 from io import BytesIO
 import uuid
 from datetime import timedelta
+from PIL import Image, ImageOps
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,80 @@ class MinIOImageService:
         # Ensure bucket exists
         self._ensure_bucket_exists()
     
+    def _resize_image_to_128px(self, image_data: BinaryIO, content_type: str) -> BytesIO:
+        """
+        Resize image to 128x128 pixels with smart cropping.
+        Maintains aspect ratio and center crops to 128x128.
+        
+        Args:
+            image_data: Binary image data
+            content_type: MIME type of the image
+            
+        Returns:
+            BytesIO: Resized image data as BytesIO stream
+        """
+        try:
+            # Reset stream position
+            if hasattr(image_data, 'seek'):
+                image_data.seek(0)
+            
+            # Open image with PIL
+            image = Image.open(image_data)
+            original_size = image.size
+            logger.info(f"Original image size: {original_size}")
+            
+            # Convert to RGB if necessary (handles RGBA, etc.)
+            if image.mode in ('RGBA', 'LA', 'P'):
+                # Create white background for transparency
+                background = Image.new('RGB', image.size, (255, 255, 255))
+                if image.mode == 'P':
+                    image = image.convert('RGBA')
+                background.paste(image, mask=image.split()[-1] if image.mode in ('RGBA', 'LA') else None)
+                image = background
+            elif image.mode != 'RGB':
+                image = image.convert('RGB')
+            
+            # Calculate scaling factor to fit the smallest dimension to 128
+            # This ensures we can crop a 128x128 square from the center
+            target_size = 128
+            scale_factor = max(target_size / image.width, target_size / image.height)
+            
+            # Calculate new dimensions after scaling
+            new_width = int(image.width * scale_factor)
+            new_height = int(image.height * scale_factor)
+            
+            logger.info(f"Scale factor: {scale_factor}, New size after scaling: {new_width}x{new_height}")
+            
+            # Resize the image with high quality
+            image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # Calculate crop box to center the image
+            left = (new_width - target_size) // 2
+            top = (new_height - target_size) // 2
+            right = left + target_size
+            bottom = top + target_size
+            
+            logger.info(f"Crop box: ({left}, {top}, {right}, {bottom})")
+            
+            # Crop to 128x128 from center
+            final_image = image.crop((left, top, right, bottom))
+            
+            # Verify final size
+            logger.info(f"Final image size: {final_image.size}")
+            
+            # Save to BytesIO
+            output = BytesIO()
+            format_type = 'PNG' if 'png' in content_type.lower() else 'JPEG'
+            final_image.save(output, format=format_type, quality=95, optimize=True)
+            output.seek(0)
+            
+            logger.info(f"Successfully resized image from {original_size} to 128x128px with center crop")
+            return output
+            
+        except Exception as e:
+            logger.error(f"Error resizing image: {e}")
+            raise
+    
     def _ensure_bucket_exists(self):
         """Create bucket if it doesn't exist."""
         try:
@@ -44,7 +119,7 @@ class MinIOImageService:
     
     def store_image(self, image_data: BinaryIO, content_type: str = "image/png") -> str:
         """
-        Store an image and return a unique image_id.
+        Store an image after resizing it to 128x128 and return a unique image_id.
         
         Args:
             image_data: Binary image data
@@ -57,12 +132,11 @@ class MinIOImageService:
             # Generate unique image ID
             image_id = str(uuid.uuid4())
             
-            # Reset stream position if needed
-            if hasattr(image_data, 'seek'):
-                image_data.seek(0)
+            # Resize image to 128x128
+            resized_image_data = self._resize_image_to_128px(image_data, content_type)
             
             # Get data size
-            data = image_data.read()
+            data = resized_image_data.read()
             data_stream = BytesIO(data)
             data_size = len(data)
             
@@ -75,7 +149,7 @@ class MinIOImageService:
                 content_type=content_type
             )
             
-            logger.info(f"Successfully stored image with ID: {image_id}")
+            logger.info(f"Successfully stored resized image with ID: {image_id}")
             return image_id
             
         except S3Error as e:

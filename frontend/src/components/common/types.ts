@@ -34,6 +34,7 @@ export interface User {
   given_name?: string;
   family_name?: string;
   userId?: string;
+  user_picture_url?: string | null; // Add profile picture URL
 }
 
 export interface NotificationMessage {

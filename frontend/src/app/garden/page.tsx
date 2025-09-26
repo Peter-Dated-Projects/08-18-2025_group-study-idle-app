@@ -8,11 +8,14 @@ import GardenTasks from "@/components/garden/tasks/GardenTasks";
 import GardenSettings from "@/components/garden/ui/GardenSettings";
 import GardenIcons from "@/components/garden/GardenIcons";
 import { NotificationProvider, useGlobalNotification } from "@/components/NotificationProvider";
+import { ReduxProvider } from "@/store/ReduxProvider";
 import {
   setGlobalStructureClickHandler,
   clearGlobalStructureClickHandler,
 } from "@/utils/globalStructureHandler";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
+import { useReduxAuth } from "@/store/integrationHooks";
+import { ReduxTest } from "@/components/ReduxTest";
 
 import { FONTCOLOR, BORDERFILL, BORDERLINE, PANELFILL } from "@/components/constants";
 import { useState, useEffect, useCallback } from "react";
@@ -44,15 +47,26 @@ interface LobbyData {
 
 export default function GardenPage() {
   return (
-    <NotificationProvider>
-      <GardenPageContent />
-    </NotificationProvider>
+    <ReduxProvider>
+      <NotificationProvider>
+        <GardenPageContent />
+      </NotificationProvider>
+    </ReduxProvider>
   );
 }
 
 function GardenPageContent() {
   const { addNotification } = useGlobalNotification();
   const { isAuthenticated, isLoading, user, error } = useSessionAuth();
+
+  // Test Redux auth alongside existing auth (we'll switch over gradually)
+  const reduxAuth = useReduxAuth();
+  console.log("🔍 Redux Auth Status:", {
+    isAuthenticated: reduxAuth.isAuthenticated,
+    user: reduxAuth.user,
+    isLoading: reduxAuth.isLoading,
+    error: reduxAuth.error,
+  });
 
   const [isClicking, setIsClicking] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -252,6 +266,7 @@ function GardenPageContent() {
       onMouseUp={() => setIsClicking(false)}
       onMouseLeave={() => setIsClicking(false)}
     >
+      {/* <ReduxTest /> */}
       <div className="w-full h-full" style={{ border: `8px solid ${BORDERFILL}` }}>
         <div
           className={`flex w-full h-full flex-1 gap-[10px]`}

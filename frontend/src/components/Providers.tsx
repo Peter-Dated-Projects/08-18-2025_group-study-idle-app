@@ -1,12 +1,13 @@
 "use client";
 
 import { ReactNode } from "react";
+import { ReduxProvider } from "@/store/ReduxProvider";
 
 interface ProvidersProps {
   children: ReactNode;
 }
 
-// Simple provider wrapper - Firebase Auth is handled in useAuth hook
+// Provider wrapper with Redux integration
 export function Providers({ children }: ProvidersProps) {
-  return <>{children}</>;
+  return <ReduxProvider>{children}</ReduxProvider>;
 }

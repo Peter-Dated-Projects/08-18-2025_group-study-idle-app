@@ -11,9 +11,25 @@ export interface ImageResponse {
   user_id?: string; // For user-based requests
 }
 
+export interface ImageInfoResponse {
+  success: boolean;
+  user_id: string;
+  image_id: string;
+  url: string;
+  has_custom_picture: boolean;
+  is_default: boolean;
+}
+
 export interface UploadImageResponse {
   success: boolean;
   image_id: string;
+  message: string;
+}
+
+export interface UploadProfilePictureResponse {
+  success: boolean;
+  image_id: string;
+  url: string;
   message: string;
 }
 
@@ -82,6 +98,145 @@ export async function getImageUrlSmart(
   } else {
     // Neither provided - get default
     return getImageUrl(null);
+  }
+}
+
+/**
+ * Get comprehensive image information for a user including custom picture status
+ * @param userId - The user ID to get image info for
+ * @returns Promise with detailed image information
+ */
+export async function getUserImageInfo(userId: string): Promise<ImageInfoResponse> {
+  const url = createBackendURL(`/images/user/${encodeURIComponent(userId)}/info`);
+
+  const response = await fetch(url, {
+    method: "GET",
+    credentials: API_CONFIG.credentials,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get user image info: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Upload a profile picture, automatically resize it to 128x128, and get the URL
+ * @param file - The image file to upload
+ * @returns Promise with upload response including image_id and URL
+ */
+export async function uploadProfilePicture(file: File): Promise<UploadProfilePictureResponse> {
+  const url = createBackendURL("/images/upload/profile");
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      credentials: API_CONFIG.credentials,
+      body: formData, // Don't set Content-Type, let browser set it for FormData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Profile picture upload failed:", response.status, errorText);
+
+      try {
+        const errorData = JSON.parse(errorText);
+        throw new Error(
+          errorData.detail || `Failed to upload profile picture: ${response.statusText}`
+        );
+      } catch (parseError) {
+        throw new Error(
+          `Failed to upload profile picture: ${response.status} ${response.statusText}`
+        );
+      }
+    }
+
+    const data = await response.json();
+    console.log("Profile picture upload successful:", data);
+    return data;
+  } catch (error) {
+    console.error("Network error during profile picture upload:", error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Network error during profile picture upload");
+  }
+}
+
+/**
+ * Remove a user's profile picture and set them back to default
+ * @param userId - The user ID to remove profile picture for
+ * @returns Promise with removal confirmation and default image info
+ */
+export async function removeUserProfilePicture(userId: string): Promise<ImageInfoResponse> {
+  const url = createBackendURL(`/images/user/${encodeURIComponent(userId)}/profile`);
+
+  const response = await fetch(url, {
+    method: "DELETE",
+    credentials: API_CONFIG.credentials,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to remove profile picture: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Update a user's profile picture URL in the database
+ * @param userId - The user ID to update
+ * @param imageId - The new image ID
+ * @returns Promise with update confirmation
+ */
+export async function updateUserProfilePicture(
+  userId: string,
+  imageId: string
+): Promise<{ success: boolean; message: string; user?: any }> {
+  const url = createBackendURL("/api/users/update-profile-picture");
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      credentials: API_CONFIG.credentials,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        image_id: imageId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("User profile picture update failed:", response.status, errorText);
+
+      try {
+        const errorData = JSON.parse(errorText);
+        throw new Error(
+          errorData.detail || `Failed to update user profile picture: ${response.statusText}`
+        );
+      } catch (parseError) {
+        throw new Error(
+          `Failed to update user profile picture: ${response.status} ${response.statusText}`
+        );
+      }
+    }
+
+    const data = await response.json();
+    console.log("User profile picture update successful:", data);
+    return data;
+  } catch (error) {
+    console.error("Network error during user profile picture update:", error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Network error during user profile picture update");
   }
 }
 

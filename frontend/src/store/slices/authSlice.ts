@@ -1,20 +1,21 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 
-export interface User {
-  id: string
-  userId: string
-  email: string
-  given_name?: string
-  family_name?: string
-  user_picture_url?: string
+// Match your existing UserSession interface
+export interface UserSession {
+  userId: string;
+  userEmail: string;
+  userName: string | null;
+  sessionId: string;
+  hasNotionTokens: boolean;
+  userPictureUrl?: string | null; // Add profile picture URL
 }
 
 export interface AuthState {
-  user: User | null
-  isAuthenticated: boolean
-  isLoading: boolean
-  error: string | null
-  lastValidated: number | null
+  user: UserSession | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+  lastValidated: number | null;
 }
 
 const initialState: AuthState = {
@@ -23,53 +24,93 @@ const initialState: AuthState = {
   isLoading: false,
   error: null,
   lastValidated: null,
-}
+};
 
 // Async thunks
 export const validateAuth = createAsyncThunk(
-  'auth/validateAuth',
+  "auth/validateAuth",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/auth/validate', {
-        method: 'GET',
-        credentials: 'include',
-      })
-      
-      if (!response.ok) {
-        return rejectWithValue('Authentication failed')
-      }
-      
-      const data = await response.json()
-      return data
-    } catch (error) {
-      return rejectWithValue('Network error')
-    }
-  }
-)
+      const response = await fetch("/api/auth/session", {
+        method: "GET",
+        credentials: "include",
+      });
 
-export const logout = createAsyncThunk(
-  'auth/logout',
-  async (_, { rejectWithValue }) => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
-      await fetch('/api/notion/logout', { method: 'POST', credentials: 'include' })
-      return null
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        return rejectWithValue(data.error || "Authentication failed");
+      }
+
+      return {
+        userId: data.userId,
+        userEmail: data.userEmail,
+        userName: data.userName,
+        sessionId: data.sessionId,
+        hasNotionTokens: data.hasNotionTokens,
+      };
     } catch (error) {
-      return rejectWithValue('Logout failed')
+      return rejectWithValue("Network error");
     }
   }
-)
+);
+
+export const logout = createAsyncThunk("auth/logout", async (_, { rejectWithValue }) => {
+  try {
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    await fetch("/api/notion/logout", { method: "POST", credentials: "include" });
+    return null;
+  } catch (error) {
+    return rejectWithValue("Logout failed");
+  }
+});
+
+// Async thunk to fetch user profile picture URL
+export const fetchUserProfilePicture = createAsyncThunk(
+  "auth/fetchUserProfilePicture",
+  async (userId: string, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`/api/users/info`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ user_ids: [userId] }),
+      });
+
+      if (!response.ok) {
+        return rejectWithValue("Failed to fetch user profile");
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.users && data.users[userId]) {
+        return data.users[userId].user_picture_url || null;
+      }
+
+      return null;
+    } catch (error) {
+      return rejectWithValue("Network error while fetching profile picture");
+    }
+  }
+);
 
 const authSlice = createSlice({
-  name: 'auth',
+  name: "auth",
   initialState,
   reducers: {
     clearError: (state) => {
-      state.error = null
+      state.error = null;
     },
-    updateUser: (state, action: PayloadAction<Partial<User>>) => {
+    updateUser: (state, action: PayloadAction<Partial<UserSession>>) => {
       if (state.user) {
-        state.user = { ...state.user, ...action.payload }
+        state.user = { ...state.user, ...action.payload };
+      }
+    },
+    updateProfilePicture: (state, action: PayloadAction<string | null>) => {
+      if (state.user) {
+        state.user.userPictureUrl = action.payload;
       }
     },
   },
@@ -77,31 +118,37 @@ const authSlice = createSlice({
     builder
       // Validate Auth
       .addCase(validateAuth.pending, (state) => {
-        state.isLoading = true
-        state.error = null
+        state.isLoading = true;
+        state.error = null;
       })
       .addCase(validateAuth.fulfilled, (state, action) => {
-        state.isLoading = false
-        state.user = action.payload
-        state.isAuthenticated = true
-        state.lastValidated = Date.now()
-        state.error = null
+        state.isLoading = false;
+        state.user = action.payload;
+        state.isAuthenticated = true;
+        state.lastValidated = Date.now();
+        state.error = null;
       })
       .addCase(validateAuth.rejected, (state, action) => {
-        state.isLoading = false
-        state.user = null
-        state.isAuthenticated = false
-        state.error = action.payload as string
+        state.isLoading = false;
+        state.user = null;
+        state.isAuthenticated = false;
+        state.error = action.payload as string;
       })
       // Logout
       .addCase(logout.fulfilled, (state) => {
-        state.user = null
-        state.isAuthenticated = false
-        state.lastValidated = null
-        state.error = null
+        state.user = null;
+        state.isAuthenticated = false;
+        state.lastValidated = null;
+        state.error = null;
       })
+      // Fetch profile picture
+      .addCase(fetchUserProfilePicture.fulfilled, (state, action) => {
+        if (state.user) {
+          state.user.userPictureUrl = action.payload;
+        }
+      });
   },
-})
+});
 
-export const { clearError, updateUser } = authSlice.actions
-export default authSlice.reducer
+export const { clearError, updateUser, updateProfilePicture } = authSlice.actions;
+export default authSlice.reducer;
