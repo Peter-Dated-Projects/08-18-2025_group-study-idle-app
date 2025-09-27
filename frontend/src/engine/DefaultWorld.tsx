@@ -131,7 +131,7 @@ export async function refreshWorldStructures(
 
       // Create and register renderer for the new entity
       const spriteRenderer = new SpriteRenderer();
-      spriteRenderer.setDebugMode(true); // Enable debug mode to match other renderers
+      spriteRenderer.setDebugMode(false); // Disable debug mode to hide red rectangles
       worldHandler.registerEntityRenderer(plot.id, spriteRenderer);
     });
 

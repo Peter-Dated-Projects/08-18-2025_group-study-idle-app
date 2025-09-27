@@ -304,8 +304,8 @@ export default function GardenCanvas({
           // Create a SpriteRenderer for each entity
           const spriteRenderer = new SpriteRenderer();
 
-          // Enable debug mode to show red rectangles for entities without custom sprites
-          spriteRenderer.setDebugMode(true);
+          // Disable debug mode to hide red rectangles and green velocity lines
+          spriteRenderer.setDebugMode(false);
 
           // Register the renderer with the handler
           rendererHandler.registerRenderer(entity.id, spriteRenderer);

@@ -173,7 +173,7 @@ export class VisualWorldUpdateService {
 
       // Create and register renderer
       const spriteRenderer = new SpriteRenderer();
-      spriteRenderer.setDebugMode(true); // Enable debug mode to show visual representation
+      spriteRenderer.setDebugMode(false); // Disable debug mode to hide red rectangles
       this.rendererHandler.registerRenderer(newStructure.id, spriteRenderer);
 
       // Track the new structure

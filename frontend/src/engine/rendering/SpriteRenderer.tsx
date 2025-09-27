@@ -207,8 +207,8 @@ export class SpriteRenderer extends BaseRenderer {
 
       // Try to create from custom sprite path if entity has one
       if ((entity as any).spritePath) {
-        // For structures, don't show debug sprite as fallback - they have their own sprites
-        if (!entity.hasTag || !entity.hasTag("structure")) {
+        // For structures and baby cows, don't show debug sprite as fallback - they have their own sprites
+        if (!entity.hasTag || (!entity.hasTag("structure") && !entity.hasTag("baby_cow"))) {
           this.setSpriteComponent(this.createDebugSpriteComponent(entity));
         }
 
@@ -219,8 +219,8 @@ export class SpriteRenderer extends BaseRenderer {
           }
         });
       } else {
-        // Use debug red rectangle for entities without custom sprites, but not for structures
-        if (!entity.hasTag || !entity.hasTag("structure")) {
+        // Use debug red rectangle for entities without custom sprites, but not for structures or baby cows
+        if (!entity.hasTag || (!entity.hasTag("structure") && !entity.hasTag("baby_cow"))) {
           this.setSpriteComponent(this.createDebugSpriteComponent(entity));
         }
       }
