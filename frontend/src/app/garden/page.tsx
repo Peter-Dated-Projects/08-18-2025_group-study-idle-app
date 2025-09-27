@@ -15,7 +15,12 @@ import {
 } from "@/utils/globalStructureHandler";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
 import { useReduxAuth } from "@/store/integrationHooks";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useVisualWorldSync } from "@/hooks/useVisualWorldSync";
 import { ReduxTest } from "@/components/ReduxTest";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "@/store/store";
+import { initializePlotsFromConfig } from "@/store/slices/worldSlice";
 
 import { FONTCOLOR, BORDERFILL, BORDERLINE, PANELFILL } from "@/components/constants";
 import { useState, useEffect, useCallback } from "react";
@@ -58,6 +63,13 @@ export default function GardenPage() {
 function GardenPageContent() {
   const { addNotification } = useGlobalNotification();
   const { isAuthenticated, isLoading, user, error } = useSessionAuth();
+  const dispatch = useDispatch<AppDispatch>();
+  
+  // Check subscription status for premium features
+  const { isPaid: hasSubscription, isLoading: subscriptionLoading } = useSubscription();
+  
+  // Enable visual world synchronization between Redux and PIXI
+  useVisualWorldSync();
 
   // Test Redux auth alongside existing auth (we'll switch over gradually)
   const reduxAuth = useReduxAuth();
@@ -66,6 +78,12 @@ function GardenPageContent() {
     user: reduxAuth.user,
     isLoading: reduxAuth.isLoading,
     error: reduxAuth.error,
+  });
+  
+  console.log("🔒 Subscription Status:", {
+    hasSubscription,
+    subscriptionLoading,
+    userId: user?.userId
   });
 
   const [isClicking, setIsClicking] = useState(false);
@@ -199,6 +217,14 @@ function GardenPageContent() {
       };
     }
   }, [isDragging, dragStartY, dragStartSplit, panelSplit]);
+
+  // Initialize plots when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && user?.userId && !isLoading) {
+      console.log("🏗️ Initializing plots for user:", user.userId);
+      dispatch(initializePlotsFromConfig(user.userId));
+    }
+  }, [isAuthenticated, user?.userId, isLoading, dispatch]);
 
   // Handle authentication status changes
   useEffect(() => {
@@ -376,6 +402,8 @@ function GardenPageContent() {
                   lobbyData={lobbyData}
                   onLobbyStateChange={setLobbyState}
                   onLobbyDataChange={setLobbyData}
+                  hasSubscription={hasSubscription}
+                  subscriptionLoading={subscriptionLoading}
                 />
               </div>
             ) : (
@@ -393,6 +421,8 @@ function GardenPageContent() {
                   lobbyData={lobbyData}
                   onLobbyStateChange={setLobbyState}
                   onLobbyDataChange={setLobbyData}
+                  hasSubscription={hasSubscription}
+                  subscriptionLoading={subscriptionLoading}
                 />
               </div>
             )}

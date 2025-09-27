@@ -16,14 +16,22 @@ export const useVisualWorldSync = () => {
 
   useEffect(() => {
     if (pendingUpdates.length === 0) return;
+    
+    console.log(`🔄 Processing ${pendingUpdates.length} pending visual updates:`, pendingUpdates);
+    console.log(`📊 Current plots state:`, {
+      totalPlots: currentPlots.length,
+      plotIndices: currentPlots.map(p => p.index),
+      plotStructures: currentPlots.map(p => ({ index: p.index, structure: p.currentStructureId }))
+    });
 
     const processVisualUpdates = async () => {
       try {
         // Process all pending visual updates
         const updatePromises = pendingUpdates.map(async (plotIndex) => {
+          console.log(`🔍 Looking for plot ${plotIndex} in currentPlots:`, currentPlots.map(p => ({ index: p.index, structureId: p.currentStructureId })));
           const plot = currentPlots.find((p) => p.index === plotIndex);
           if (!plot) {
-            console.warn(`Plot ${plotIndex} not found in current plots`);
+            console.warn(`Plot ${plotIndex} not found in current plots. Available plots:`, currentPlots.map(p => p.index));
             return false;
           }
 
@@ -44,7 +52,11 @@ export const useVisualWorldSync = () => {
         const results = await Promise.all(updatePromises);
         const successCount = results.filter(Boolean).length;
 
-        console.log(`Processed ${successCount}/${pendingUpdates.length} visual updates`);
+        console.log(`🎨 Processed ${successCount}/${pendingUpdates.length} visual updates`);
+        
+        if (successCount < pendingUpdates.length) {
+          console.warn(`⚠️ Some visual updates failed. Check VisualWorldUpdateService initialization.`);
+        }
       } catch (error) {
         console.error("Error processing visual updates:", error);
       }

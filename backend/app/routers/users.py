@@ -32,6 +32,7 @@ class UserInfo(BaseModel):
     last_login: Optional[str] = None
     provider: Optional[str] = None
     user_picture_url: Optional[str] = None  # From ArangoDB users collection
+    is_paid: bool = False  # User's paid status
 
 class UsersRequest(BaseModel):
     user_ids: List[str]

@@ -29,7 +29,14 @@ class GroupService:
     def _ensure_user_exists(self, user_id: str):
         """Ensures a user exists in the users collection. If not, it creates the user."""
         if not self.users.has(user_id):
-            self.users.insert({"_key": user_id, "user_id": user_id})
+            from datetime import datetime
+            self.users.insert({
+                "_key": user_id, 
+                "user_id": user_id,
+                "is_paid": False,  # Default to False for new users
+                "created_at": datetime.utcnow().isoformat(),
+                "provider": "arangodb"
+            })
 
     def get_user_group_count(self, user_id: str) -> int:
         """Gets the number of groups a user is a member of."""

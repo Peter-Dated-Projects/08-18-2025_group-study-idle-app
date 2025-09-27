@@ -66,7 +66,8 @@ class UserService:
                     'created_at': user_doc.get('created_at'),
                     'last_login': user_doc.get('last_login'),
                     'provider': user_doc.get('provider', 'arangodb'),
-                    'user_picture_url': user_doc.get('user_picture_url')
+                    'user_picture_url': user_doc.get('user_picture_url'),
+                    'is_paid': user_doc.get('is_paid', False)  # Default to False if not set
                 }
                 
                 return user_info
@@ -110,7 +111,8 @@ class UserService:
                             'created_at': user_doc.get('created_at'),
                             'last_login': user_doc.get('last_login'),
                             'provider': user_doc.get('provider', 'arangodb'),
-                            'user_picture_url': user_doc.get('user_picture_url')
+                            'user_picture_url': user_doc.get('user_picture_url'),
+                            'is_paid': user_doc.get('is_paid', False)  # Default to False if not set
                         }
                         
                         result[user_id] = user_info
@@ -155,7 +157,7 @@ class UserService:
             logger.debug(f"Cached user {user_id} in Redis")
             return user_info
         else:
-            # User not found - create minimal entry with just user_picture_url
+            # User not found - create minimal entry with default values
             minimal_info = {
                 'user_id': user_id,
                 'display_name': None,
@@ -164,7 +166,8 @@ class UserService:
                 'created_at': None,
                 'last_login': None,
                 'provider': 'unknown',
-                'user_picture_url': None
+                'user_picture_url': None,
+                'is_paid': False  # Default to False for new users
             }
             
             # Cache "not found" for shorter time (5 minutes)
@@ -226,7 +229,8 @@ class UserService:
                     'created_at': None,
                     'last_login': None,
                     'provider': 'unknown',
-                    'user_picture_url': None
+                    'user_picture_url': None,
+                    'is_paid': False  # Default to False for new users
                 }
                 
                 user_info_map[user_id] = minimal_info
@@ -302,7 +306,8 @@ class UserService:
                         'photo_url': None,
                         'created_at': None,
                         'last_login': None,
-                        'provider': 'arangodb'
+                        'provider': 'arangodb',
+                        'is_paid': False  # Default to False for new users
                     }
                     users_collection.replace(user_id, new_user)
                     logger.info(f"Replaced user document with picture URL {user_id}: {picture_url}")
@@ -317,7 +322,8 @@ class UserService:
                     'photo_url': None,
                     'created_at': None,
                     'last_login': None,
-                    'provider': 'arangodb'
+                    'provider': 'arangodb',
+                    'is_paid': False  # Default to False for new users
                 }
                 users_collection.insert(new_user, overwrite=False)
                 logger.info(f"Created new user entry with picture URL {user_id}: {picture_url}")
@@ -330,6 +336,84 @@ class UserService:
             
         except Exception as e:
             logger.error(f"Error updating picture URL for user {user_id}: {e}")
+            return False
+
+    def update_user_paid_status(self, user_id: str, is_paid: bool) -> bool:
+        """
+        Update user's paid status in ArangoDB.
+        
+        Args:
+            user_id: The user ID to update
+            is_paid: The new paid status (True for paid, False for free)
+            
+        Returns:
+            bool: True if updated successfully, False otherwise
+        """
+        if not ARANGODB_AVAILABLE or not self.arango_db:
+            logger.error(f"ArangoDB not available for updating user {user_id} paid status")
+            return False
+        
+        try:
+            users_collection = self.arango_db.collection(USERS_COLLECTION)
+            
+            if users_collection.has(user_id):
+                # Update existing user using AQL for reliable updates
+                aql_query = '''
+                FOR user IN users
+                FILTER user._key == @user_id
+                UPDATE user WITH { 
+                    is_paid: @is_paid, 
+                    user_id: @user_id_field,
+                    updated_at: @timestamp
+                } IN users
+                RETURN NEW
+                '''
+                
+                from datetime import datetime
+                result = self.arango_db.aql.execute(
+                    aql_query,
+                    bind_vars={
+                        'user_id': user_id,
+                        'is_paid': is_paid,
+                        'user_id_field': user_id,
+                        'timestamp': datetime.utcnow().isoformat()
+                    }
+                )
+                
+                updated_docs = list(result)
+                if updated_docs:
+                    logger.info(f"Updated paid status for user {user_id}: is_paid={is_paid}")
+                else:
+                    logger.error(f"AQL update returned no results for user {user_id}")
+                    return False
+                    
+            else:
+                # Create new user entry with paid status
+                from datetime import datetime
+                new_user = {
+                    '_key': user_id,
+                    'user_id': user_id,
+                    'is_paid': is_paid,
+                    'display_name': None,
+                    'email': None,
+                    'photo_url': None,
+                    'user_picture_url': None,
+                    'created_at': datetime.utcnow().isoformat(),
+                    'last_login': None,
+                    'provider': 'arangodb',
+                    'updated_at': datetime.utcnow().isoformat()
+                }
+                users_collection.insert(new_user, overwrite=False)
+                logger.info(f"Created new user entry with paid status {user_id}: is_paid={is_paid}")
+            
+            # Invalidate cache for this user
+            self.cache_service.remove_user_from_cache(user_id)
+            logger.debug(f"Invalidated cache for user {user_id}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating paid status for user {user_id}: {e}")
             return False
 
     def is_available(self) -> bool:

@@ -8,6 +8,7 @@ import GlobalLeaderboardModal from "./ui/GlobalLeaderboardModal";
 import GroupLeaderboardModal from "./ui/GroupLeaderboardModal";
 import ShopModal from "./ui/ShopModal";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
+import { useSubscription } from "@/hooks/useSubscription";
 import { Structure } from "@/scripts/structures/Structure";
 import StructuresModal from "./ui/StructuresModal";
 import { openStructuresModal, selectPlot } from "../../store/slices/worldSlice";
@@ -25,6 +26,7 @@ interface GardenIconsProps {
 
 export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
   const { user } = useSessionAuth();
+  const { isPaid: hasSubscription } = useSubscription();
   const dispatch = useDispatch<AppDispatch>();
   const { user: reduxUser } = useSelector((state: RootState) => state.auth);
 
@@ -134,16 +136,65 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
           zIndex: 1000,
         }}
       >
-        <GardenIcon
-          onClick={() => setShowFriendsMenu(true)}
-          title="Friends"
-          iconClassName="fas fa-user-friends"
-        />
-        <GardenIcon
-          onClick={() => setShowGroups(true)}
-          title="Groups"
-          iconClassName="fas fa-users-cog"
-        />
+        {/* Friends - Premium Feature */}
+        {hasSubscription ? (
+          <GardenIcon
+            onClick={() => setShowFriendsMenu(true)}
+            title="Friends"
+            iconClassName="fas fa-user-friends"
+          />
+        ) : (
+          <GardenIcon
+            onClick={() => {
+              alert("Friends feature is available with Premium subscription. Upgrade to connect with friends!");
+            }}
+            title="Friends (Premium)"
+            iconClassName="fas fa-user-friends"
+            style={{ opacity: 0.5 }}
+          >
+            <i
+              className="fas fa-lock"
+              style={{
+                position: "absolute",
+                bottom: "2px",
+                right: "2px",
+                fontSize: "8px",
+                color: "#fbbf24",
+              }}
+            ></i>
+          </GardenIcon>
+        )}
+        
+        {/* Groups - Premium Feature */}
+        {hasSubscription ? (
+          <GardenIcon
+            onClick={() => setShowGroups(true)}
+            title="Groups"
+            iconClassName="fas fa-users-cog"
+          />
+        ) : (
+          <GardenIcon
+            onClick={() => {
+              alert("Study Groups feature is available with Premium subscription. Upgrade to create and join study groups!");
+            }}
+            title="Groups (Premium)"
+            iconClassName="fas fa-users-cog"
+            style={{ opacity: 0.5 }}
+          >
+            <i
+              className="fas fa-lock"
+              style={{
+                position: "absolute",
+                bottom: "2px",
+                right: "2px",
+                fontSize: "8px",
+                color: "#fbbf24",
+              }}
+            ></i>
+          </GardenIcon>
+        )}
+        
+        {/* Global Leaderboard - Always Available */}
         <GardenIcon
           onClick={() => {
             console.log("Global Leaderboard clicked");
@@ -152,24 +203,58 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
           title="Global Leaderboard"
           iconClassName="fas fa-trophy"
         />
-        <GardenIcon
-          onClick={() => {
-            console.log("Group Leaderboard clicked");
-            setShowGroupLeaderboard(true);
-          }}
-          title="Group Leaderboard"
-          iconClassName="fas fa-trophy"
-        >
-          <i
-            className="fas fa-users"
-            style={{
-              position: "absolute",
-              bottom: "2px",
-              right: "2px",
-              fontSize: "10px",
+        
+        {/* Group Leaderboard - Premium Feature */}
+        {hasSubscription ? (
+          <GardenIcon
+            onClick={() => {
+              console.log("Group Leaderboard clicked");
+              setShowGroupLeaderboard(true);
             }}
-          ></i>
-        </GardenIcon>
+            title="Group Leaderboard"
+            iconClassName="fas fa-trophy"
+          >
+            <i
+              className="fas fa-users"
+              style={{
+                position: "absolute",
+                bottom: "2px",
+                right: "2px",
+                fontSize: "10px",
+              }}
+            ></i>
+          </GardenIcon>
+        ) : (
+          <GardenIcon
+            onClick={() => {
+              alert("Group Leaderboard is available with Premium subscription. Upgrade to compete with your study groups!");
+            }}
+            title="Group Leaderboard (Premium)"
+            iconClassName="fas fa-trophy"
+            style={{ opacity: 0.5 }}
+          >
+            <i
+              className="fas fa-users"
+              style={{
+                position: "absolute",
+                bottom: "2px",
+                right: "2px",
+                fontSize: "10px",
+                opacity: 0.5,
+              }}
+            ></i>
+            <i
+              className="fas fa-lock"
+              style={{
+                position: "absolute",
+                top: "2px",
+                right: "2px",
+                fontSize: "8px",
+                color: "#fbbf24",
+              }}
+            ></i>
+          </GardenIcon>
+        )}
         <GardenIcon
           onClick={() => setShowUserProfile(true)}
           title="User Profile"
@@ -178,7 +263,7 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
       </div>
 
       {/* Modals */}
-      {showFriendsMenu && (
+      {showFriendsMenu && hasSubscription && (
         <FriendsModal
           isVisible={showFriendsMenu}
           onClose={() => setShowFriendsMenu(false)}
@@ -194,7 +279,7 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
         />
       )}
 
-      {showGroups && <GroupsModal isVisible={showGroups} onClose={() => setShowGroups(false)} />}
+      {showGroups && hasSubscription && <GroupsModal isVisible={showGroups} onClose={() => setShowGroups(false)} />}
 
       {showGlobalLeaderboard && (
         <GlobalLeaderboardModal
@@ -203,7 +288,7 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
         />
       )}
 
-      {showGroupLeaderboard && (
+      {showGroupLeaderboard && hasSubscription && (
         <GroupLeaderboardModal
           isVisible={showGroupLeaderboard}
           onClose={() => setShowGroupLeaderboard(false)}

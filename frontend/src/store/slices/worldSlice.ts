@@ -161,13 +161,12 @@ export const placeStructureOnPlot = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await fetch("/api/world/place-structure", {
-        method: "POST",
+      const response = await fetch(`/api/level-config/${userId}/slot`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          user_id: userId,
-          plot_index: plotIndex,
+          slot_index: plotIndex,
           structure_id: structureId,
         }),
       });
@@ -486,6 +485,7 @@ const worldSlice = createSlice({
           currentStructureId: structureId,
           position: getPlotPosition(index),
         }));
+        console.log(`🏗️ Initialized ${state.currentPlots.length} plots from config:`, state.currentPlots.map(p => ({ index: p.index, structure: p.currentStructureId })));
       })
       .addCase(initializePlotsFromConfig.rejected, (state, action) => {
         state.isLoading = false;
@@ -507,9 +507,11 @@ const worldSlice = createSlice({
         // Remove from pending placements
         state.pendingPlacements = state.pendingPlacements.filter((p) => p.plotIndex !== plotIndex);
 
-        // Clear visual updates for this plot
-        state.pendingVisualUpdates = removeFromArray(state.pendingVisualUpdates, plotIndex);
+        // Add to visual updates queue to trigger PIXI update
+        addToArray(state.pendingVisualUpdates, plotIndex);
+        state.lastVisualUpdate = Date.now();
         state.lastUpdated = Date.now();
+        console.log(`🎯 Added plot ${plotIndex} to visual update queue. Current plots count: ${state.currentPlots.length}`);
       })
       .addCase(placeStructureOnPlot.rejected, (state, action) => {
         state.isSaving = false;
