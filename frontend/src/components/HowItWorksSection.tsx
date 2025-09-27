@@ -3,7 +3,11 @@
 import React from "react";
 import { getGifByCategory } from "../data/mockData";
 
-const HowItWorksSection: React.FC = () => {
+interface HowItWorksSectionProps {
+  onButtonClick?: () => void;
+}
+
+const HowItWorksSection: React.FC<HowItWorksSectionProps> = ({ onButtonClick }) => {
   const steps = [
     {
       step: 1,
@@ -183,7 +187,10 @@ const HowItWorksSection: React.FC = () => {
 
         {/* Call to action */}
         <div className="text-center mt-16">
-          <button className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
+          <button 
+            onClick={onButtonClick}
+            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+          >
             Ready to Start Your Quest?
           </button>
         </div>

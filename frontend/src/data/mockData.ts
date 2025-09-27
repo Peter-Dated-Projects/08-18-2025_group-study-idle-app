@@ -40,7 +40,10 @@ export const funnyGifs = [
 ];
 
 export const getRandomGif = (): string => {
-  return funnyGifs[Math.floor(Math.random() * funnyGifs.length)];
+  // Use a deterministic approach based on current date to avoid hydration mismatches
+  const today = new Date();
+  const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+  return funnyGifs[dayOfYear % funnyGifs.length];
 };
 
 export const getGifByCategory = (
@@ -56,5 +59,8 @@ export const getGifByCategory = (
   };
 
   const categoryGifs = categoryRanges[category];
-  return categoryGifs[Math.floor(Math.random() * categoryGifs.length)];
+  // Use deterministic approach based on current date to avoid hydration mismatches
+  const today = new Date();
+  const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+  return categoryGifs[dayOfYear % categoryGifs.length];
 };

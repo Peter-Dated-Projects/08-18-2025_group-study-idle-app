@@ -10,6 +10,18 @@ import { getRandomGif } from "../data/mockData";
 
 const LandingPage: React.FC = () => {
   const [hasUserCookie, setHasUserCookie] = React.useState<boolean | null>(null);
+  const [buttonPressRedirect, setButtonPressRedirect] = React.useState<string>('/login');
+
+  // Handle button click based on authentication status
+  const handleButtonClick = () => {
+    if (hasUserCookie) {
+      // User is logged in, redirect to garden
+      window.location.href = '/garden';
+    } else {
+      // User is not logged in, scroll to pricing section
+      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   // Check for user cookie on component mount
   React.useEffect(() => {
@@ -18,9 +30,12 @@ const LandingPage: React.FC = () => {
         const response = await fetch('/api/auth/check-cookie');
         const data = await response.json();
         setHasUserCookie(data.hasUserCookie);
+        // Set redirect based on authentication status
+        setButtonPressRedirect(data.hasUserCookie ? '/garden' : '/login');
       } catch (error) {
         console.error('Error checking user cookie:', error);
         setHasUserCookie(false);
+        setButtonPressRedirect('/login');
       }
     };
 
@@ -90,12 +105,16 @@ const LandingPage: React.FC = () => {
 
       {/* Hero Section */}
       <section id="hero">
-        <HeroSection hasUserCookie={hasUserCookie} />
+        <HeroSection 
+          hasUserCookie={hasUserCookie} 
+          buttonPressRedirect={buttonPressRedirect} 
+          onButtonClick={handleButtonClick}
+        />
       </section>
 
       {/* How It Works Section */}
       <section id="how-it-works">
-        <HowItWorksSection />
+        <HowItWorksSection onButtonClick={handleButtonClick} />
       </section>
 
       {/* Garden Demo Section */}
@@ -115,7 +134,7 @@ const LandingPage: React.FC = () => {
             Ready to Transform Your Study Journey?
           </h2>
           <button
-            onClick={() => window.location.href = '/login'}
+            onClick={handleButtonClick}
             className="bg-white text-green-600 hover:text-green-700 px-12 py-4 rounded-full text-xl font-bold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
           >
             Start Studying Now!

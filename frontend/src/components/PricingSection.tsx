@@ -1,14 +1,20 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 
 const PricingSection: React.FC = () => {
+  const router = useRouter();
+
+  const handlePlanClick = (planType: string) => {
+    router.push(`/login?type=${planType}`);
+  };
   const plans = [
     {
       name: "Free",
       price: "$0",
       period: "forever",
-      description: "Perfect for getting started with your study quest",
+      description: "Perfect for getting started with your study quest, and FREE forever",
       features: [
         "Study Timer",
         "Notion Tracking",
@@ -19,7 +25,8 @@ const PricingSection: React.FC = () => {
       ],
       buttonText: "Start Free",
       buttonStyle: "border-2 border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50",
-      popular: false
+      popular: false,
+      type: "free"
     },
     {
       name: "Premium",
@@ -35,7 +42,8 @@ const PricingSection: React.FC = () => {
       ],
       buttonText: "Go Premium",
       buttonStyle: "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white",
-      popular: true
+      popular: true,
+      type: "premium"
     }
   ];
 
@@ -95,6 +103,7 @@ const PricingSection: React.FC = () => {
 
               <div className="mt-auto">
                 <button
+                  onClick={() => handlePlanClick(plan.type)}
                   className={`w-full py-4 px-6 rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${plan.buttonStyle}`}
                 >
                   {plan.buttonText}

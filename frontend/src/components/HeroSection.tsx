@@ -6,9 +6,11 @@ import { getGifByCategory } from "../data/mockData";
 
 interface HeroSectionProps {
   hasUserCookie: boolean | null;
+  buttonPressRedirect?: string;
+  onButtonClick?: () => void;
 }
 
-const HeroSection: React.FC<HeroSectionProps> = ({ hasUserCookie }) => {
+const HeroSection: React.FC<HeroSectionProps> = ({ hasUserCookie, buttonPressRedirect = '/login', onButtonClick }) => {
   const router = useRouter();
   return (
     <section className="relative min-h-screen text-white overflow-hidden select-none w-full">
@@ -46,14 +48,14 @@ const HeroSection: React.FC<HeroSectionProps> = ({ hasUserCookie }) => {
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
               <button
-                onClick={() => router.push("/login")}
+                onClick={onButtonClick || (() => router.push(buttonPressRedirect))}
                 className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 px-8 py-4 rounded-full text-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
               >
                 Start Your Quest
               </button>
               <button
                 onClick={() => {
-                  document.getElementById("demo")?.scrollIntoView({ behavior: "smooth" });
+                  document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
                 }}
                 className="border-2 border-amber-200/50 hover:border-amber-200/70 px-8 py-4 rounded-full text-xl font-semibold transition-all duration-300 hover:bg-amber-200/10"
               >
