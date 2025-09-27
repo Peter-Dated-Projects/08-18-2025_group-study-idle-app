@@ -323,6 +323,17 @@ const worldSlice = createSlice({
       }));
     },
 
+    // Sync plots from visual world service
+    syncPlotsFromVisualWorld: (state, action: PayloadAction<Array<{index: number, structureId: string}>>) => {
+      const plots = action.payload;
+      state.currentPlots = plots.map(({index, structureId}) => ({
+        index,
+        currentStructureId: structureId,
+        position: getPlotPosition(index),
+      }));
+      console.log(`🔄 Synced ${plots.length} plots from visual world:`, plots.map(p => ({ index: p.index, structure: p.structureId })));
+    },
+
     // Optimistic Updates for Immediate UI Feedback
     optimisticPlaceStructure: (
       state,
@@ -330,7 +341,7 @@ const worldSlice = createSlice({
     ) => {
       const { plotIndex, structureId } = action.payload;
 
-      // Update current plots
+      // Update current plots (plots should exist after initialization)
       if (state.currentPlots[plotIndex]) {
         state.currentPlots[plotIndex].currentStructureId = structureId;
       }
@@ -480,11 +491,18 @@ const worldSlice = createSlice({
       .addCase(initializePlotsFromConfig.fulfilled, (state, action) => {
         state.isLoading = false;
         const levelConfig = action.payload;
-        state.currentPlots = levelConfig.map((structureId: string, index: number) => ({
-          index,
-          currentStructureId: structureId,
-          position: getPlotPosition(index),
-        }));
+        
+        // Ensure we have exactly 7 plots (indices 0-6)
+        state.currentPlots = [];
+        for (let i = 0; i < 7; i++) {
+          const structureId = levelConfig[i] || "empty";
+          state.currentPlots.push({
+            index: i,
+            currentStructureId: structureId,
+            position: getPlotPosition(i),
+          });
+        }
+        
         console.log(`🏗️ Initialized ${state.currentPlots.length} plots from config:`, state.currentPlots.map(p => ({ index: p.index, structure: p.currentStructureId })));
       })
       .addCase(initializePlotsFromConfig.rejected, (state, action) => {
@@ -499,7 +517,7 @@ const worldSlice = createSlice({
         state.isSaving = false;
         const { plotIndex, structureId } = action.payload;
 
-        // Update current plots
+        // Update current plots (plots should exist after initialization)
         if (state.currentPlots[plotIndex]) {
           state.currentPlots[plotIndex].currentStructureId = structureId;
         }

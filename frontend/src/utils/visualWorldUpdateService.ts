@@ -17,6 +17,7 @@ export interface TrackedStructure {
   plotIndex: number;
   entity: Structure;
   rendererId: string;
+  structureId: string; // Store the original structure ID (e.g., "mailbox", "chicken-coop")
 }
 
 /**
@@ -69,10 +70,14 @@ export class VisualWorldUpdateService {
     structures.forEach((structure) => {
       const plotIndex = this.getPlotIndexFromPosition(structure.position);
       if (plotIndex !== -1) {
+        // For existing structures, we need to determine the structure type
+        // This is tricky since we don't have the original ID stored
+        // For now, we'll assume "empty" and let the sync process handle it
         this.trackedStructures.set(plotIndex, {
           plotIndex,
           entity: structure,
           rendererId: structure.id,
+          structureId: "empty", // Will be updated during sync
         });
       }
     });
@@ -181,6 +186,7 @@ export class VisualWorldUpdateService {
         plotIndex,
         entity: newStructure,
         rendererId: newStructure.id,
+        structureId: newStructureId, // Store the original structure ID
       });
 
       console.log(
@@ -251,9 +257,8 @@ export class VisualWorldUpdateService {
     const tracked = this.trackedStructures.get(plotIndex);
     if (!tracked) return "empty";
 
-    // Extract structure ID from the entity tags or properties
-    // This will depend on how the structure ID is stored in the Structure entity
-    return tracked.entity.id.split("_")[0] || "empty"; // Assuming ID format like "mailbox_plot0"
+    // Return the stored structure ID (e.g., "mailbox", "chicken-coop", "empty")
+    return tracked.structureId;
   }
 
   /**

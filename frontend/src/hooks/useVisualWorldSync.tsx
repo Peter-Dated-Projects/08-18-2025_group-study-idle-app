@@ -44,6 +44,9 @@ export const useVisualWorldSync = () => {
           if (success) {
             // Clear the visual update from Redux state
             dispatch(clearVisualUpdate(plotIndex));
+            console.log(`✅ Successfully updated visual for plot ${plotIndex} to ${plot.currentStructureId}`);
+          } else {
+            console.warn(`❌ Failed to update visual for plot ${plotIndex}`);
           }
 
           return success;
