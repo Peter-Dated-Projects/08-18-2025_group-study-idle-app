@@ -44,36 +44,44 @@ export default function ToolsSection({
   // Create tabs array based on subscription status
   const tabs: Tab[] = [
     // Lobby tab - only available for premium users
-    ...(hasSubscription && !subscriptionLoading ? [{
-      id: "lobby",
-      label: "Study Lobby",
-      component: (
-        <Lobby
-          lobbyState={lobbyState}
-          lobbyData={lobbyData}
-          onLobbyStateChange={onLobbyStateChange}
-          onLobbyDataChange={onLobbyDataChange}
-        />
-      ),
-    }] : []),
+    ...(hasSubscription && !subscriptionLoading
+      ? [
+          {
+            id: "lobby",
+            label: "Study Lobby",
+            component: (
+              <Lobby
+                lobbyState={lobbyState}
+                lobbyData={lobbyData}
+                onLobbyStateChange={onLobbyStateChange}
+                onLobbyDataChange={onLobbyDataChange}
+              />
+            ),
+          },
+        ]
+      : []),
     {
       id: "pomo-block",
       label: "Pomo Blocks",
       component: <PomoBlockTimer />,
     },
     // Music Sync tab - only available for premium users
-    ...(hasSubscription && !subscriptionLoading ? [{
-      id: "music",
-      label: "Music Sync",
-      component: <MusicSync />,
-    }] : []),
+    ...(hasSubscription && !subscriptionLoading
+      ? [
+          {
+            id: "music",
+            label: "Music Sync",
+            component: <MusicSync />,
+          },
+        ]
+      : []),
   ];
 
   // Update active tab when subscription status changes
   useEffect(() => {
     if (!hasSubscription && (activeTab === "lobby" || activeTab === "music")) {
       setActiveTab("pomo-block");
-    } else if (hasSubscription && tabs.length > 0 && !tabs.find(tab => tab.id === activeTab)) {
+    } else if (hasSubscription && tabs.length > 0 && !tabs.find((tab) => tab.id === activeTab)) {
       setActiveTab("lobby");
     }
   }, [hasSubscription, activeTab, tabs]);
@@ -89,12 +97,10 @@ export default function ToolsSection({
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`px-3 py-2 text-[#2c1810] text-xs transition-all duration-200 font-normal ${
-                activeTab === tab.id 
-                  ? "bg-[#fdf4e8] font-bold" 
+                activeTab === tab.id
+                  ? "bg-[#fdf4e8] font-bold"
                   : "bg-transparent hover:bg-[#fdf4e8] hover:opacity-80"
-              } ${
-                index === 0 ? "border-l-0" : "border-l border-[#a0622d]"
-              } ${
+              } ${index === 0 ? "border-l-0" : "border-l border-[#a0622d]"} ${
                 index === tabs.length - 1 ? "border-r-0" : "border-r border-[#a0622d]"
               }`}
             >

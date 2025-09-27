@@ -185,18 +185,14 @@ export default function GroupLeaderboardModal({ isVisible, onClose }: GroupLeade
       <div className="p-5 flex flex-col gap-4 max-h-[500px] overflow-auto">
         {/* Group Selection */}
         {loadingGroups ? (
-          <div className="text-center text-[#7a6b57] text-sm">
-            Loading your groups...
-          </div>
+          <div className="text-center text-[#7a6b57] text-sm">Loading your groups...</div>
         ) : groups.length === 0 ? (
           <div className="p-5 text-center text-[#2c1810] bg-[#e4be93ff] border border-[#a0622d] rounded text-sm">
             You haven&apos;t joined any groups yet. Join a group to view group leaderboards!
           </div>
         ) : (
           <div>
-            <h3 className="m-0 mb-2 text-[#2c1810] text-base font-bold">
-              Select Group
-            </h3>
+            <h3 className="m-0 mb-2 text-[#2c1810] text-base font-bold">Select Group</h3>
             <select
               value={selectedGroup}
               onChange={(e) => setSelectedGroup(e.target.value)}
@@ -214,9 +210,7 @@ export default function GroupLeaderboardModal({ isVisible, onClose }: GroupLeade
         {/* Period Selection */}
         {selectedGroup && (
           <div>
-            <h3 className="m-0 mb-2 text-[#2c1810] text-base font-bold">
-              Time Period
-            </h3>
+            <h3 className="m-0 mb-2 text-[#2c1810] text-base font-bold">Time Period</h3>
             <div className="flex gap-2 flex-wrap">
               {(["daily", "weekly", "monthly", "yearly"] as LeaderboardPeriod[]).map((period) => (
                 <button
@@ -243,9 +237,7 @@ export default function GroupLeaderboardModal({ isVisible, onClose }: GroupLeade
             </h3>
 
             {loading ? (
-              <div className="text-center text-[#7a6b57] text-sm">
-                Loading leaderboard...
-              </div>
+              <div className="text-center text-[#7a6b57] text-sm">Loading leaderboard...</div>
             ) : leaderboardData.length === 0 ? (
               <div className="p-5 text-center text-[#2c1810] bg-[#e4be93ff] border border-[#a0622d] rounded text-sm">
                 No activity recorded for this period in this group.
@@ -269,9 +261,7 @@ export default function GroupLeaderboardModal({ isVisible, onClose }: GroupLeade
                         {/* Rank */}
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                            entry.rank <= 3
-                              ? "bg-[#5cb370] text-white"
-                              : "bg-[#a0622d] text-white"
+                            entry.rank <= 3 ? "bg-[#5cb370] text-white" : "bg-[#a0622d] text-white"
                           }`}
                         >
                           {entry.rank}
@@ -282,14 +272,10 @@ export default function GroupLeaderboardModal({ isVisible, onClose }: GroupLeade
                           <div className="text-[#2c1810] font-bold text-sm">
                             {entry.display_name || entry.user_id}
                             {isCurrentUser && (
-                              <span className="ml-2 text-[#d4944a] text-xs font-normal">
-                                (You)
-                              </span>
+                              <span className="ml-2 text-[#d4944a] text-xs font-normal">(You)</span>
                             )}
                           </div>
-                          <div className="text-[#7a6b57] text-xs">
-                            {entry.user_id}
-                          </div>
+                          <div className="text-[#7a6b57] text-xs">{entry.user_id}</div>
                         </div>
                       </div>
 
@@ -298,9 +284,7 @@ export default function GroupLeaderboardModal({ isVisible, onClose }: GroupLeade
                         <div className="text-[#2c1810] font-bold text-sm">
                           {formatDuration(duration)}
                         </div>
-                        <div className="text-[#7a6b57] text-xs">
-                          {selectedPeriod} focus time
-                        </div>
+                        <div className="text-[#7a6b57] text-xs">{selectedPeriod} focus time</div>
                       </div>
                     </div>
                   );
