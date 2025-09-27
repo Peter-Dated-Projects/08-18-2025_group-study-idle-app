@@ -44,7 +44,7 @@ const HowItWorksSection: React.FC = () => {
 
   return (
     <section className="py-20 bg-gray-50">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-[80%]">
         {/* Section Header */}
         <div className="text-center mb-16">
           <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-6">
@@ -57,23 +57,22 @@ const HowItWorksSection: React.FC = () => {
         </div>
 
         {/* Steps */}
-        <div className="space-y-20">
+        <div className="space-y-20 w-full">
           {steps.map((step, index) => (
             <div
               key={step.step}
-              className={`flex flex-col lg:flex-row items-start lg:items-center gap-12 ${
+              className={`flex flex-col lg:flex-row items-start lg:items-center gap-12 w-full ${
                 index % 2 === 1 ? "lg:flex-row-reverse" : ""
               }`}
             >
               {/* Content */}
-              <div className="flex-1 w-full lg:w-1/2 space-y-6">
+              <div className="flex-1 w-full space-y-6">
                 <div className="flex items-center space-x-4">
                   <div
                     className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg"
                   >
                     {step.step}
                   </div>
-                  <div className="text-4xl">{step.icon}</div>
                 </div>
 
                 <h3 className="text-3xl sm:text-4xl font-bold text-gray-900">{step.title}</h3>
@@ -153,12 +152,10 @@ const HowItWorksSection: React.FC = () => {
               </div>
 
               {/* Visual */}
-              <div className="flex-1 w-full lg:w-1/2">
+              <div className="flex-1 w-full">
                 <div className="relative w-full">
                   {/* Main card */}
-                  <div className={`bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200 max-w-md mx-auto ${
-                    index % 2 === 1 ? "lg:ml-auto lg:mr-0" : "lg:ml-0 lg:mr-auto"
-                  }`}>
+                <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200 w-full">
                     <div className="aspect-video bg-gray-100">
                       <img
                         src={step.gif}
@@ -177,34 +174,7 @@ const HowItWorksSection: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Decorative elements */}
-                  <div
-                    className="absolute -top-3 -right-3 w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg"
-                  >
-                    {step.step}
-                  </div>
 
-                  {/* Floating icons */}
-                  {step.step === 1 && (
-                    <div className="absolute -bottom-4 -left-4 w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white animate-pulse">
-                      ⏰
-                    </div>
-                  )}
-                  {step.step === 2 && (
-                    <div className="absolute -bottom-4 -left-4 w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white animate-spin">
-                      💎
-                    </div>
-                  )}
-                  {step.step === 3 && (
-                    <div className="absolute -bottom-4 -left-4 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white animate-bounce">
-                      🏡
-                    </div>
-                  )}
-                  {step.step === 4 && (
-                    <div className="absolute -bottom-4 -left-4 w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-white animate-pulse">
-                      👥
-                    </div>
-                  )}
                 </div>
               </div>
             </div>

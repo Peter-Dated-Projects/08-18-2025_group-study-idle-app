@@ -108,6 +108,21 @@ const LandingPage: React.FC = () => {
         <PricingSection />
       </section>
 
+      {/* Final Call to Action Section */}
+      <section className="h-[400px] bg-black bg-opacity-20 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-8">
+            Ready to Transform Your Study Journey?
+          </h2>
+          <button
+            onClick={() => window.location.href = '/login'}
+            className="bg-white text-green-600 hover:text-green-700 px-12 py-4 rounded-full text-xl font-bold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+          >
+            Start Studying Now!
+          </button>
+        </div>
+      </section>
+
       {/* Basic Footer */}
       <footer className="bg-gray-800 text-white py-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
