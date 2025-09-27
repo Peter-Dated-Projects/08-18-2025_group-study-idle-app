@@ -45,7 +45,7 @@ export default function ToolsSection({
   // Create tabs array based on subscription status
   const tabs: Tab[] = [
     // Lobby tab - only available for premium users
-    ...(hasSubscription ? [{
+    ...(hasSubscription && !subscriptionLoading ? [{
       id: "lobby",
       label: "Study Lobby",
       component: (
@@ -56,81 +56,23 @@ export default function ToolsSection({
           onLobbyDataChange={onLobbyDataChange}
         />
       ),
-    }] : [{
-      id: "lobby-premium",
-      label: "Study Lobby 🔒",
-      component: (
-        <div style={{
-          padding: "20px",
-          textAlign: "center",
-          backgroundColor: PANELFILL,
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center"
-        }}>
-          <div style={{
-            backgroundColor: BORDERFILL,
-            padding: "20px",
-            borderRadius: "10px",
-            border: `2px solid ${BORDERLINE}`,
-            maxWidth: "300px"
-          }}>
-            <i className="fas fa-lock" style={{ 
-              fontSize: "24px", 
-              color: FONTCOLOR, 
-              marginBottom: "10px" 
-            }}></i>
-            <h3 style={{ 
-              color: FONTCOLOR, 
-              marginBottom: "10px",
-              fontSize: "16px"
-            }}>
-              Premium Feature
-            </h3>
-            <p style={{ 
-              color: FONTCOLOR, 
-              marginBottom: "15px",
-              fontSize: "14px",
-              lineHeight: "1.4"
-            }}>
-              Study Lobbies allow you to collaborate with friends in real-time study sessions.
-            </p>
-            <button
-              onClick={() => window.location.href = '/pricing'}
-              style={{
-                backgroundColor: "#10b981",
-                color: "white",
-                border: "none",
-                padding: "8px 16px",
-                borderRadius: "6px",
-                fontSize: "14px",
-                cursor: "pointer",
-                fontWeight: "bold"
-              }}
-            >
-              Upgrade to Premium
-            </button>
-          </div>
-        </div>
-      ),
-    }]),
+    }] : []),
     {
       id: "pomo-block",
       label: "Pomo Blocks",
       component: <PomoBlockTimer />,
     },
-    {
+    // Music Sync tab - only available for premium users
+    ...(hasSubscription && !subscriptionLoading ? [{
       id: "music",
       label: "Music Sync",
       component: <MusicSync />,
-    },
+    }] : []),
   ];
 
   // Update active tab when subscription status changes
   useEffect(() => {
-    if (!hasSubscription && activeTab === "lobby") {
+    if (!hasSubscription && (activeTab === "lobby" || activeTab === "music")) {
       setActiveTab("pomo-block");
     } else if (hasSubscription && tabs.length > 0 && !tabs.find(tab => tab.id === activeTab)) {
       setActiveTab("lobby");

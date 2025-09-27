@@ -124,16 +124,16 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* Basic Footer */}
-      <footer className="bg-gray-800 text-white py-8">
+      <footer className="bg-gradient-to-r from-green-600 to-emerald-600 text-white py-8 select-none">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg flex items-center justify-center text-white font-bold">
+              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-green-600 font-bold">
                 📚
               </div>
               <span className="text-xl font-bold">Study Quest</span>
             </div>
-                <p className="text-gray-400 text-sm">
+                <p className="text-white text-sm opacity-90">
                   Transform your learning journey into an epic adventure.
                 </p>
           </div>

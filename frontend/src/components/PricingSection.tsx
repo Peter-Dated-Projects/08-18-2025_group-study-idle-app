@@ -31,6 +31,7 @@ const PricingSection: React.FC = () => {
         "Study Group Features",
         "Study Group Leaderboard",
         "Study Group Chat",
+        "Study Group Music Dashboard",
       ],
       buttonText: "Go Premium",
       buttonStyle: "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white",
@@ -48,7 +49,7 @@ const PricingSection: React.FC = () => {
           </h2>
           <p className="text-xl text-gray-700 max-w-3xl mx-auto">
             Start your journey for free, or unlock premium features to supercharge your study experience.
-            Every subscription helps support our small development team!
+            Every subscription helps support the independent developer!
           </p>
         </div>
 
@@ -108,12 +109,12 @@ const PricingSection: React.FC = () => {
         <div className="bg-gray-50 rounded-3xl p-8 text-center">
           <div className="max-w-3xl mx-auto">
             <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              💚 Support Independent Developers
+              💚 Support an Independent Developer
             </h3>
             <p className="text-gray-700 mb-6 leading-relaxed">
-              Study Quest is built by a passionate team of developers who believe in making learning 
-              engaging and accessible. Your premium subscription directly supports our small team and 
-              helps us continue improving the platform, adding new features, and keeping the lights on!
+              Study Quest is built by a passionate independent developer who believes in making learning 
+              engaging and accessible. Your premium subscription directly supports the development and 
+              helps continue improving the platform, adding new features, and keeping the lights on!
             </p>
             <div className="grid md:grid-cols-3 gap-6 text-sm">
               <div className="flex items-center justify-center space-x-2">
