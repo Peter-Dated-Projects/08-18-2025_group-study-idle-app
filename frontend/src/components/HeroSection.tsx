@@ -4,29 +4,42 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { getGifByCategory } from "../data/mockData";
 
-const HeroSection: React.FC = () => {
+interface HeroSectionProps {
+  hasUserCookie: boolean | null;
+}
+
+const HeroSection: React.FC<HeroSectionProps> = ({ hasUserCookie }) => {
   const router = useRouter();
   return (
-    <section className="relative min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.15)_1px,transparent_0)] bg-[length:20px_20px] opacity-20"></div>
+    <section className="relative min-h-screen text-white overflow-hidden select-none w-full">
+      {/* Background Video/GIF */}
+      <div className="absolute inset-0">
+        <img
+          src={getGifByCategory("hero")}
+          alt="Study Quest Background"
+          className="w-full h-full object-cover"
+        />
+        {/* 20% Black Overlay */}
+        <div className="absolute inset-0 bg-black bg-opacity-20"></div>
+      </div>
 
       {/* Hero Content */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[80vh]">
-          {/* Left Column - Text Content */}
+          {/* Left Column - Content */}
           <div className="space-y-8">
             <div className="space-y-4">
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-tight">
-                Level Up Your
-                <span className="bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+                Grow Your
+                <span className="bg-gradient-to-r from-green-300 to-emerald-400 bg-clip-text text-transparent">
                   {" "}
-                  Study Game
+                  Study Quest
                 </span>
               </h1>
-              <p className="text-xl sm:text-2xl text-gray-300 leading-relaxed max-w-lg">
-                Transform your productivity into an epic adventure. Build your virtual world,
-                compete with friends, and watch your study habits grow into something amazing.
+              <p className="text-xl sm:text-2xl text-amber-100 leading-relaxed max-w-lg">
+                Transform your learning journey into an epic quest. Build your
+                virtual world, level up your skills, and watch your dedication grow into
+                something amazing.
               </p>
             </div>
 
@@ -34,68 +47,36 @@ const HeroSection: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-4">
               <button
                 onClick={() => router.push("/login")}
-                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 px-8 py-4 rounded-full text-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 px-8 py-4 rounded-full text-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
               >
-                Start Your Adventure
+                Start Your Quest
               </button>
               <button
                 onClick={() => {
                   document.getElementById("demo")?.scrollIntoView({ behavior: "smooth" });
                 }}
-                className="border-2 border-white/30 hover:border-white/50 px-8 py-4 rounded-full text-xl font-semibold transition-all duration-300 hover:bg-white/10"
+                className="border-2 border-amber-200/50 hover:border-amber-200/70 px-8 py-4 rounded-full text-xl font-semibold transition-all duration-300 hover:bg-amber-200/10"
               >
-                Watch Demo
+                Explore Worlds
               </button>
             </div>
 
             {/* Social Proof */}
-            <div className="flex items-center space-x-6 text-sm text-gray-400">
-              <div className="flex items-center space-x-2">
-                <span className="text-yellow-400">⭐⭐⭐⭐⭐</span>
-                <span>4.9/5 from 12K+ students</span>
-              </div>
-              <div className="hidden sm:block h-4 w-px bg-gray-600"></div>
-              <div className="hidden sm:block">Free to start, premium features available</div>
+            <div className="flex items-center justify-center sm:justify-start text-sm text-amber-200">
+              <div>Free to start, premium features available</div>
             </div>
           </div>
 
-          {/* Right Column - Visual Content */}
-          <div className="relative">
-            {/* Main Hero Image/GIF */}
-            <div className="relative z-10 bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20 shadow-2xl">
-              <div className="aspect-video bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl overflow-hidden shadow-lg">
-                <img
-                  src={getGifByCategory("hero")}
-                  alt="Epic study adventure preview"
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-              <div className="mt-6 text-center">
-                <h3 className="text-2xl font-bold mb-2">Your Study World Awaits</h3>
-                <p className="text-gray-300">
-                  Build, grow, and compete in the ultimate productivity game
-                </p>
-              </div>
-            </div>
-
-            {/* Floating Elements */}
-            <div className="absolute -top-4 -right-4 w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center text-2xl animate-bounce">
-              🎮
-            </div>
-            <div className="absolute -bottom-6 -left-6 w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-xl animate-pulse">
-              📚
-            </div>
-            <div className="absolute top-1/2 -right-8 w-12 h-12 bg-pink-500 rounded-full flex items-center justify-center animate-spin">
-              ✨
-            </div>
+          {/* Right Column - Empty Space */}
+          <div className="hidden lg:block">
+            {/* Intentionally empty for isolated look */}
           </div>
         </div>
 
         {/* Scroll Indicator */}
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-          <div className="flex flex-col items-center text-white/60">
-            <span className="text-sm mb-2">Discover More</span>
+          <div className="flex flex-col items-center text-amber-200/80">
+            <span className="text-sm mb-2">Discover Worlds</span>
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -108,16 +89,6 @@ const HeroSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Decorative Elements */}
-      <div className="absolute top-20 left-10 w-2 h-2 bg-yellow-400 rounded-full opacity-60 animate-ping"></div>
-      <div
-        className="absolute top-1/3 right-20 w-3 h-3 bg-blue-400 rounded-full opacity-60 animate-ping"
-        style={{ animationDelay: "1s" }}
-      ></div>
-      <div
-        className="absolute bottom-1/4 left-1/4 w-2 h-2 bg-green-400 rounded-full opacity-60 animate-ping"
-        style={{ animationDelay: "2s" }}
-      ></div>
     </section>
   );
 };

@@ -10,13 +10,13 @@ const Footer: React.FC = () => {
       { name: "How It Works", href: "#how-it-works" },
       { name: "Features", href: "#features" },
       { name: "Pricing", href: "#pricing" },
-      { name: "Demo", href: "#demo" },
+      { name: "Gardens", href: "#demo" },
     ],
     community: [
-      { name: "Study Groups", href: "#community" },
-      { name: "Leaderboards", href: "#leaderboards" },
-      { name: "Discord Server", href: "#discord" },
-      { name: "Student Blog", href: "#blog" },
+      { name: "Garden Circles", href: "#community" },
+      { name: "Flourish Rankings", href: "#leaderboards" },
+      { name: "Discord Garden", href: "#discord" },
+      { name: "Growth Blog", href: "#blog" },
     ],
     support: [
       { name: "Help Center", href: "#help" },
@@ -33,22 +33,22 @@ const Footer: React.FC = () => {
   };
 
   return (
-    <footer className="bg-gray-900 text-white">
+    <footer className="bg-amber-900 text-white">
       {/* Main Footer */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid lg:grid-cols-5 gap-8">
           {/* Brand Section */}
           <div className="lg:col-span-2">
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">
-                S
+              <div className="w-12 h-12 bg-gradient-to-r from-amber-600 to-orange-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">
+                🌱
               </div>
-              <span className="text-2xl font-bold">StudyQuest</span>
+              <span className="text-2xl font-bold">StudyGarden</span>
             </div>
 
-            <p className="text-gray-400 leading-relaxed mb-6 max-w-md">
-              Transform your study routine into an epic adventure. Build your virtual world, compete
-              with friends, and achieve academic success through gamified learning.
+            <p className="text-amber-200 leading-relaxed mb-6 max-w-md">
+              Transform your study routine into a beautiful garden sanctuary. Cultivate knowledge,
+              nurture growth, with friends, and achieve academic success through gamified learning.
             </p>
 
             {/* Social Links */}

@@ -6,31 +6,31 @@ import { getGifByCategory } from "../data/mockData";
 const CommunitySection: React.FC = () => {
   const communityFeatures = [
     {
-      title: "Study Groups",
+      title: "Garden Circles",
       description:
-        "Join or create study groups with your friends and classmates. Share goals, compete in challenges, and keep each other motivated.",
-      icon: "👥",
+        "Join or create garden circles with friends and fellow learners. Share growth goals, nurture each other's progress, and bloom together.",
+      icon: "🌸",
       gif: getGifByCategory("community"),
-      stats: "12,000+ active groups",
-      color: "from-blue-500 to-purple-600",
+      stats: "12,000+ active circles",
+      color: "from-pink-400 to-rose-500",
     },
     {
-      title: "Global Leaderboards",
+      title: "Flourish Rankings",
       description:
-        "See how you rank against students worldwide. Compete in daily, weekly, and monthly challenges to climb to the top!",
+        "See how your garden ranks among fellow cultivators worldwide. Participate in seasonal growth challenges and community events!",
       icon: "🏆",
       gif: getGifByCategory("success"),
-      stats: "50,000+ competitors",
-      color: "from-yellow-500 to-orange-600",
+      stats: "50,000+ gardeners",
+      color: "from-yellow-400 to-amber-500",
     },
     {
-      title: "Achievement Gallery",
+      title: "Growth Milestones",
       description:
-        "Showcase your study milestones and academic achievements. Earn badges, trophies, and special titles to display in your profile.",
-      icon: "🎖️",
+        "Showcase your learning journey and garden achievements. Earn special seeds, rare plants, and master gardener titles.",
+      icon: "�",
       gif: getGifByCategory("success"),
-      stats: "100+ achievements",
-      color: "from-green-500 to-emerald-600",
+      stats: "100+ milestones",
+      color: "from-green-400 to-emerald-500",
     },
   ];
 
@@ -68,14 +68,14 @@ const CommunitySection: React.FC = () => {
   ];
 
   return (
-    <section className="py-20 bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
+    <section className="py-20 bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-6">Join the Community</h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Connect with thousands of motivated students worldwide. Study together, compete for
-            glory, and achieve your academic dreams as a community.
+          <h2 className="text-4xl sm:text-5xl font-bold text-amber-900 mb-6">Growing Together</h2>
+          <p className="text-xl text-amber-800 max-w-3xl mx-auto">
+            Connect with thousands of dedicated learners worldwide. Cultivate knowledge together,
+            share your growth journey, and flourish as a community of lifelong learners.
           </p>
         </div>
 
@@ -84,7 +84,7 @@ const CommunitySection: React.FC = () => {
           {communityFeatures.map((feature, index) => (
             <div
               key={index}
-              className="bg-white rounded-3xl shadow-xl p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+              className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-amber-100"
             >
               {/* Header */}
               <div className="text-center mb-6">
@@ -93,12 +93,12 @@ const CommunitySection: React.FC = () => {
                 >
                   {feature.icon}
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">{feature.title}</h3>
-                <p className="text-sm text-blue-600 font-semibold">{feature.stats}</p>
+                <h3 className="text-2xl font-bold text-amber-900 mb-2">{feature.title}</h3>
+                <p className="text-sm text-orange-600 font-semibold">{feature.stats}</p>
               </div>
 
               {/* GIF Preview */}
-              <div className="aspect-video bg-gray-100 rounded-2xl overflow-hidden mb-6 shadow-inner">
+              <div className="aspect-video bg-amber-50 rounded-2xl overflow-hidden mb-6 shadow-inner border border-amber-100">
                 <img
                   src={feature.gif}
                   alt={`${feature.title} preview`}
@@ -108,15 +108,15 @@ const CommunitySection: React.FC = () => {
               </div>
 
               {/* Description */}
-              <p className="text-gray-600 leading-relaxed mb-6">{feature.description}</p>
+              <p className="text-amber-800 leading-relaxed mb-6">{feature.description}</p>
 
               {/* Action Button */}
               <button
                 className={`w-full bg-gradient-to-r ${feature.color} text-white py-3 px-6 rounded-full font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105`}
               >
-                {feature.title === "Study Groups" && "Join a Group"}
-                {feature.title === "Global Leaderboards" && "View Rankings"}
-                {feature.title === "Achievement Gallery" && "Browse Achievements"}
+                {feature.title === "Garden Circles" && "Join a Circle"}
+                {feature.title === "Flourish Rankings" && "View Gardens"}
+                {feature.title === "Growth Milestones" && "Browse Achievements"}
               </button>
             </div>
           ))}
