@@ -1,5 +1,4 @@
 import React, { ReactNode } from "react";
-import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../constants";
 
 interface BaseModalProps {
   isVisible: boolean;
@@ -37,80 +36,40 @@ export default function BaseModal({
   if (!isVisible) return null;
 
   // Determine positioning based on constrainToCanvas prop
-  const overlayStyle = constrainToCanvas
-    ? {
-        position: "absolute" as const,
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        backgroundColor: "rgba(0, 0, 0, 0.3)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex,
-      }
-    : {
-        position: "fixed" as const,
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        backgroundColor: "rgba(0, 0, 0, 0.3)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex,
-      };
+  const overlayClasses = constrainToCanvas
+    ? "absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center"
+    : "fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center";
 
   // Set default dimensions for canvas-constrained modals
   const modalWidth = constrainToCanvas ? "50%" : width;
   const modalMaxHeight = constrainToCanvas ? "50%" : maxHeight;
 
   return (
-    <div style={overlayStyle} onClick={onClose}>
+    <div 
+      className={overlayClasses}
+      style={{ zIndex }}
+      onClick={onClose}
+    >
       <div
+        className={`bg-[#fdf4e8] border-3 border-[#a0622d] rounded-lg flex flex-col overflow-hidden ${className}`}
         style={{
-          backgroundColor: PANELFILL,
-          border: `3px solid ${BORDERLINE}`,
-          borderRadius: "8px",
           width: modalWidth,
           maxHeight: modalMaxHeight,
           height: constrainToCanvas ? "50%" : "auto",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
         }}
-        className={className}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         {showHeader && (
-          <div
-            style={{
-              backgroundColor: BORDERFILL,
-              borderBottom: `2px solid ${BORDERLINE}`,
-              padding: "15px 20px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div className="bg-[#e4be93ff] border-b-2 border-[#a0622d] px-5 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
               {icon && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    fontSize: "18px",
-                    color: FONTCOLOR,
-                  }}
-                >
+                <div className="flex items-center text-lg text-[#2c1810]">
                   {icon}
                 </div>
               )}
               {title && (
-                <h2 style={{ color: FONTCOLOR, margin: 0, fontSize: "18px", fontWeight: "bold" }}>
+                <h2 className="text-[#2c1810] m-0 text-lg font-bold">
                   {title}
                 </h2>
               )}
@@ -119,16 +78,7 @@ export default function BaseModal({
             {showCloseButton && (
               <button
                 onClick={onClose}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: FONTCOLOR,
-                  fontSize: "20px",
-                  cursor: "pointer",
-                  padding: "5px",
-                  borderRadius: "4px",
-                  backgroundColor: BORDERLINE,
-                }}
+                className="bg-none border-none text-[#2c1810] text-xl cursor-pointer p-1 rounded bg-[#a0622d] hover:bg-[#8a5425] transition-colors"
               >
                 ✕
               </button>
@@ -137,24 +87,13 @@ export default function BaseModal({
         )}
 
         {/* Content */}
-        <div
-          style={{
-            flex: 1,
-            overflow: "auto",
-          }}
-        >
+        <div className="flex-1 overflow-auto">
           {children}
         </div>
 
         {/* Footer */}
         {footerContent && (
-          <div
-            style={{
-              borderTop: `2px solid ${BORDERLINE}`,
-              padding: "15px 20px",
-              backgroundColor: BORDERFILL,
-            }}
-          >
+          <div className="border-t-2 border-[#a0622d] px-5 py-4 bg-[#e4be93ff]">
             {footerContent}
           </div>
         )}

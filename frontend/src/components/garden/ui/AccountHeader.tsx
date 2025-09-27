@@ -1,5 +1,4 @@
 import React from "react";
-import { FONTCOLOR, BORDERLINE, BORDERFILL } from "../../constants";
 
 interface AccountHeaderProps {
   username?: string;
@@ -11,22 +10,9 @@ export default function AccountHeader({
   accountBalance = 0,
 }: AccountHeaderProps) {
   return (
-    <div
-      style={{
-        width: "100%",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        padding: "15px",
-        backgroundColor: BORDERFILL,
-        border: `1px solid ${BORDERLINE}`,
-        borderRadius: "6px",
-        color: FONTCOLOR,
-        fontSize: "14px",
-      }}
-    >
-      <div style={{ fontWeight: "bold" }}>Welcome, {username}</div>
-      <div style={{ fontWeight: "bold" }}>Balance: {accountBalance.toLocaleString()} coins</div>
+    <div className="w-full flex justify-between items-center p-4 bg-[#e4be93ff] border border-[#a0622d] rounded text-[#2c1810] text-sm">
+      <div className="font-bold">Welcome, {username}</div>
+      <div className="font-bold">Balance: {accountBalance.toLocaleString()} coins</div>
     </div>
   );
 }

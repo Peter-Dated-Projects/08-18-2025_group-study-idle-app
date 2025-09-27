@@ -3,14 +3,7 @@ import { BaseModal } from "../../common";
 import {
   HeaderFont,
   BodyFont,
-  BORDERFILL,
   SETTINGS_HEADER,
-  PANELFILL,
-  BORDERLINE,
-  FONTCOLOR,
-  SECONDARY_TEXT,
-  ACCENT_COLOR,
-  HOVER_COLOR,
   googleSVG,
   notionSVG,
 } from "@/components/constants";
@@ -60,39 +53,13 @@ export default function GardenSettings() {
   // ---------------------------------------------------------------------- //
   // Settings Icon
   const settingsIcon = (
-    <div
-      style={{
-        position: "absolute",
-        bottom: "15px",
-        right: "15px",
-        zIndex: 100,
-      }}
-    >
+    <div className="absolute bottom-4 right-4 z-[100]">
       <button
         onClick={() => setSettingsActive(true)}
-        style={{
-          width: "50px",
-          height: "50px",
-          backgroundColor: BORDERFILL,
-          border: `3px solid ${BORDERLINE}`,
-          borderRadius: "8px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          fontSize: "20px",
-          color: FONTCOLOR,
-          transition: "all 0.2s ease",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = HOVER_COLOR;
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = BORDERFILL;
-        }}
+        className="w-12 h-12 bg-[#e4be93ff] border-3 border-[#a0622d] rounded-lg flex items-center justify-center cursor-pointer text-xl text-[#2c1810] transition-all duration-200 hover:bg-[#f5d9b8]"
         title="Settings"
       >
-        <i className="fi fi-ss-settings" style={{ transform: "translateY(2px)" }}></i>
+        <i className="fi fi-ss-settings translate-y-0.5"></i>
       </button>
     </div>
   );
@@ -108,7 +75,7 @@ export default function GardenSettings() {
         showHeader={false}
         constrainToCanvas={true}
       >
-        <div className="w-full h-full text-white" style={{ backgroundColor: BORDERFILL }}>
+        <div className="w-full h-full text-white bg-[#e4be93ff]">
           <img
             src={SETTINGS_HEADER}
             alt="Settings Header"
@@ -118,40 +85,16 @@ export default function GardenSettings() {
 
           <div className="px-6 w-full flex flex-col justify-center gap-3">
             <button
-              className="flex items-center justify-center py-4 px-5 rounded-lg transition-all duration-200 mb-2 w-full shadow-sm hover:shadow-md"
-              style={{
-                backgroundColor: "white",
-                fontFamily: HeaderFont,
-                color: FONTCOLOR,
-                border: `2px solid ${BORDERLINE}`,
-                fontSize: "1rem",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = HOVER_COLOR;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "white";
-              }}
+              className="flex items-center justify-center py-4 px-5 rounded-lg transition-all duration-200 mb-2 w-full shadow-sm hover:shadow-md bg-white text-[#2c1810] border-2 border-[#a0622d] text-base hover:bg-[#f5d9b8]"
+              style={{ fontFamily: HeaderFont }}
               onClick={handleLogout}
             >
               <span className="pr-2">{googleSVG}</span>
               <span>Sign out of Google</span>
             </button>
             <button
-              className="flex items-center justify-center py-4 px-5 rounded-lg transition-all duration-200 mb-4 w-full shadow-sm hover:shadow-md"
-              style={{
-                backgroundColor: "white",
-                fontFamily: HeaderFont,
-                color: FONTCOLOR,
-                border: `2px solid ${BORDERLINE}`,
-                fontSize: "1rem",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = HOVER_COLOR;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "white";
-              }}
+              className="flex items-center justify-center py-4 px-5 rounded-lg transition-all duration-200 mb-4 w-full shadow-sm hover:shadow-md bg-white text-[#2c1810] border-2 border-[#a0622d] text-base hover:bg-[#f5d9b8]"
+              style={{ fontFamily: HeaderFont }}
               onClick={() => handleNotionLogout()}
             >
               <span className="pr-2">{notionSVG}</span>
@@ -161,14 +104,8 @@ export default function GardenSettings() {
 
           <div className="px-6 w-full flex justify-center">
             <button
-              className="flex items-center gap-2 text-white py-3 px-6 rounded-lg w-full transition-all duration-200 justify-center shadow-sm hover:shadow-md"
-              style={{
-                backgroundColor: BORDERLINE,
-                fontFamily: HeaderFont,
-                fontSize: "1rem",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = FONTCOLOR)}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BORDERLINE)}
+              className="flex items-center gap-2 text-white py-3 px-6 rounded-lg w-full transition-all duration-200 justify-center shadow-sm hover:shadow-md bg-[#a0622d] hover:bg-[#2c1810] text-base"
+              style={{ fontFamily: HeaderFont }}
               onClick={() => setSettingsActive(false)}
             >
               <i className="fi fi-rr-cross-small text-sm"></i>
@@ -178,17 +115,16 @@ export default function GardenSettings() {
 
           <div className="absolute bottom-4 left-0 w-full flex justify-center text-xs opacity-60">
             <div
-              className="flex items-center gap-1"
-              style={{ color: SECONDARY_TEXT, fontFamily: BodyFont }}
+              className="flex items-center gap-1 text-[#7a6b57]"
+              style={{ fontFamily: BodyFont }}
             >
               <i className="fi fi-rr-heart text-xs"></i>
               <span>Icons by</span>
               <a
                 href="https://www.flaticon.com/uicons"
-                className="underline hover:no-underline transition-all"
+                className="underline hover:no-underline transition-all text-[#d4944a]"
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: ACCENT_COLOR }}
               >
                 Flaticon
               </a>

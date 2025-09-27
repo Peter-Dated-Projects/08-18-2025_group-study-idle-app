@@ -1,13 +1,4 @@
 import React, { useState, useEffect } from "react";
-import {
-  FONTCOLOR,
-  SECONDARY_TEXT,
-  ACCENT_COLOR,
-  PANELFILL,
-  BORDERLINE,
-  HeaderFont,
-  BodyFont,
-} from "../../constants";
 import { useSessionAuth } from "../../../hooks/useSessionAuth";
 import { useWebSocket } from "../../../hooks/useWebSocket";
 import { fetchUsersInfo, getDisplayName } from "../../../utils/userInfo";
@@ -56,98 +47,24 @@ export default function Lobby({
     return null;
   });
 
-  // Use prop values when provided, otherwise use local state
-  const lobbyState = onLobbyStateChange ? propLobbyState : localLobbyState;
-  const lobbyData = onLobbyDataChange ? propLobbyData : localLobbyData;
+  // Use prop values if provided, otherwise use local state
+  const lobbyState = propLobbyState !== "empty" ? propLobbyState : localLobbyState;
+  const lobbyData = propLobbyData !== null ? propLobbyData : localLobbyData;
 
-  // State change handlers that work with both prop-driven and local state
-  const setLobbyState = (newState: LobbyState) => {
+  const setLobbyState = (state: LobbyState) => {
     if (onLobbyStateChange) {
-      onLobbyStateChange(newState);
+      onLobbyStateChange(state);
     } else {
-      setLocalLobbyState(newState);
-    }
-  };
-
-  const setLobbyData = (
-    newData: LobbyData | null | ((prev: LobbyData | null) => LobbyData | null)
-  ) => {
-    if (onLobbyDataChange) {
-      if (typeof newData === "function") {
-        const updatedData = newData(propLobbyData);
-        onLobbyDataChange(updatedData);
-      } else {
-        onLobbyDataChange(newData);
-      }
-    } else {
-      if (typeof newData === "function") {
-        setLocalLobbyData(newData);
-      } else {
-        setLocalLobbyData(newData);
-      }
-    }
-  };
-
-  const [joinCode, setJoinCode] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  // User information mapping
-  const [usersInfo, setUsersInfo] = useState<Record<string, UserInfo>>({});
-
-  // Authentication
-  const { user, isLoading: authLoading, isAuthenticated } = useSessionAuth();
-
-  // WebSocket connection for real-time updates
-  const { isConnected, connectionCount, connectionError, onLobbyEvent, clearConnectionError } =
-    useWebSocket();
-
-  // Helper function to get display name for a user
-  const getDisplayNameForUser = (userId: string): string => {
-    // If this is the current user, use session data directly
-    if (user && userId === user.userId) {
-      return user.userName || user.userEmail.split("@")[0];
-    }
-
-    // For other users, try API data first, then fall back to user ID
-    const userInfo = usersInfo[userId];
-    if (userInfo) {
-      if (userInfo.display_name) {
-        return userInfo.display_name;
-      } else if (userInfo.email) {
-        return userInfo.email.split("@")[0];
-      }
-    }
-
-    // Final fallback: create a readable name from user ID
-    // If userId looks like an email, use the part before @
-    if (userId.includes("@")) {
-      return userId.split("@")[0];
-    }
-
-    // Otherwise, show a truncated version of the user ID
-    return userId.length > 12 ? `User ${userId.slice(-8)}` : `User ${userId}`;
-  };
-
-  // Initialize connection in background without blocking UI
-  useEffect(() => {
-    // Connection happens automatically via useWebSocket hook
-    // No need to show connection status to user unless there's an issue
-  }, []);
-
-  // Log WebSocket connection status changes (for debugging only)
-  useEffect(() => {
-    console.log("🔌 Lobby: WebSocket connection status", {
-      isConnected,
-      connectionCount,
-      user_id: user?.userId,
-    });
-  }, [isConnected, connectionCount, user?.userId]);
-
-  // Helper functions to manage localStorage persistence
-  const saveLobbyData = (state: LobbyState, data: LobbyData | null) => {
-    if (typeof window !== "undefined") {
+      setLocalLobbyState(state);
       localStorage.setItem(LOBBY_STATE_STORAGE_KEY, state);
+    }
+  };
+
+  const setLobbyData = (data: LobbyData | null) => {
+    if (onLobbyDataChange) {
+      onLobbyDataChange(data);
+    } else {
+      setLocalLobbyData(data);
       if (data) {
         localStorage.setItem(LOBBY_STORAGE_KEY, JSON.stringify(data));
       } else {
@@ -156,281 +73,38 @@ export default function Lobby({
     }
   };
 
-  const clearLobbyData = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(LOBBY_STATE_STORAGE_KEY);
-      localStorage.removeItem(LOBBY_STORAGE_KEY);
-    }
-  };
+  const { isAuthenticated, isLoading: authLoading } = useSessionAuth();
+  const { sendMessage, isConnected } = useWebSocket();
+  const [joinCode, setJoinCode] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<UserInfo[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
 
-  // Update localStorage whenever lobbyState or lobbyData changes
+  // Load users when lobby data changes
   useEffect(() => {
-    saveLobbyData(lobbyState, lobbyData);
-  }, [lobbyState, lobbyData]);
-
-  // Fetch user information when lobby users change (non-critical)
-  useEffect(() => {
-    if (lobbyData?.users && lobbyData.users.length > 0) {
-      console.log("🔍 Lobby: Attempting to fetch user info for users:", lobbyData.users);
+    if (lobbyData && lobbyData.users.length > 0) {
+      setUsersLoading(true);
       fetchUsersInfo(lobbyData.users)
-        .then((response) => {
-          if (response.success) {
-            console.log("✅ Lobby: Successfully fetched user info:", response.users);
-            setUsersInfo(response.users);
-          } else {
-            console.log("⚠️ Lobby: User info fetch unsuccessful, using fallbacks");
-          }
+        .then((userInfos) => {
+          setUsers(userInfos);
         })
         .catch((error) => {
-          console.log("⚠️ Lobby: Failed to fetch user info, using fallbacks:", error.message);
-          // Don't show error to user - we have fallbacks
+          console.error("Error fetching user info:", error);
+          setUsers([]);
+        })
+        .finally(() => {
+          setUsersLoading(false);
         });
+    } else {
+      setUsers([]);
     }
-  }, [lobbyData?.users]);
+  }, [lobbyData]);
 
-  // Handle real-time lobby events from WebSocket
-  useEffect(() => {
-    if (!lobbyData || !user?.userId) return;
-
-    const cleanup = onLobbyEvent((event) => {
-      console.log("🏠 Lobby: Received event", {
-        action: event.action,
-        lobby_code: event.lobby_code,
-        user_id: event.user_id,
-        users: event.users,
-        current_lobby: lobbyData?.code,
-        current_user: user?.userId,
-      });
-
-      // Only process events for our current lobby
-      if (event.lobby_code !== lobbyData.code) {
-        console.log("🏠 Lobby: Ignoring event for different lobby", {
-          event_lobby: event.lobby_code,
-          current_lobby: lobbyData.code,
-        });
-        return;
-      }
-
-      switch (event.action) {
-        case "join":
-          if (event.user_id !== user.userId) {
-            console.log("🏠 Lobby: Another user joined", event.user_id);
-            // Another user joined
-            setLobbyData((prevData) => {
-              if (!prevData) return prevData;
-              return {
-                ...prevData,
-                users: event.users,
-              };
-            });
-          } else {
-            console.log("🏠 Lobby: We joined the lobby");
-          }
-          break;
-
-        case "leave":
-          if (event.user_id !== user.userId) {
-            console.log("🏠 Lobby: Another user left", event.user_id);
-            // Another user left
-            setLobbyData((prevData) => {
-              if (!prevData) return prevData;
-              return {
-                ...prevData,
-                users: event.users,
-              };
-            });
-          } else {
-            console.log("🏠 Lobby: We left the lobby");
-          }
-          break;
-
-        case "disband":
-          console.log("🏠 Lobby: Lobby was disbanded", {
-            disbanded_by: event.user_id,
-            current_user: user.userId,
-            is_host: event.user_id === user.userId,
-          });
-          // Lobby was disbanded by host
-          if (event.user_id !== user.userId) {
-            // Show notification that lobby was disbanded
-            setError("Lobby was disbanded by the host");
-            console.log("🏠 Lobby: Showing disband notification to non-host user");
-          } else {
-            console.log("🏠 Lobby: Host disbanded their own lobby");
-          }
-          setLobbyData(null);
-          setLobbyState("empty");
-          clearLobbyData();
-          break;
-
-        default:
-          console.warn("🏠 Lobby: Unknown event action", event.action);
-      }
-    });
-
-    return cleanup;
-  }, [lobbyData, user?.userId, onLobbyEvent]);
-
-  // Validate lobby on component mount/refresh (for non-hosts)
-  // This runs in background without blocking UI
-  useEffect(() => {
-    const validateLobby = async () => {
-      if (!lobbyData || !user?.userId || !isAuthenticated) return;
-
-      // Only validate for non-hosts
-      if (lobbyState === "hosting" || lobbyData.host === user.userId) return;
-
-      console.log("🔍 Lobby: Background validation for non-host user...");
-
-      try {
-        const response = await fetch(`/api/hosting/status?lobby_id=${lobbyData.code}`, {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          // Network error or server error - show error but don't immediately clear data
-          console.log("🔍 Lobby: Validation failed due to network/server error");
-          setError("Unable to verify lobby status. Please check your connection.");
-          return;
-        }
-
-        const statusData = await response.json();
-
-        // Check if lobby exists and user is still a member
-        if (!statusData.lobby_exists || !statusData.is_member) {
-          console.log("🔍 Lobby: Validation failed - lobby doesn't exist or user not a member");
-          setError("The lobby you were in is no longer available");
-          setLobbyData(null);
-          setLobbyState("empty");
-          clearLobbyData();
-          return;
-        }
-
-        // Update lobby data with current state from server
-        if (statusData.success) {
-          console.log("🔍 Lobby: Validation successful, updating local data");
-          setLobbyData({
-            code: statusData.code,
-            host: statusData.host,
-            users: statusData.users,
-            createdAt: statusData.createdAt,
-          });
-
-          // Update lobby state based on current role
-          if (statusData.is_host) {
-            setLobbyState("hosting");
-          } else {
-            setLobbyState("joined");
-          }
-
-          // Clear any previous errors
-          setError("");
-        }
-      } catch (err) {
-        console.error("🔍 Lobby: Error during background validation:", err);
-        setError("Unable to verify lobby status. Some features may not work properly.");
-        // Don't clear data on network errors, user can retry
-      }
-    };
-
-    // Run validation in background after a short delay to let UI render first
-    if (!authLoading && lobbyData) {
-      const timeoutId = setTimeout(() => {
-        validateLobby();
-      }, 100); // 100ms delay to ensure UI renders first
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [authLoading, isAuthenticated, user?.userId]); // Only depend on auth state, not lobbyData to avoid loops
-
-  // Cleanup on component unmount or when user leaves
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (lobbyState === "hosting" && lobbyData) {
-        closeLobby();
-      }
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-      // Don't close lobby on component unmount - only on actual page/browser close
-    };
-  }, [lobbyState, lobbyData]);
-
-  // Lobby health check system - detect dead/killed lobbies
-  useEffect(() => {
-    if (!lobbyData || lobbyState === "empty") return;
-
-    let healthCheckInterval: NodeJS.Timeout;
-    let consecutiveFailures = 0;
-    const maxFailures = 3; // Allow 3 consecutive failures before considering lobby dead
-    const healthCheckDelay = 30000; // Check every 30 seconds
-
-    const checkLobbyHealth = async () => {
-      try {
-        console.log("🩺 Lobby: Performing health check for lobby", lobbyData.code);
-
-        const response = await fetch(`/api/hosting/lobby/${lobbyData.code}/health`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          signal: AbortSignal.timeout(5000), // 5 second timeout
-        });
-
-        if (response.ok) {
-          consecutiveFailures = 0;
-          console.log("🩺 Lobby: Health check passed");
-        } else if (response.status === 404 || response.status === 410) {
-          console.log("🩺 Lobby: Health check indicates lobby has been killed");
-          setError("Lobby has been closed or no longer exists");
-          setLobbyData(null);
-          setLobbyState("empty");
-          clearLobbyData();
-          return; // Stop health checks
-        } else {
-          consecutiveFailures++;
-          console.warn(`🩺 Lobby: Health check failed (${consecutiveFailures}/${maxFailures})`);
-        }
-      } catch (err) {
-        consecutiveFailures++;
-        console.warn(`🩺 Lobby: Health check error (${consecutiveFailures}/${maxFailures}):`, err);
-      }
-
-      // If too many consecutive failures, assume lobby is dead
-      if (consecutiveFailures >= maxFailures) {
-        console.log("🩺 Lobby: Too many health check failures, assuming lobby is dead");
-        setError("Lobby connection lost - returning to main page");
-        setLobbyData(null);
-        setLobbyState("empty");
-        clearLobbyData();
-      }
-    };
-
-    // Start health checks after initial delay
-    const initialDelay = setTimeout(() => {
-      healthCheckInterval = setInterval(checkLobbyHealth, healthCheckDelay);
-    }, healthCheckDelay);
-
-    return () => {
-      clearTimeout(initialDelay);
-      if (healthCheckInterval) {
-        clearInterval(healthCheckInterval);
-      }
-    };
-  }, [lobbyData, lobbyState]);
-
+  // Create lobby
   const createLobby = async () => {
-    console.log("🏗️ Lobby: Creating lobby", { user_id: user?.userId, isAuthenticated });
-
-    if (!isAuthenticated || !user) {
-      console.log("🏗️ Lobby: Not authenticated, redirecting to login");
+    if (!isAuthenticated) {
       setError("Please log in to create a lobby");
-      // Redirect to login
-      window.location.href = "/login";
       return;
     }
 
@@ -438,335 +112,107 @@ export default function Lobby({
     setError("");
 
     try {
-      console.log("🏗️ Lobby: Sending create request to backend");
-      const response = await fetch(`/api/hosting/create`, {
+      const response = await fetch("/api/lobbies/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include", // Include cookies for session
-        body: JSON.stringify({
-          user_id: user.userId, // Include user_id in request body
-        }),
+        credentials: "include",
       });
 
-      console.log("🏗️ Lobby: Create response", { status: response.status });
+      const data = await response.json();
 
-      if (response.status === 200) {
-        const data = await response.json();
-        console.log("🏗️ Lobby: Successfully created lobby", data);
-        setLobbyData(data);
+      if (data.success) {
+        setLobbyData(data.lobby);
         setLobbyState("hosting");
       } else {
-        // Extract error message from backend response
-        try {
-          const errorData = await response.json();
-          console.log("🏗️ Lobby: Create failed with error", errorData);
-          setError(
-            errorData.detail || errorData.message || "Failed to create lobby. Please try again."
-          );
-        } catch {
-          console.log("🏗️ Lobby: Create failed with unknown error");
-          setError("Failed to create lobby. Please try again.");
-        }
+        setError(data.message || "Failed to create lobby");
       }
-    } catch (err) {
-      console.error("🏗️ Lobby: Network error creating lobby", err);
-      setError(
-        `Network error: ${err instanceof Error ? err.message : "Please check your connection."}`
-      );
+    } catch (error) {
+      console.error("Error creating lobby:", error);
+      setError("Failed to create lobby");
     } finally {
       setLoading(false);
     }
   };
 
+  // Join lobby
   const joinLobby = async () => {
-    console.log("🚪 Lobby: Joining lobby", {
-      joinCode: joinCode.trim(),
-      user_id: user?.userId,
-      isAuthenticated,
-    });
+    if (!isAuthenticated) {
+      setError("Please log in to join a lobby");
+      return;
+    }
 
     if (!joinCode.trim()) {
-      console.log("🚪 Lobby: No join code provided");
       setError("Please enter a lobby code");
       return;
     }
 
-    if (!isAuthenticated || !user) {
-      console.log("🚪 Lobby: Not authenticated, redirecting to login");
-      setError("Please log in to join a lobby");
-      // Redirect to login
-      window.location.href = "/login";
-      return;
-    }
-
     setLoading(true);
     setError("");
 
     try {
-      console.log("🚪 Lobby: Sending join request to backend");
-      const response = await fetch(`/api/hosting/join`, {
+      const response = await fetch("/api/lobbies/join", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include", // Include cookies for session
-        body: JSON.stringify({
-          user_id: user.userId,
-          lobby_id: joinCode.trim(),
-        }),
-      });
-
-      console.log("🚪 Lobby: Join response", { status: response.status });
-
-      if (response.status === 200) {
-        const data = await response.json();
-        console.log("🚪 Lobby: Successfully joined lobby", data);
-        setLobbyData(data);
-        setLobbyState("joined");
-      } else {
-        // Extract error message from backend response
-        try {
-          const errorData = await response.json();
-          console.log("🚪 Lobby: Join failed with error", errorData);
-          setError(
-            errorData.detail ||
-              errorData.message ||
-              "Failed to join lobby. Please check the code and try again."
-          );
-        } catch {
-          console.log("🚪 Lobby: Join failed with unknown error");
-          setError("Failed to join lobby. Please check the code and try again.");
-        }
-      }
-    } catch (err) {
-      console.error("🚪 Lobby: Network error joining lobby", err);
-      setError(
-        `Network error: ${err instanceof Error ? err.message : "Please check your connection."}`
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const closeLobby = async () => {
-    console.log("🔒 Lobby: Closing lobby", {
-      lobby_code: lobbyData?.code,
-      user_id: user?.userId,
-    });
-
-    if (!lobbyData) return;
-
-    console.log("🔒 Lobby: Current lobbyData:", lobbyData);
-
-    if (!user?.userId) {
-      console.error("🔒 Lobby: Cannot close lobby - user ID not available");
-      return;
-    }
-
-    if (!lobbyData.code) {
-      console.error("🔒 Lobby: Cannot close lobby - lobby code not available", lobbyData);
-      return;
-    }
-
-    try {
-      const requestBody = {
-        user_id: user.userId,
-        code: lobbyData.code,
-      };
-      console.log("🔒 Lobby: Sending close request", requestBody);
-
-      // Add timeout to detect killed lobbies
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        controller.abort();
-      }, 10000); // 10 second timeout
-
-      const response = await fetch(`/api/hosting/end`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // Include cookies for session
-        body: JSON.stringify(requestBody),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-      console.log("🔒 Lobby: Close response", { status: response.status });
-
-      if (!response.ok) {
-        try {
-          const errorData = await response.json();
-          const errorMessage = errorData.detail || errorData.message || "Failed to close lobby";
-          console.error("🔒 Lobby: Close failed with error", response.status, errorMessage);
-
-          // If lobby has been killed/deleted on server, free the user and return to main page
-          if (response.status === 404 || response.status === 410) {
-            console.log(
-              "🔒 Lobby: Lobby appears to have been killed, freeing user and returning to main page"
-            );
-            setError("Lobby has been closed or no longer exists");
-            // Fall through to clear lobby data and return user to main page
-          } else {
-            // For other errors, don't clear lobby data - let user try again
-            setError(`Failed to close lobby: ${errorMessage}`);
-            return;
-          }
-        } catch {
-          console.error("🔒 Lobby: Close failed with unknown error", response.status);
-
-          // For server errors that might indicate lobby was killed, free the user
-          if (response.status >= 500) {
-            console.log("🔒 Lobby: Server error suggests lobby may have been killed, freeing user");
-            setError("Server error - returning to lobby main page");
-            // Fall through to clear lobby data
-          } else {
-            setError("Failed to close lobby - please try again");
-            return;
-          }
-        }
-      } else {
-        console.log("🔒 Lobby: Successfully closed lobby");
-      }
-    } catch (err) {
-      console.error("🔒 Lobby: Network error closing lobby", err);
-
-      // Check if this was a timeout (AbortError)
-      if (err instanceof Error && err.name === "AbortError") {
-        console.log("🔒 Lobby: Close request timed out, lobby may have been killed, freeing user");
-        setError("Close request timed out - returning to lobby main page");
-      } else {
-        // Other network errors might indicate the server/lobby is down
-        console.log("🔒 Lobby: Network error suggests lobby may be unreachable, freeing user");
-        setError("Network error - returning to lobby main page");
-      }
-      // Fall through to clear lobby data
-    }
-
-    setLobbyData(null);
-    setLobbyState("empty");
-    clearLobbyData(); // Clear persisted data
-  };
-
-  const leaveLobby = async () => {
-    console.log("🚪🔙 Lobby: Leaving lobby", {
-      lobby_code: lobbyData?.code,
-      user_id: user?.userId,
-      isAuthenticated,
-    });
-
-    if (!isAuthenticated || !user || !lobbyData) {
-      console.log("🚪🔙 Lobby: Cannot leave - missing authentication or lobby data");
-      setError("Cannot leave lobby - not authenticated or no lobby data");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      console.log("🚪🔙 Lobby: Sending leave request to backend");
-      const response = await fetch("/api/hosting/leave", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: user.userId,
-          lobby_id: lobbyData.code,
-        }),
+        credentials: "include",
+        body: JSON.stringify({ code: joinCode.trim() }),
       });
 
       const data = await response.json();
-      console.log("🚪🔙 Lobby: Leave response", { status: response.status, data });
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to leave lobby");
-      }
 
       if (data.success) {
-        console.log("🚪🔙 Lobby: Successfully left lobby");
-        // Successfully left lobby - clear local state
-        setLobbyData(null);
-        setLobbyState("empty");
+        setLobbyData(data.lobby);
+        setLobbyState("joined");
         setJoinCode("");
-        setError("");
-        clearLobbyData(); // Clear persisted data
       } else {
-        throw new Error(data.message || "Failed to leave lobby");
+        setError(data.message || "Failed to join lobby");
       }
-    } catch (err: unknown) {
-      console.error("🚪🔙 Lobby: Error leaving lobby", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to leave lobby";
-      setError(errorMessage);
-
-      // For certain errors, still clear local state
-      if (errorMessage?.includes("not found") || errorMessage?.includes("not in lobby")) {
-        console.log("🚪🔙 Lobby: Clearing local state due to lobby not found");
-        setLobbyData(null);
-        setLobbyState("empty");
-        setJoinCode("");
-        clearLobbyData();
-      }
+    } catch (error) {
+      console.error("Error joining lobby:", error);
+      setError("Failed to join lobby");
     } finally {
       setLoading(false);
     }
   };
 
-  const refreshLobby = async () => {
-    if (!lobbyData || !user?.userId) return;
+  // Leave lobby
+  const leaveLobby = async () => {
+    if (!lobbyData) return;
 
     setLoading(true);
     setError("");
 
     try {
-      const response = await fetch(`/api/hosting/status?lobby_id=${lobbyData.code}`, {
-        method: "GET",
+      const response = await fetch("/api/lobbies/leave", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         credentials: "include",
+        body: JSON.stringify({ code: lobbyData.code }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || errorData.message || "Failed to refresh lobby");
-      }
+      const data = await response.json();
 
-      const statusData = await response.json();
-
-      // Check if lobby exists and user is still a member
-      if (!statusData.lobby_exists || !statusData.is_member) {
-        setError("You are no longer a member of this lobby");
+      if (data.success) {
         setLobbyData(null);
         setLobbyState("empty");
-        clearLobbyData();
-        return;
-      }
-
-      // Update lobby data with current state from server
-      setLobbyData({
-        code: statusData.code,
-        host: statusData.host,
-        users: statusData.users,
-        createdAt: statusData.createdAt,
-      });
-
-      // Update lobby state based on current role
-      if (statusData.is_host) {
-        setLobbyState("hosting");
       } else {
-        setLobbyState("joined");
+        setError(data.message || "Failed to leave lobby");
       }
-    } catch (err: unknown) {
-      console.error("Refresh lobby error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to refresh lobby";
-      setError(errorMessage);
+    } catch (error) {
+      console.error("Error leaving lobby:", error);
+      setError("Failed to leave lobby");
     } finally {
       setLoading(false);
     }
   };
 
-  const goBackToEmpty = () => {
+  // Go back to empty state
+  const goBack = () => {
     // Simply go back to empty state without making any server requests
     // This is used when backing out of the "join" state where no lobby has been joined yet
     setLobbyState("empty");
@@ -777,68 +223,15 @@ export default function Lobby({
   // Show login prompt only if definitely not authenticated (not during loading)
   if (!authLoading && !isAuthenticated) {
     return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          padding: "20px",
-          backgroundColor: PANELFILL,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-            alignItems: "center",
-            textAlign: "center",
-          }}
-        >
-          <h3
-            style={{
-              fontFamily: HeaderFont,
-              color: FONTCOLOR,
-              fontSize: "1.5rem",
-              marginBottom: "8px",
-            }}
-          >
-            Authentication Required
-          </h3>
-          <p
-            style={{
-              fontFamily: BodyFont,
-              color: SECONDARY_TEXT,
-              fontSize: "0.9rem",
-              marginBottom: "20px",
-            }}
-          >
+      <div className="flex flex-col items-center justify-center h-full p-5 bg-[#fdf4e8]">
+        <div className="flex flex-col gap-4 items-center text-center">
+          <h3 className="font-falling-sky text-[#2c1810] text-2xl mb-2">Authentication Required</h3>
+          <p className="text-[#7a6b57] text-sm mb-5">
             Please log in to create or join study lobbies
           </p>
           <button
             onClick={() => (window.location.href = "/login")}
-            style={{
-              backgroundColor: ACCENT_COLOR,
-              color: "white",
-              border: "none",
-              padding: "12px 24px",
-              borderRadius: "8px",
-              fontFamily: BodyFont,
-              fontSize: "1rem",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              minWidth: "200px",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-1px)";
-              e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "none";
-            }}
+            className="bg-[#d4944a] text-white border-none px-6 py-3 rounded-lg text-base cursor-pointer transition-all duration-200 min-w-[200px] hover:-translate-y-0.5 hover:shadow-lg"
           >
             Go to Login
           </button>
@@ -850,126 +243,27 @@ export default function Lobby({
   // Empty State
   if (lobbyState === "empty") {
     return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          padding: "20px",
-          backgroundColor: PANELFILL,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ textAlign: "center", marginBottom: "20px" }}>
-            <h3
-              style={{
-                fontFamily: HeaderFont,
-                color: FONTCOLOR,
-                fontSize: "1.5rem",
-                marginBottom: "8px",
-              }}
+      <div className="flex flex-col items-center justify-center h-full p-5 bg-[#fdf4e8]">
+        <div className="flex flex-col gap-4 items-center">
+          <h3 className="font-falling-sky text-[#2c1810] text-xl mb-2">Study Lobby</h3>
+          <p className="text-[#7a6b57] text-sm text-center mb-4">
+            Create a lobby to study with friends or join an existing one
+          </p>
+          <div className="flex flex-col gap-3 w-full max-w-xs">
+            <button
+              onClick={createLobby}
+              disabled={loading}
+              className="bg-[#5cb370] text-white border-none px-4 py-2 rounded text-sm font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4a9c5a]"
             >
-              Study Together
-            </h3>
-            <p
-              style={{
-                fontFamily: BodyFont,
-                color: SECONDARY_TEXT,
-                fontSize: "0.9rem",
-              }}
+              {loading ? "Creating..." : "Create Lobby"}
+            </button>
+            <button
+              onClick={() => setLobbyState("join")}
+              className="bg-[#d4944a] text-white border-none px-4 py-2 rounded text-sm font-bold cursor-pointer transition-colors hover:bg-[#c4843a]"
             >
-              Create or join a lobby to study with friends
-            </p>
+              Join Lobby
+            </button>
           </div>
-
-          <button
-            onClick={createLobby}
-            disabled={loading || authLoading}
-            style={{
-              backgroundColor: ACCENT_COLOR,
-              color: "white",
-              border: "none",
-              padding: "12px 24px",
-              borderRadius: "8px",
-              fontFamily: BodyFont,
-              fontSize: "1rem",
-              cursor: loading || authLoading ? "not-allowed" : "pointer",
-              opacity: loading || authLoading ? 0.6 : 1,
-              transition: "all 0.2s ease",
-              minWidth: "200px",
-            }}
-            onMouseEnter={(e) => {
-              if (!loading && !authLoading) {
-                e.currentTarget.style.transform = "translateY(-1px)";
-                e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.1)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
-              }
-            }}
-          >
-            {loading ? "Creating..." : authLoading ? "Loading..." : "Create Lobby"}
-          </button>
-
-          <button
-            onClick={() => setLobbyState("join")}
-            disabled={loading || authLoading}
-            style={{
-              backgroundColor: "transparent",
-              color: ACCENT_COLOR,
-              border: `2px solid ${ACCENT_COLOR}`,
-              padding: "12px 24px",
-              borderRadius: "8px",
-              fontFamily: BodyFont,
-              fontSize: "1rem",
-              cursor: loading || authLoading ? "not-allowed" : "pointer",
-              opacity: loading || authLoading ? 0.6 : 1,
-              transition: "all 0.2s ease",
-              minWidth: "200px",
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.currentTarget.style.backgroundColor = ACCENT_COLOR;
-                e.currentTarget.style.color = "white";
-                e.currentTarget.style.transform = "translateY(-1px)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) {
-                e.currentTarget.style.backgroundColor = "transparent";
-                e.currentTarget.style.color = ACCENT_COLOR;
-                e.currentTarget.style.transform = "translateY(0)";
-              }
-            }}
-          >
-            Join Lobby
-          </button>
-
-          {error && (
-            <p
-              style={{
-                color: "#ef4444",
-                fontFamily: BodyFont,
-                fontSize: "0.9rem",
-                textAlign: "center",
-                marginTop: "10px",
-              }}
-            >
-              {error}
-            </p>
-          )}
         </div>
       </div>
     );
@@ -978,431 +272,91 @@ export default function Lobby({
   // Join State
   if (lobbyState === "join") {
     return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          padding: "20px",
-          backgroundColor: PANELFILL,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-            alignItems: "center",
-            maxWidth: "300px",
-            width: "100%",
-          }}
-        >
-          <button
-            onClick={goBackToEmpty}
-            style={{
-              alignSelf: "flex-start",
-              backgroundColor: "transparent",
-              border: "none",
-              color: SECONDARY_TEXT,
-              fontFamily: BodyFont,
-              fontSize: "0.9rem",
-              cursor: "pointer",
-              padding: "4px",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = FONTCOLOR;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = SECONDARY_TEXT;
-            }}
-          >
-            <i className="fi fi-rr-arrow-left"></i>
-            Back
-          </button>
-
-          <div style={{ textAlign: "center", marginBottom: "20px" }}>
-            <h3
-              style={{
-                fontFamily: HeaderFont,
-                color: FONTCOLOR,
-                fontSize: "1.5rem",
-                marginBottom: "8px",
-              }}
-            >
-              Join Lobby
-            </h3>
-            <p
-              style={{
-                fontFamily: BodyFont,
-                color: SECONDARY_TEXT,
-                fontSize: "0.9rem",
-              }}
-            >
-              Enter the lobby code to join your study session
-            </p>
-          </div>
-
+      <div className="flex flex-col items-center justify-center h-full p-5 bg-[#fdf4e8]">
+        <div className="flex flex-col gap-4 items-center w-full max-w-xs">
+          <h3 className="font-falling-sky text-[#2c1810] text-xl mb-2">Join Lobby</h3>
+          <p className="text-[#7a6b57] text-sm text-center mb-4">Enter the lobby code to join</p>
           <input
             type="text"
             value={joinCode}
             onChange={(e) => setJoinCode(e.target.value)}
             placeholder="Enter lobby code"
-            style={{
-              width: "100%",
-              padding: "12px",
-              border: `2px solid ${BORDERLINE}`,
-              borderRadius: "8px",
-              fontFamily: BodyFont,
-              fontSize: "1rem",
-              backgroundColor: "white",
-              color: FONTCOLOR,
-              outline: "none",
-              transition: "border-color 0.2s ease",
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = ACCENT_COLOR;
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = BORDERLINE;
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !loading) {
+            className="w-full px-3 py-2 border-2 border-[#a0622d] rounded bg-white text-[#2c1810] text-sm outline-none focus:ring-2 focus:ring-[#a0622d] focus:ring-offset-2"
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
                 joinLobby();
               }
             }}
           />
-
-          <button
-            onClick={joinLobby}
-            disabled={loading || !joinCode.trim()}
-            style={{
-              backgroundColor: ACCENT_COLOR,
-              color: "white",
-              border: "none",
-              padding: "12px 24px",
-              borderRadius: "8px",
-              fontFamily: BodyFont,
-              fontSize: "1rem",
-              cursor: loading || !joinCode.trim() ? "not-allowed" : "pointer",
-              opacity: loading || !joinCode.trim() ? 0.6 : 1,
-              transition: "all 0.2s ease",
-              width: "100%",
-            }}
-            onMouseEnter={(e) => {
-              if (!loading && joinCode.trim()) {
-                e.currentTarget.style.transform = "translateY(-1px)";
-                e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.1)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading && joinCode.trim()) {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
-              }
-            }}
-          >
-            {loading ? "Joining..." : "Join Lobby"}
-          </button>
-
-          {error && (
-            <p
-              style={{
-                color: "#ef4444",
-                fontFamily: BodyFont,
-                fontSize: "0.9rem",
-                textAlign: "center",
-                marginTop: "10px",
-              }}
+          {error && <div className="text-red-600 text-sm text-center">{error}</div>}
+          <div className="flex gap-2 w-full">
+            <button
+              onClick={joinLobby}
+              disabled={loading || !joinCode.trim()}
+              className="flex-1 bg-[#5cb370] text-white border-none px-4 py-2 rounded text-sm font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4a9c5a]"
             >
-              {error}
-            </p>
-          )}
+              {loading ? "Joining..." : "Join"}
+            </button>
+            <button
+              onClick={goBack}
+              className="flex-1 bg-[#7a6b57] text-white border-none px-4 py-2 rounded text-sm font-bold cursor-pointer transition-colors hover:bg-[#6a5b47]"
+            >
+              Back
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   // Hosting or Joined State
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        backgroundColor: PANELFILL,
-        padding: "20px",
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px",
-          paddingBottom: "16px",
-          borderBottom: `2px solid ${BORDERLINE}`,
-        }}
-      >
-        <div>
-          <h3
-            style={{
-              fontFamily: HeaderFont,
-              color: FONTCOLOR,
-              fontSize: "1.5rem",
-              marginBottom: "4px",
-            }}
-          >
+  if (lobbyState === "hosting" || lobbyState === "joined") {
+    return (
+      <div className="flex flex-col h-full p-5 bg-[#fdf4e8]">
+        <div className="text-center mb-5">
+          <h3 className="font-falling-sky text-[#2c1810] text-xl mb-2">
             {lobbyState === "hosting" ? "Hosting Lobby" : "Joined Lobby"}
           </h3>
-          <p
-            style={{
-              fontFamily: BodyFont,
-              color: SECONDARY_TEXT,
-              fontSize: "0.9rem",
-            }}
-          >
-            Code: <span style={{ fontWeight: "bold", color: ACCENT_COLOR }}>{lobbyData?.code}</span>
+          <p className="text-[#7a6b57] text-sm">
+            Code: <span className="font-mono font-bold text-[#2c1810]">{lobbyData?.code}</span>
           </p>
-          {/* Connection status - show error or reconnecting status */}
-          {(connectionError || !isConnected) && (
-            <div style={{ marginTop: "8px" }}>
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}
-              >
+        </div>
+
+        <div className="flex-1 mb-4">
+          <h4 className="text-[#2c1810] text-sm font-bold mb-2">
+            Members ({lobbyData?.users.length || 0})
+          </h4>
+          {usersLoading ? (
+            <div className="text-[#7a6b57] text-sm text-center py-4">Loading members...</div>
+          ) : users.length === 0 ? (
+            <div className="text-[#7a6b57] text-sm text-center py-4">No members yet</div>
+          ) : (
+            <div className="space-y-2">
+              {users.map((user) => (
                 <div
-                  style={{
-                    width: "6px",
-                    height: "6px",
-                    borderRadius: "50%",
-                    backgroundColor: connectionError ? "#ef4444" : "#f59e0b",
-                  }}
-                />
-                <span
-                  style={{
-                    fontFamily: BodyFont,
-                    color: connectionError ? "#ef4444" : "#f59e0b",
-                    fontSize: "0.7rem",
-                  }}
+                  key={user.userId}
+                  className="flex items-center gap-2 p-2 bg-[#e4be93ff] border border-[#a0622d] rounded"
                 >
-                  {connectionError || "Reconnecting..."}
-                </span>
-              </div>
-              {connectionError && (
-                <button
-                  onClick={() => {
-                    clearConnectionError();
-                    window.location.reload();
-                  }}
-                  style={{
-                    backgroundColor: ACCENT_COLOR,
-                    color: "white",
-                    border: "none",
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                    fontFamily: BodyFont,
-                    fontSize: "0.7rem",
-                    cursor: "pointer",
-                    marginTop: "4px",
-                  }}
-                >
-                  Refresh Page
-                </button>
-              )}
+                  <div className="w-2 h-2 bg-[#5cb370] rounded-full"></div>
+                  <span className="text-[#2c1810] text-sm">{getDisplayName(user)}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>
 
-        {lobbyState === "hosting" ? (
-          <button
-            onClick={closeLobby}
-            style={{
-              backgroundColor: "#ef4444",
-              color: "white",
-              border: "none",
-              padding: "8px 16px",
-              borderRadius: "6px",
-              fontFamily: BodyFont,
-              fontSize: "0.9rem",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#dc2626";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#ef4444";
-            }}
-          >
-            Close Lobby
-          </button>
-        ) : (
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button
-              onClick={refreshLobby}
-              disabled={loading || authLoading}
-              style={{
-                backgroundColor: "transparent",
-                color: ACCENT_COLOR,
-                border: `1px solid ${ACCENT_COLOR}`,
-                padding: "8px 16px",
-                borderRadius: "6px",
-                fontFamily: BodyFont,
-                fontSize: "0.9rem",
-                cursor: loading || authLoading ? "not-allowed" : "pointer",
-                transition: "all 0.2s ease",
-                opacity: loading || authLoading ? 0.6 : 1,
-              }}
-              onMouseEnter={(e) => {
-                if (!loading && !authLoading) {
-                  e.currentTarget.style.backgroundColor = ACCENT_COLOR;
-                  e.currentTarget.style.color = "white";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.color = ACCENT_COLOR;
-                }
-              }}
-            >
-              {loading ? "Refreshing..." : "Refresh"}
-            </button>
-            <button
-              onClick={leaveLobby}
-              disabled={loading || authLoading}
-              style={{
-                backgroundColor: "transparent",
-                color: SECONDARY_TEXT,
-                border: `1px solid ${BORDERLINE}`,
-                padding: "8px 16px",
-                borderRadius: "6px",
-                fontFamily: BodyFont,
-                fontSize: "0.9rem",
-                cursor: loading || authLoading ? "not-allowed" : "pointer",
-                transition: "all 0.2s ease",
-                opacity: loading || authLoading ? 0.6 : 1,
-              }}
-              onMouseEnter={(e) => {
-                if (!loading && !authLoading) {
-                  e.currentTarget.style.backgroundColor = BORDERLINE;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                }
-              }}
-            >
-              Leave Lobby
-            </button>
-          </div>
-        )}
-      </div>
+        {error && <div className="text-red-600 text-sm text-center mb-4">{error}</div>}
 
-      {/* Online Users */}
-      <div style={{ flex: 1, overflow: "auto" }}>
-        <h4
-          style={{
-            fontFamily: HeaderFont,
-            color: FONTCOLOR,
-            fontSize: "1.1rem",
-            marginBottom: "12px",
-          }}
+        <button
+          onClick={leaveLobby}
+          disabled={loading}
+          className="w-full bg-[#c85a54] text-white border-none px-4 py-2 rounded text-sm font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#b84a44]"
         >
-          Online Users ({lobbyData?.users?.length || 0})
-        </h4>
-
-        {lobbyData?.users && lobbyData.users.length > 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {lobbyData.users.map((userId) => {
-              const displayName = getDisplayNameForUser(userId);
-
-              return (
-                <div
-                  key={userId}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "12px",
-                    backgroundColor: "white",
-                    borderRadius: "8px",
-                    border: `1px solid ${BORDERLINE}`,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: "#10b981",
-                    }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <p
-                      style={{
-                        fontFamily: BodyFont,
-                        color: FONTCOLOR,
-                        fontSize: "0.95rem",
-                        margin: 0,
-                      }}
-                    >
-                      {displayName}
-                      {lobbyData.host === userId && (
-                        <span
-                          style={{
-                            marginLeft: "8px",
-                            fontSize: "0.8rem",
-                            color: ACCENT_COLOR,
-                            fontWeight: "bold",
-                          }}
-                        >
-                          (Host)
-                        </span>
-                      )}
-                    </p>
-                    <p
-                      style={{
-                        fontFamily: BodyFont,
-                        color: SECONDARY_TEXT,
-                        fontSize: "0.8rem",
-                        margin: 0,
-                      }}
-                    >
-                      Online
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "40px 20px",
-              color: SECONDARY_TEXT,
-              fontFamily: BodyFont,
-            }}
-          >
-            <i
-              className="fi fi-rr-users"
-              style={{
-                fontSize: "3rem",
-                marginBottom: "16px",
-                display: "block",
-              }}
-            />
-            <p>Waiting for users to join...</p>
-          </div>
-        )}
+          {loading ? "Leaving..." : "Leave Lobby"}
+        </button>
       </div>
-    </div>
-  );
+    );
+  }
+
+  return null;
 }

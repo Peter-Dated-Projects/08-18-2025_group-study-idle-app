@@ -1,5 +1,4 @@
 import React from "react";
-import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 
 interface StorageItemProps {
   id: string;
@@ -13,80 +12,26 @@ export default function StorageItem({ id, image, name, count = 1, onClick }: Sto
   return (
     <div
       onClick={onClick}
-      style={{
-        width: "100%",
-        height: "100%",
-        aspectRatio: "1", // Ensures 1:1 aspect ratio
-        padding: "8px",
-        backgroundColor: BORDERFILL,
-        border: `2px solid ${BORDERLINE}`,
-        borderRadius: "6px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: onClick ? "pointer" : "default",
-        transition: "all 0.2s ease",
-        position: "relative",
-        boxSizing: "border-box",
-      }}
-      onMouseEnter={(e) => {
-        if (onClick) {
-          e.currentTarget.style.backgroundColor = PANELFILL;
-          e.currentTarget.style.borderColor = FONTCOLOR;
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (onClick) {
-          e.currentTarget.style.backgroundColor = BORDERFILL;
-          e.currentTarget.style.borderColor = BORDERLINE;
-        }
-      }}
+      className={`w-full h-full aspect-square p-2 bg-[#e4be93ff] border-2 border-[#a0622d] rounded flex flex-col items-center justify-center transition-all duration-200 relative box-border ${
+        onClick ? "cursor-pointer hover:bg-[#fdf4e8] hover:border-[#2c1810]" : "cursor-default"
+      }`}
     >
       {/* Item Image */}
       <div
+        className="w-2/5 aspect-square bg-contain bg-no-repeat bg-center mb-1"
         style={{
-          width: "40%",
-          aspectRatio: "1",
           backgroundImage: `url(${image})`,
-          backgroundSize: "contain",
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "center",
-          marginBottom: "5px",
         }}
       />
 
       {/* Item Name */}
-      <div
-        style={{
-          color: FONTCOLOR,
-          fontSize: "10px",
-          fontWeight: "bold",
-          textAlign: "center",
-          wordBreak: "break-word",
-          lineHeight: "1.1",
-        }}
-      >
+      <div className="text-[#2c1810] text-xs font-bold text-center break-words leading-tight">
         {name}
       </div>
 
       {/* Item Count (if > 1) */}
       {count > 1 && (
-        <div
-          style={{
-            position: "absolute",
-            top: "4px",
-            right: "4px",
-            backgroundColor: FONTCOLOR,
-            color: BORDERFILL,
-            fontSize: "10px",
-            fontWeight: "bold",
-            padding: "2px 6px",
-            borderRadius: "10px",
-            minWidth: "16px",
-            textAlign: "center",
-          }}
-        >
+        <div className="absolute top-1 right-1 bg-[#2c1810] text-[#e4be93ff] text-xs font-bold px-1.5 py-0.5 rounded-full min-w-4 text-center">
           {count}
         </div>
       )}

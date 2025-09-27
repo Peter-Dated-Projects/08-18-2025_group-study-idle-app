@@ -22,7 +22,6 @@ import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/store";
 import { initializePlotsFromConfig } from "@/store/slices/worldSlice";
 
-import { FONTCOLOR, BORDERFILL, BORDERLINE, PANELFILL } from "@/components/constants";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Structure } from "@/scripts/structures/Structure";
@@ -64,10 +63,10 @@ function GardenPageContent() {
   const { addNotification } = useGlobalNotification();
   const { isAuthenticated, isLoading, user, error } = useSessionAuth();
   const dispatch = useDispatch<AppDispatch>();
-  
+
   // Check subscription status for premium features
   const { isPaid: hasSubscription, isLoading: subscriptionLoading } = useSubscription();
-  
+
   // Enable visual world synchronization between Redux and PIXI
   useVisualWorldSync();
 
@@ -79,11 +78,11 @@ function GardenPageContent() {
     isLoading: reduxAuth.isLoading,
     error: reduxAuth.error,
   });
-  
+
   console.log("🔒 Subscription Status:", {
     hasSubscription,
     subscriptionLoading,
-    userId: user?.userId
+    userId: user?.userId,
   });
 
   const [isClicking, setIsClicking] = useState(false);
@@ -98,107 +97,59 @@ function GardenPageContent() {
     setShopOpenerRef(() => shopOpener);
   }, []);
 
-  const minPanelSplit = 40;
-  const maxPanelSplit = 70;
+  // Lobby state management
+  const [lobbyState, setLobbyState] = useState<LobbyState>("empty");
+  const [lobbyData, setLobbyData] = useState<LobbyData | null>(null);
+  const [isInLobby, setIsInLobby] = useState(false);
 
-  const [panelSplit, setPanelSplit] = useState(() => {
-    // Load saved panel split from localStorage, default to 50%
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("gardenPanelSplit");
-      if (saved) {
-        const savedValue = parseInt(saved, 10);
-        // Ensure saved value is within new constraints (40% - 80%)
-        return Math.max(minPanelSplit, Math.min(maxPanelSplit, savedValue));
-      }
-      return 50;
-    }
-    return 50;
-  });
+  // Panel split state for draggable divider
+  const [panelSplit, setPanelSplit] = useState(60); // Default 60% for tasks, 40% for tools
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
-  const [dragStartSplit, setDragStartSplit] = useState(50);
-
-  // Lobby state management - moved from Lobby component to be shared
-  const [lobbyState, setLobbyState] = useState<LobbyState>(() => {
-    if (typeof window !== "undefined") {
-      const savedState = localStorage.getItem("garden_lobby_state");
-      return (savedState as LobbyState) || "empty";
-    }
-    return "empty";
-  });
-
-  const [lobbyData, setLobbyData] = useState<LobbyData | null>(() => {
-    if (typeof window !== "undefined") {
-      const savedData = localStorage.getItem("garden_lobby_data");
-      return savedData ? JSON.parse(savedData) : null;
-    }
-    return null;
-  });
+  const [dragStartSplit, setDragStartSplit] = useState(0);
 
   const router = useRouter();
 
-  // Lobby helper functions
-  const saveLobbyData = (state: LobbyState, data: LobbyData | null) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("garden_lobby_state", state);
-      if (data) {
-        localStorage.setItem("garden_lobby_data", JSON.stringify(data));
-      } else {
-        localStorage.removeItem("garden_lobby_data");
-      }
-    }
-  };
-
-  const clearLobbyData = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("garden_lobby_state");
-      localStorage.removeItem("garden_lobby_data");
-    }
-  };
-
-  // Update localStorage whenever lobbyState or lobbyData changes
+  // Load panel split from localStorage
   useEffect(() => {
-    saveLobbyData(lobbyState, lobbyData);
-  }, [lobbyState, lobbyData]);
+    const savedSplit = localStorage.getItem("gardenPanelSplit");
+    if (savedSplit) {
+      setPanelSplit(parseInt(savedSplit));
+    }
+  }, []);
 
-  // Determine if user is in a lobby (hosting or joined)
-  const isInLobby = lobbyState === "hosting" || lobbyState === "joined";
-
-  // Handle panel resizing
+  // Handle drag start
   const handleDragStart = (e: React.MouseEvent) => {
     setIsDragging(true);
     setDragStartY(e.clientY);
     setDragStartSplit(panelSplit);
-    e.preventDefault();
   };
 
-  const handleDoubleClick = () => {
-    setPanelSplit(50); // Reset to default (within new constraints)
-    if (typeof window !== "undefined") {
-      localStorage.setItem("gardenPanelSplit", "50");
-    }
-  };
+  // Handle drag move
+  const handleDragMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging) return;
 
-  const handleDragMove = (e: MouseEvent) => {
-    if (!isDragging) return;
+      const containerHeight = window.innerHeight - 200; // Approximate container height
+      const deltaY = e.clientY - dragStartY;
+      const deltaPercent = (deltaY / containerHeight) * 100;
+      const newSplit = Math.max(20, Math.min(80, dragStartSplit + deltaPercent));
 
-    const containerHeight = window.innerHeight * 0.8; // Approximate container height
-    const deltaY = e.clientY - dragStartY;
-    const deltaPercentage = (deltaY / containerHeight) * 100;
+      setPanelSplit(newSplit);
+    },
+    [isDragging, dragStartY, dragStartSplit]
+  );
 
-    const newSplit = Math.max(
-      minPanelSplit,
-      Math.min(maxPanelSplit, dragStartSplit + deltaPercentage)
-    );
-    setPanelSplit(newSplit);
-  };
-
-  const handleDragEnd = () => {
+  // Handle drag end
+  const handleDragEnd = useCallback(() => {
     setIsDragging(false);
-    // Save the panel split to localStorage
-    if (typeof window !== "undefined") {
-      localStorage.setItem("gardenPanelSplit", panelSplit.toString());
-    }
+    localStorage.setItem("gardenPanelSplit", panelSplit.toString());
+  }, [panelSplit]);
+
+  // Handle double click to reset split
+  const handleDoubleClick = () => {
+    setPanelSplit(60);
+    localStorage.setItem("gardenPanelSplit", panelSplit.toString());
   };
 
   // Add global mouse event listeners for dragging
@@ -243,16 +194,7 @@ function GardenPageContent() {
   // Show loading while checking auth
   if (isLoading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100vh",
-          fontSize: "2rem",
-          color: "#333",
-        }}
-      >
+      <div className="flex items-center justify-center h-screen text-3xl text-gray-700">
         Loading garden...
       </div>
     );
@@ -261,16 +203,7 @@ function GardenPageContent() {
   // Don't render the garden if not properly authenticated
   if (!isAuthenticated || !user || !user.hasNotionTokens) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100vh",
-          fontSize: "2rem",
-          color: "#333",
-        }}
-      >
+      <div className="flex items-center justify-center h-screen text-3xl text-gray-700">
         Redirecting to login...
       </div>
     );
@@ -278,33 +211,21 @@ function GardenPageContent() {
 
   return (
     <main
-      className="flex flex-col min-h-screen w-full bg-black overflow-hidden"
+      className="flex flex-col min-h-screen w-full bg-[#e4be93ff] overflow-hidden border-5 border-[#a0622d] text-[#2c1810]"
       style={{
-        backgroundColor: BORDERFILL,
-        border: `5px solid ${BORDERLINE}`,
         cursor: isClicking
           ? `url("/ui/mouse_click.png") 0 0, auto`
           : `url("/ui/mouse_idle.png") 0 0, auto`,
-        color: FONTCOLOR,
-        textShadow: `1px 1px 1px ${BORDERFILL}`,
+        textShadow: `1px 1px 1px #e4be93ff`,
       }}
       onMouseDown={() => setIsClicking(true)}
       onMouseUp={() => setIsClicking(false)}
       onMouseLeave={() => setIsClicking(false)}
     >
       {/* <ReduxTest /> */}
-      <div className="w-full h-full" style={{ border: `8px solid ${BORDERFILL}` }}>
-        <div
-          className={`flex w-full h-full flex-1 gap-[10px]`}
-          style={{ border: `2px solid ${BORDERFILL}` }}
-        >
-          <div
-            className="w-7/10 flex-1"
-            style={{
-              border: `5px solid ${BORDERLINE}`,
-              position: "relative", // Add relative positioning here
-            }}
-          >
+      <div className="w-full h-full border-8 border-[#e4be93ff]">
+        <div className="flex w-full h-full flex-1 gap-[10px] border-2 border-[#e4be93ff]">
+          <div className="w-7/10 flex-1 border-5 border-[#a0622d] relative">
             <GardenCanvas
               onAppCreated={(app) => {
                 console.log("PIXI App created:", app);
@@ -326,18 +247,12 @@ function GardenPageContent() {
             <GardenIcons onShopModalOpen={handleShopModalOpen} />
           </div>
 
-          <div
-            className="w-3/10 flex flex-col h-full"
-            style={{ border: `5px solid ${BORDERLINE}`, backgroundColor: BORDERFILL }}
-          >
+          <div className="w-3/10 flex flex-col h-full border-5 border-[#a0622d] bg-[#e4be93ff]">
             <div
+              className="p-2.5 bg-[#fdf4e8] flex flex-col"
               style={{
                 height: isMinimized ? "calc(100% - 40px)" : `${panelSplit}%`,
                 minHeight: 100,
-                padding: "10px",
-                backgroundColor: PANELFILL,
-                display: "flex",
-                flexDirection: "column",
               }}
             >
               <GardenTasks />
@@ -346,40 +261,29 @@ function GardenPageContent() {
             {/* Draggable divider - only show when not minimized */}
             {!isMinimized && (
               <div
+                className="h-2.5 cursor-ns-resize relative flex items-center justify-center border-t-2 border-b-2 border-[#e4be93ff] transition-colors duration-200"
                 style={{
-                  height: "10px",
-                  backgroundColor: isDragging ? FONTCOLOR : BORDERLINE,
-                  cursor: "ns-resize",
-                  position: "relative",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderTop: `2px solid ${BORDERFILL}`,
-                  borderBottom: `2px solid ${BORDERFILL}`,
+                  backgroundColor: isDragging ? "#2c1810" : "#a0622d",
                   transition: isDragging ? "none" : "background-color 0.2s ease",
                 }}
                 onMouseDown={handleDragStart}
                 onDoubleClick={handleDoubleClick}
                 onMouseEnter={(e) => {
                   if (!isDragging) {
-                    e.currentTarget.style.backgroundColor = FONTCOLOR;
+                    e.currentTarget.style.backgroundColor = "#2c1810";
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!isDragging) {
-                    e.currentTarget.style.backgroundColor = BORDERLINE;
+                    e.currentTarget.style.backgroundColor = "#a0622d";
                   }
                 }}
               >
                 {/* Drag handle indicator */}
                 <div
+                  className="w-8 h-1 bg-[#e4be93ff] rounded opacity-80"
                   style={{
-                    width: "30px",
-                    height: "3px",
-                    backgroundColor: BORDERFILL,
-                    borderRadius: "2px",
-                    opacity: 0.8,
-                    boxShadow: isDragging ? `0 0 5px ${BORDERFILL}` : "none",
+                    boxShadow: isDragging ? `0 0 5px #e4be93ff` : "none",
                   }}
                 />
               </div>
@@ -387,12 +291,9 @@ function GardenPageContent() {
 
             {!isMinimized ? (
               <div
+                className="bg-[#fdf4e8] flex flex-col overflow-hidden"
                 style={{
                   height: `${100 - panelSplit}%`,
-                  backgroundColor: PANELFILL,
-                  display: "flex",
-                  flexDirection: "column",
-                  overflow: "hidden",
                 }}
               >
                 <MinimizableToolsPanel
@@ -407,13 +308,7 @@ function GardenPageContent() {
                 />
               </div>
             ) : (
-              <div
-                style={{
-                  height: "40px",
-                  backgroundColor: PANELFILL,
-                  borderTop: `5px solid ${BORDERLINE}`,
-                }}
-              >
+              <div className="h-10 bg-[#fdf4e8] border-t-5 border-[#a0622d]">
                 <MinimizableToolsPanel
                   isMinimized={isMinimized}
                   setIsMinimized={setIsMinimized}

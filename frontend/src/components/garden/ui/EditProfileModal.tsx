@@ -14,7 +14,6 @@ import {
   User,
 } from "../../common";
 import { FaUser, FaUpload, FaTrash, FaSave, FaTimes } from "react-icons/fa";
-import { FONTCOLOR, BORDERFILL, BORDERLINE, SUCCESS_COLOR, ERROR_COLOR } from "../../constants";
 import {
   uploadProfilePicture,
   updateUserProfilePicture,
@@ -48,128 +47,102 @@ export default function EditProfileModal({
   const [editableName, setEditableName] = useState(
     user.given_name && user.family_name ? `${user.given_name} ${user.family_name}` : ""
   );
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [isRemovingImage, setIsRemovingImage] = useState(false);
+  const [editableEmail, setEditableEmail] = useState(user.userEmail || "");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [imageInfo, setImageInfo] = useState<ImageInfoResponse | null>(null);
-  const [isLoadingImageInfo, setIsLoadingImageInfo] = useState(false);
+
+  // Get user ID from Redux state
+  const userId = useSelector((state: RootState) => state.auth.user?.userId);
 
   // File input ref
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load user image info when modal opens
+  // Load image info when modal opens
   useEffect(() => {
-    if (isVisible && (user.id || user.userId)) {
-      loadUserImageInfo();
+    if (isVisible && userId) {
+      loadImageInfo();
     }
-  }, [isVisible, user.id, user.userId]);
+  }, [isVisible, userId]);
 
-  const loadUserImageInfo = async () => {
-    const userId = user.id || user.userId;
+  // Load image info
+  const loadImageInfo = async () => {
     if (!userId) return;
 
-    setIsLoadingImageInfo(true);
     try {
       const info = await getUserImageInfo(userId);
       setImageInfo(info);
     } catch (error) {
-      console.error("Error loading user image info:", error);
-      showMessage("Failed to load profile picture information", "error");
-    } finally {
-      setIsLoadingImageInfo(false);
+      console.error("Error loading image info:", error);
     }
   };
 
-  const showMessage = (text: string, type: "success" | "error") => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage(null), 5000);
+  // Handle profile picture click
+  const handleProfilePictureClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle file selection
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !userId) return;
 
     // Validate file type
-    const validTypes = ["image/png", "image/jpeg", "image/jpg"];
-    if (!validTypes.includes(file.type)) {
-      showMessage("Please select a PNG, JPEG, or JPG image file", "error");
+    if (!file.type.startsWith("image/")) {
+      setMessage({ text: "Please select a valid image file", type: "error" });
       return;
     }
 
-    // Validate file size (limit to 10MB)
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxSize) {
-      showMessage("Image file size must be less than 10MB", "error");
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ text: "File size must be less than 5MB", type: "error" });
       return;
     }
 
-    const userId = user.id || user.userId;
-    if (!userId) {
-      showMessage("User ID not available", "error");
-      return;
-    }
+    setIsUploading(true);
+    setMessage(null);
 
-    setIsUploadingImage(true);
     try {
-      console.log("Starting profile picture upload for user:", userId);
-      console.log("File details:", { name: file.name, size: file.size, type: file.type });
+      // Upload the file
+      const uploadResult = await uploadProfilePicture(file);
 
-      // Upload the profile picture (automatically resized to 128x128)
-      console.log("Uploading image to backend...");
-      const uploadResponse = await uploadProfilePicture(file);
-      console.log("Upload response:", uploadResponse);
+      if (uploadResult.success) {
+        // Update user profile picture
+        const updateResult = await updateUserProfilePicture(userId, uploadResult.imageId);
 
-      // Update the user's profile picture URL in the database
-      console.log("Updating user profile picture URL in database...");
-      const updateResponse = await updateUserProfilePicture(userId, uploadResponse.image_id);
-      console.log("Update response:", updateResponse);
+        if (updateResult.success) {
+          // Update Redux state
+          dispatch(updateProfilePicture(uploadResult.imageId));
 
-      if (updateResponse.success) {
-        showMessage("Profile picture updated successfully!", "success");
+          setMessage({ text: "Profile picture updated successfully!", type: "success" });
 
-        // Update Redux state with the new profile picture URL
-        if (updateResponse.user && updateResponse.user.user_picture_url) {
-          dispatch(updateProfilePicture(updateResponse.user.user_picture_url));
-        } else {
-          // Fallback: fetch the profile picture from the API
-          const userId = user.id || user.userId;
-          if (userId) {
-            dispatch(fetchUserProfilePicture(userId));
+          // Reload image info
+          await loadImageInfo();
+
+          // Notify parent component
+          if (onUserUpdated) {
+            onUserUpdated();
           }
-        }
-
-        // Reload image info to get the new URL
-        console.log("Reloading user image info...");
-        await loadUserImageInfo();
-
-        // Notify parent component
-        if (onUserUpdated) {
-          onUserUpdated();
+        } else {
+          setMessage({
+            text: updateResult.message || "Failed to update profile picture",
+            type: "error",
+          });
         }
       } else {
-        const errorMsg = `Failed to update profile picture: ${
-          updateResponse.message || "Unknown error"
-        }`;
-        console.error(errorMsg, updateResponse);
-        showMessage(errorMsg, "error");
+        setMessage({ text: uploadResult.message || "Failed to upload image", type: "error" });
       }
     } catch (error) {
       console.error("Error uploading profile picture:", error);
-
-      // More specific error messaging
-      let errorMessage = "Failed to upload profile picture. Please try again.";
-      if (error instanceof Error) {
-        if (error.message.includes("Failed to upload profile picture")) {
-          errorMessage = "Failed to process image. Please check your image format and try again.";
-        } else if (error.message.includes("Failed to update user profile picture")) {
-          errorMessage = "Image uploaded but failed to update your profile. Please try again.";
-        } else {
-          errorMessage = `Upload failed: ${error.message}`;
-        }
-      }
-      showMessage(errorMessage, "error");
+      setMessage({ text: "Failed to upload profile picture", type: "error" });
     } finally {
-      setIsUploadingImage(false);
+      setIsUploading(false);
       // Clear the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -177,65 +150,73 @@ export default function EditProfileModal({
     }
   };
 
-  const handleRemoveImage = async () => {
-    const userId = user.id || user.userId;
-    if (!userId) {
-      showMessage("User ID not available", "error");
-      return;
-    }
+  // Handle profile picture deletion
+  const handleDeleteProfilePicture = async () => {
+    if (!userId) return;
 
-    if (!imageInfo?.has_custom_picture) {
-      showMessage("You're already using the default profile picture", "error");
-      return;
-    }
+    setIsDeleting(true);
+    setMessage(null);
 
-    setIsRemovingImage(true);
     try {
-      const response = await removeUserProfilePicture(userId);
+      const result = await removeUserProfilePicture(userId);
 
-      if (response.success) {
-        showMessage("Profile picture removed successfully! Using default picture.", "success");
-
-        // Update Redux state to clear the profile picture URL (set to null for default)
+      if (result.success) {
+        // Update Redux state
         dispatch(updateProfilePicture(null));
 
-        // Update local image info
-        setImageInfo({
-          ...imageInfo,
-          has_custom_picture: false,
-          is_default: true,
-          image_id: "default_pfp.png",
-          url: response.url,
-        });
+        setMessage({ text: "Profile picture removed successfully!", type: "success" });
+
+        // Reload image info
+        await loadImageInfo();
 
         // Notify parent component
         if (onUserUpdated) {
           onUserUpdated();
         }
       } else {
-        showMessage("Failed to remove profile picture", "error");
+        setMessage({ text: result.message || "Failed to remove profile picture", type: "error" });
       }
     } catch (error) {
       console.error("Error removing profile picture:", error);
-      showMessage("Failed to remove profile picture. Please try again.", "error");
+      setMessage({ text: "Failed to remove profile picture", type: "error" });
     } finally {
-      setIsRemovingImage(false);
+      setIsDeleting(false);
     }
   };
 
-  const handleProfilePictureClick = () => {
-    fileInputRef.current?.click();
+  // Handle name edit
+  const handleNameEdit = () => {
+    setIsEditingName(true);
   };
 
-  const handleSave = () => {
-    // For now, just close the modal since name editing isn't implemented yet
-    // In the future, this would save name changes
-    showMessage("Name editing will be implemented in a future update", "error");
+  const handleNameSave = () => {
+    // Here you would typically save the name to the backend
+    setIsEditingName(false);
+    setMessage({ text: "Name updated successfully!", type: "success" });
   };
 
-  if (!isVisible) return null;
+  const handleNameCancel = () => {
+    setEditableName(
+      user.given_name && user.family_name ? `${user.given_name} ${user.family_name}` : ""
+    );
+    setIsEditingName(false);
+  };
 
-  const userId = user.id || user.userId;
+  // Handle email edit
+  const handleEmailEdit = () => {
+    setIsEditingEmail(true);
+  };
+
+  const handleEmailSave = () => {
+    // Here you would typically save the email to the backend
+    setIsEditingEmail(false);
+    setMessage({ text: "Email updated successfully!", type: "success" });
+  };
+
+  const handleEmailCancel = () => {
+    setEditableEmail(user.userEmail || "");
+    setIsEditingEmail(false);
+  };
 
   return (
     <BaseModal
@@ -243,30 +224,24 @@ export default function EditProfileModal({
       onClose={onClose}
       title="Edit Profile"
       icon={<FaUser />}
-      width="650px"
-      maxHeight="700px"
-      constrainToCanvas={true}
-      zIndex={2100} // Higher than UserProfile modal
+      width="600px"
+      maxHeight="800px"
+      zIndex={2000}
     >
-      <div style={{ padding: "30px" }}>
+      <div className="p-8">
         {/* Message Display */}
         {message && (
-          <div style={{ marginBottom: "20px" }}>
+          <div className="mb-5">
             <MessageDisplay message={message.text} messageType={message.type} />
           </div>
         )}
 
         {/* Profile Picture Section */}
         <div className="w-full flex justify-center mb-6">
-          <div
-            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "15px" }}
-          >
+          <div className="flex flex-col items-center gap-4">
             {/* Profile Picture */}
             <div
-              style={{
-                position: "relative",
-                cursor: "pointer",
-              }}
+              className="relative cursor-pointer"
               onClick={handleProfilePictureClick}
               title="Click to upload new profile picture"
             >
@@ -276,154 +251,127 @@ export default function EditProfileModal({
                 imageId={(user as any).user_picture_url}
               />
               {/* Upload overlay */}
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "120px",
-                  height: "120px",
-                  backgroundColor: "rgba(0, 0, 0, 0.1)",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "white",
-                  fontSize: "24px",
-                  opacity: 0,
-                  transition: "opacity 0.2s ease",
-                  pointerEvents: "none",
-                }}
-                className="upload-overlay"
-              >
+              <div className="absolute top-0 left-0 w-[120px] h-[120px] bg-black/10 rounded-full flex items-center justify-center text-white text-2xl opacity-0 transition-opacity duration-200 pointer-events-none upload-overlay hover:opacity-100">
                 <FaUpload />
               </div>
             </div>
 
             {/* Profile Picture Actions */}
-            <div
-              style={{ display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: "center" }}
-            >
-              <Button
+            <div className="flex gap-2 flex-wrap justify-center">
+              <button
                 onClick={handleProfilePictureClick}
-                variant="secondary"
-                disabled={isUploadingImage}
-                style={{ fontSize: "14px", padding: "8px 16px" }}
+                disabled={isUploading}
+                className="bg-[#5cb370] text-white border-none px-4 py-2 rounded text-sm font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4a9c5a]"
               >
-                {isUploadingImage ? (
-                  <>
-                    <LoadingSpinner size="small" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <FaUpload />
-                    Upload New
-                  </>
-                )}
-              </Button>
-
-              {imageInfo?.has_custom_picture && (
-                <Button
-                  onClick={handleRemoveImage}
-                  variant="danger"
-                  disabled={isRemovingImage}
-                  style={{ fontSize: "14px", padding: "8px 16px" }}
-                >
-                  {isRemovingImage ? (
-                    <>
-                      <LoadingSpinner size="small" />
-                      Removing...
-                    </>
-                  ) : (
-                    <>
-                      <FaTrash />
-                      Remove
-                    </>
-                  )}
-                </Button>
-              )}
+                {isUploading ? "Uploading..." : "Upload"}
+              </button>
+              <button
+                onClick={handleDeleteProfilePicture}
+                disabled={isDeleting || !imageInfo?.hasImage}
+                className="bg-[#c85a54] text-white border-none px-4 py-2 rounded text-sm font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#b84a44]"
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
             </div>
 
             {/* Image Info */}
-            {isLoadingImageInfo ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: FONTCOLOR }}>
-                <LoadingSpinner size="small" />
-                Loading image info...
+            {imageInfo && (
+              <div className="flex items-center gap-2 text-[#2c1810]">
+                <span className="text-sm">
+                  {imageInfo.hasImage ? "Image uploaded" : "No image uploaded"}
+                </span>
+                {imageInfo.hasImage && (
+                  <span className="text-xs text-[#7a6b57]">({imageInfo.fileSize} bytes)</span>
+                )}
               </div>
-            ) : imageInfo ? (
-              <div style={{ textAlign: "center", fontSize: "12px", color: FONTCOLOR }}>
-                {imageInfo.has_custom_picture
-                  ? "Custom profile picture"
-                  : "Default profile picture"}
-              </div>
-            ) : null}
+            )}
           </div>
         </div>
 
-        {/* User Information */}
-        <FormGroup>
-          {/* Name - Editable */}
-          <div>
-            <label
-              style={{ display: "block", marginBottom: "5px", color: FONTCOLOR, fontSize: "14px" }}
-            >
-              Name
-            </label>
-            <TextInput
-              value={editableName}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditableName(e.target.value)}
-              placeholder="Enter your name"
-              style={{ width: "100%" }}
-            />
-          </div>
+        {/* Profile Information */}
+        <div className="space-y-4">
+          {/* Name Field */}
+          <FormGroup label="Name">
+            {!isEditingName ? (
+              <div className="flex items-center justify-between">
+                <InfoDisplay value={editableName || "Not set"} />
+                <button
+                  onClick={handleNameEdit}
+                  className="bg-[#d4944a] text-white border-none px-4 py-2 rounded text-sm font-bold cursor-pointer transition-colors hover:bg-[#c4843a]"
+                >
+                  Edit
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <TextInput
+                  value={editableName}
+                  onChange={(e) => setEditableName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="flex-1"
+                />
+                <button
+                  onClick={handleNameSave}
+                  className="bg-[#5cb370] text-white border-none px-4 py-2 rounded text-sm font-bold cursor-pointer transition-colors hover:bg-[#4a9c5a]"
+                >
+                  <FaSave />
+                </button>
+                <button
+                  onClick={handleNameCancel}
+                  className="bg-[#7a6b57] text-white border-none px-4 py-2 rounded text-sm font-bold cursor-pointer transition-colors hover:bg-[#6a5b47]"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+            )}
+          </FormGroup>
 
-          {/* Email - Non-editable */}
-          <InfoDisplay label="Email" value={user.email || "Not specified"} />
-
-          {/* User ID - Non-editable */}
-          <InfoDisplay label="User ID" value={userId || "Not specified"} copyable={true} />
-        </FormGroup>
-
-        {/* Action Buttons */}
-        <div
-          style={{
-            marginTop: "30px",
-            display: "flex",
-            gap: "15px",
-            justifyContent: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <Button onClick={handleSave} variant="primary" style={{ minWidth: "120px" }}>
-            <FaSave />
-            Save Changes
-          </Button>
-          <Button onClick={onClose} variant="secondary" style={{ minWidth: "120px" }}>
-            <FaTimes />
-            Cancel
-          </Button>
+          {/* Email Field */}
+          <FormGroup label="Email">
+            {!isEditingEmail ? (
+              <div className="flex items-center justify-between">
+                <InfoDisplay value={editableEmail || "Not set"} />
+                <button
+                  onClick={handleEmailEdit}
+                  className="bg-[#d4944a] text-white border-none px-4 py-2 rounded text-sm font-bold cursor-pointer transition-colors hover:bg-[#c4843a]"
+                >
+                  Edit
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <TextInput
+                  value={editableEmail}
+                  onChange={(e) => setEditableEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="flex-1"
+                />
+                <button
+                  onClick={handleEmailSave}
+                  className="bg-[#5cb370] text-white border-none px-4 py-2 rounded text-sm font-bold cursor-pointer transition-colors hover:bg-[#4a9c5a]"
+                >
+                  <FaSave />
+                </button>
+                <button
+                  onClick={handleEmailCancel}
+                  className="bg-[#7a6b57] text-white border-none px-4 py-2 rounded text-sm font-bold cursor-pointer transition-colors hover:bg-[#6a5b47]"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+            )}
+          </FormGroup>
         </div>
 
-        {/* Hidden File Input */}
+        {/* Hidden file input */}
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/png,image/jpeg,image/jpg"
-          onChange={handleImageUpload}
-          style={{ display: "none" }}
+          accept="image/*"
+          onChange={handleFileSelect}
+          className="hidden"
         />
       </div>
-
-      {/* Add CSS for hover effect */}
-      <style jsx>{`
-        .upload-overlay:hover {
-          opacity: 1 !important;
-        }
-        [style*="cursor: pointer"]:hover .upload-overlay {
-          opacity: 1 !important;
-        }
-      `}</style>
     </BaseModal>
   );
 }

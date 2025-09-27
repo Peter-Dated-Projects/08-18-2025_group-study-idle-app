@@ -1,5 +1,4 @@
 import React from "react";
-import { commonStyles } from "./styles";
 
 interface MessageDisplayProps {
   message: string;
@@ -9,23 +8,33 @@ interface MessageDisplayProps {
 export function MessageDisplay({ message, messageType }: MessageDisplayProps) {
   if (!message || !messageType) return null;
 
-  const style = messageType === "success" ? commonStyles.successMessage : commonStyles.errorMessage;
+  const baseClasses = "px-4 py-3 rounded font-bold text-sm mb-4";
+  const variantClasses = {
+    success: "bg-[#5cb370] text-white",
+    error: "bg-[#c85a54] text-white",
+  };
 
-  return <div style={style}>{message}</div>;
+  return (
+    <div className={`${baseClasses} ${variantClasses[messageType]}`}>
+      {message}
+    </div>
+  );
 }
 
 interface LoadingSpinnerProps {
-  size?: string;
+  size?: "sm" | "md" | "lg";
 }
 
-export function LoadingSpinner({ size = "20px" }: LoadingSpinnerProps) {
+export function LoadingSpinner({ size = "md" }: LoadingSpinnerProps) {
+  const sizeClasses = {
+    sm: "w-4 h-4",
+    md: "w-5 h-5", 
+    lg: "w-8 h-8",
+  };
+
   return (
     <div
-      style={{
-        ...commonStyles.loadingSpinner,
-        width: size,
-        height: size,
-      }}
+      className={`${sizeClasses[size]} border-3 border-[#a0622d] border-t-transparent rounded-full animate-spin`}
     />
   );
 }
@@ -37,24 +46,11 @@ interface LoadingOverlayProps {
 
 export function LoadingOverlay({ isLoading, children }: LoadingOverlayProps) {
   return (
-    <div style={{ position: "relative" }}>
+    <div className="relative">
       {children}
       {isLoading && (
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.1)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-        >
-          <LoadingSpinner size="30px" />
+        <div className="absolute inset-0 bg-black bg-opacity-10 flex items-center justify-center z-[1000]">
+          <LoadingSpinner size="lg" />
         </div>
       )}
     </div>

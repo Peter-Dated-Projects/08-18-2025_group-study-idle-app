@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch } from "../../../store/store";
 import { BaseModal } from "../../common";
-import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 import StorageItem from "./StorageItem";
 import { getAllStructureConfigs } from "../../../config/structureConfigs";
 import {
@@ -167,47 +166,24 @@ export default function StructuresModal({
       constrainToCanvas={true}
       zIndex={2000}
     >
-      <div
-        style={{
-          padding: "20px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "15px",
-        }}
-      >
+      <div className="p-5 flex flex-col gap-4">
         {isLoading ? (
           /* Loading State */
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              minHeight: "200px",
-              color: FONTCOLOR,
-            }}
-          >
+          <div className="flex justify-center items-center min-h-[200px] text-[#2c1810]">
             Loading inventory...
           </div>
         ) : (
           <>
             {/* Storage Grid */}
             <div
+              className="grid gap-4 justify-items-center"
               style={{
-                display: "grid",
                 gridTemplateColumns: `repeat(${gridColumns}, 1fr)`,
-                gap: "15px",
-                justifyItems: "center",
               }}
             >
               {storageItems.map((item) => (
-                <div key={item.id} style={{ position: "relative", width: "100%" }}>
-                  <div
-                    style={{
-                      width: "100%",
-                      aspectRatio: "1", // Ensures 1:1 aspect ratio
-                      minWidth: "100px",
-                    }}
-                  >
+                <div key={item.id} className="relative w-full">
+                  <div className="w-full aspect-square min-w-[100px]">
                     <StorageItem
                       key={item.id}
                       id={item.id}
@@ -221,52 +197,18 @@ export default function StructuresModal({
               ))}
 
               {/* Shop Access Item */}
-              <div style={{ position: "relative", width: "100%" }}>
+              <div className="relative w-full">
                 <div
-                  style={{
-                    width: "100%",
-                    aspectRatio: "1", // Ensures 1:1 aspect ratio
-                    minWidth: "100px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: PANELFILL,
-                    border: `2px solid ${BORDERLINE}`,
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    flexDirection: "column",
-                    gap: "4px",
-                  }}
+                  className="w-full aspect-square min-w-[100px] flex items-center justify-center bg-[#fdf4e8] border-2 border-[#a0622d] rounded-lg cursor-pointer transition-all duration-200 flex-col gap-1 hover:bg-[#e4be93ff] hover:border-[#2c1810]"
                   onClick={() => {
                     if (onShopClick) {
                       onShopClick();
                       dispatch(closeStructuresModal()); // Close structures modal when switching to shop
                     }
                   }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = BORDERFILL;
-                    e.currentTarget.style.borderColor = FONTCOLOR;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = PANELFILL;
-                    e.currentTarget.style.borderColor = BORDERLINE;
-                  }}
                 >
-                  <BsFillCartFill
-                    style={{
-                      fontSize: "2rem",
-                      color: "#f6e05e", // Gold color like in GardenMenu
-                    }}
-                  />
-                  <span
-                    style={{
-                      color: FONTCOLOR,
-                      fontSize: "0.8rem",
-                      fontWeight: "bold",
-                      textAlign: "center",
-                    }}
-                  >
+                  <BsFillCartFill className="text-3xl text-[#f6e05e]" />
+                  <span className="text-[#2c1810] text-xs font-bold text-center">
                     Shop
                   </span>
                 </div>
@@ -274,18 +216,7 @@ export default function StructuresModal({
             </div>
 
             {/* Storage Info */}
-            <div
-              style={{
-                marginTop: "15px",
-                padding: "15px",
-                backgroundColor: BORDERFILL,
-                border: `1px solid ${BORDERLINE}`,
-                borderRadius: "6px",
-                color: FONTCOLOR,
-                fontSize: "14px",
-                textAlign: "center",
-              }}
-            >
+            <div className="mt-4 p-4 bg-[#e4be93ff] border border-[#a0622d] rounded text-[#2c1810] text-sm text-center">
               <strong>Storage Capacity:</strong>{" "}
               {storageItems.reduce((sum, item) => sum + item.count, 0)} items
               <br />

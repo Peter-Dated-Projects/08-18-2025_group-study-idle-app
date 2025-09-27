@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { BaseModal } from "../../common";
-import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 import { useCachedUserFriends, useCacheActions } from "@/hooks/useCachedData";
 import { FaUserFriends } from "react-icons/fa";
 import type { Friend } from "@/utils/cacheManager";
@@ -136,42 +135,24 @@ export default function FriendsModal({ isVisible, onClose, userId }: FriendsModa
       {/* Message Display */}
       {message && (
         <div
-          style={{
-            padding: "10px 20px",
-            backgroundColor: messageType === "success" ? "#4CAF50" : "#f44336",
-            color: "white",
-            fontSize: "14px",
-            textAlign: "center",
-          }}
+          className={`px-5 py-3 text-white text-sm text-center ${
+            messageType === "success" ? "bg-[#4CAF50]" : "bg-[#f44336]"
+          }`}
         >
           {message}
         </div>
       )}
 
       {/* Add Friend Section */}
-      <div
-        style={{
-          padding: "20px",
-          borderBottom: `2px solid ${BORDERLINE}`,
-          backgroundColor: BORDERFILL,
-        }}
-      >
-        <h3 style={{ color: FONTCOLOR, margin: "0 0 15px 0", fontSize: "16px" }}>Add Friend</h3>
-        <div style={{ display: "flex", gap: "10px" }}>
+      <div className="p-5 border-b-2 border-[#a0622d] bg-[#e4be93ff]">
+        <h3 className="text-[#2c1810] m-0 mb-4 text-base">Add Friend</h3>
+        <div className="flex gap-3">
           <input
             type="text"
             value={newFriendId}
             onChange={(e) => setNewFriendId(e.target.value)}
             placeholder="Enter friend's User ID"
-            style={{
-              flex: 1,
-              padding: "8px 12px",
-              border: `2px solid ${BORDERLINE}`,
-              borderRadius: "4px",
-              backgroundColor: PANELFILL,
-              color: FONTCOLOR,
-              fontSize: "14px",
-            }}
+            className="flex-1 px-3 py-2 border-2 border-[#a0622d] rounded bg-[#fdf4e8] text-[#2c1810] text-sm outline-none focus:ring-2 focus:ring-[#a0622d] focus:ring-offset-2"
             onKeyPress={(e) => {
               if (e.key === "Enter") {
                 addFriend();
@@ -181,16 +162,7 @@ export default function FriendsModal({ isVisible, onClose, userId }: FriendsModa
           <button
             onClick={addFriend}
             disabled={loading}
-            style={{
-              padding: "8px 16px",
-              border: `2px solid ${BORDERLINE}`,
-              borderRadius: "4px",
-              backgroundColor: BORDERLINE,
-              color: FONTCOLOR,
-              cursor: loading ? "not-allowed" : "pointer",
-              fontSize: "14px",
-              fontWeight: "bold",
-            }}
+            className="px-4 py-2 border-2 border-[#a0622d] rounded bg-[#a0622d] text-[#2c1810] cursor-pointer text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[#8a5425] transition-colors"
           >
             {loading ? "..." : "Add"}
           </button>
@@ -198,94 +170,44 @@ export default function FriendsModal({ isVisible, onClose, userId }: FriendsModa
       </div>
 
       {/* Friends List */}
-      <div
-        style={{
-          padding: "20px",
-        }}
-      >
-        <h3 style={{ color: FONTCOLOR, margin: "0 0 15px 0", fontSize: "16px" }}>
+      <div className="p-5">
+        <h3 className="text-[#2c1810] m-0 mb-4 text-base">
           Your Friends ({friends.length})
           {friendsLoading && (
-            <span style={{ fontSize: "12px", color: "#999", marginLeft: "10px" }}>
+            <span className="text-xs text-gray-500 ml-2">
               Refreshing...
             </span>
           )}
         </h3>
 
         {friendsLoading && friends.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              color: FONTCOLOR,
-              fontSize: "14px",
-              opacity: 0.7,
-              padding: "40px 20px",
-            }}
-          >
+          <div className="text-center text-[#2c1810] text-sm opacity-70 py-10 px-5">
             Loading your friends...
           </div>
         ) : friends.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              color: FONTCOLOR,
-              fontSize: "14px",
-              opacity: 0.7,
-              padding: "40px 20px",
-            }}
-          >
+          <div className="text-center text-[#2c1810] text-sm opacity-70 py-10 px-5">
             No friends added yet. Share your User ID with friends to get started!
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <div className="flex flex-col gap-3">
             {friends.map((friend, index) => (
               <div
                 key={friend.friend_id || `friend-${index}`}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "12px 15px",
-                  backgroundColor: BORDERFILL,
-                  border: `1px solid ${BORDERLINE}`,
-                  borderRadius: "6px",
-                }}
+                className="flex items-center justify-between p-3 bg-[#e4be93ff] border border-[#a0622d] rounded"
               >
                 <div>
-                  <div
-                    style={{
-                      color: FONTCOLOR,
-                      fontSize: "14px",
-                      fontWeight: "bold",
-                    }}
-                  >
+                  <div className="text-[#2c1810] text-sm font-bold">
                     {/* {friend.display_name || friend.friend_id} */}
                     Display Name: {friend.display_name}
                   </div>
-                  <div
-                    style={{
-                      color: FONTCOLOR,
-                      fontSize: "12px",
-                      opacity: 0.7,
-                      fontFamily: "monospace",
-                    }}
-                  >
+                  <div className="text-[#2c1810] text-xs opacity-70 font-mono">
                     ID: {friend.friend_id}
                   </div>
                 </div>
                 <button
                   onClick={() => removeFriend(friend.friend_id)}
                   disabled={loading}
-                  style={{
-                    padding: "6px 12px",
-                    border: `1px solid #f44336`,
-                    borderRadius: "4px",
-                    backgroundColor: "#f44336",
-                    color: "white",
-                    cursor: loading ? "not-allowed" : "pointer",
-                    fontSize: "12px",
-                    fontWeight: "bold",
-                  }}
+                  className="px-3 py-1.5 border border-[#f44336] rounded bg-[#f44336] text-white cursor-pointer text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[#d32f2f] transition-colors"
                 >
                   Remove
                 </button>

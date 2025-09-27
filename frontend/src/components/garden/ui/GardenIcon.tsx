@@ -1,5 +1,4 @@
 import React from "react";
-import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 
 interface GardenIconProps {
   onClick: () => void;
@@ -16,40 +15,14 @@ const GardenIcon: React.FC<GardenIconProps> = ({
   hoverEffect = "none",
   children,
 }) => {
-  const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.backgroundColor = PANELFILL;
-    if (hoverEffect === "scale") {
-      e.currentTarget.style.transform = "scale(1.05)";
-    }
-  };
-
-  const handleMouseLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.backgroundColor = BORDERFILL;
-    if (hoverEffect === "scale") {
-      e.currentTarget.style.transform = "scale(1)";
-    }
-  };
+  const hoverClasses = hoverEffect === "scale" 
+    ? "hover:bg-[#fdf4e8] hover:scale-105" 
+    : "hover:bg-[#fdf4e8]";
 
   return (
     <button
       onClick={onClick}
-      style={{
-        width: "50px",
-        height: "50px",
-        backgroundColor: BORDERFILL,
-        border: `3px solid ${BORDERLINE}`,
-        borderRadius: "8px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        fontSize: "20px",
-        color: FONTCOLOR,
-        transition: "all 0.2s ease",
-        position: "relative", // for children positioning
-      }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      className={`w-12 h-12 bg-[#e4be93ff] border-3 border-[#a0622d] rounded-lg flex items-center justify-center cursor-pointer text-xl text-[#2c1810] transition-all duration-200 relative ${hoverClasses}`}
       title={title}
     >
       <i className={iconClassName}></i>

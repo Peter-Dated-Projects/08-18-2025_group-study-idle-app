@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { BaseModal } from "../../common";
-import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 import StorageItem from "./StorageItem";
 import AccountHeader from "./AccountHeader";
 import { getAllStructureConfigs } from "../../../config/structureConfigs";
@@ -112,34 +111,21 @@ export default function ShopModal({
       constrainToCanvas={true}
       zIndex={2000}
     >
-      <div
-        style={{
-          padding: "20px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "15px",
-        }}
-      >
+      <div className="p-5 flex flex-col gap-4">
         {/* Header with username and balance */}
         <AccountHeader username={username} accountBalance={currentBalance} />
 
         {/* Shop Grid */}
         <div
+          className="grid gap-4 justify-items-center"
           style={{
-            display: "grid",
             gridTemplateColumns: `repeat(${gridColumns}, 1fr)`,
-            gap: "15px",
-            justifyItems: "center",
           }}
         >
           {shopItems.map((item) => (
-            <div key={item.id} style={{ position: "relative", width: "100%" }}>
+            <div key={item.id} className="relative w-full">
               <div
-                style={{
-                  width: "100%",
-                  aspectRatio: "1", // Ensures 1:1 aspect ratio
-                  minWidth: "100px",
-                }}
+                className="w-full aspect-square min-w-[100px]"
               >
                 <ShopItem
                   id={item.id}
@@ -155,18 +141,7 @@ export default function ShopModal({
         </div>
 
         {/* Shop Info */}
-        <div
-          style={{
-            marginTop: "15px",
-            padding: "15px",
-            backgroundColor: BORDERFILL,
-            border: `1px solid ${BORDERLINE}`,
-            borderRadius: "6px",
-            color: FONTCOLOR,
-            fontSize: "14px",
-            textAlign: "center",
-          }}
-        >
+        <div className="mt-4 p-4 bg-[#e4be93ff] border border-[#a0622d] rounded text-[#2c1810] text-sm text-center">
           <strong>Item Shop:</strong> Purchase structures and items for your garden
           <br />
           <em>Click on items to purchase them (if you have enough coins)</em>
@@ -190,92 +165,37 @@ function ShopItem({ id, image, name, price, canPurchase, onClick }: ShopItemProp
   return (
     <div
       onClick={onClick}
-      style={{
-        width: "100%",
-        height: "100%",
-        aspectRatio: "1", // Ensures 1:1 aspect ratio
-        padding: "8px",
-        backgroundColor: BORDERFILL,
-        border: `2px solid ${BORDERLINE}`,
-        borderRadius: "6px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: onClick ? "pointer" : "default",
-        transition: "all 0.2s ease",
-        position: "relative",
-        opacity: canPurchase ? 1 : 0.6,
-        boxSizing: "border-box",
-      }}
-      onMouseEnter={(e) => {
-        if (onClick && canPurchase) {
-          e.currentTarget.style.backgroundColor = PANELFILL;
-          e.currentTarget.style.borderColor = FONTCOLOR;
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (onClick && canPurchase) {
-          e.currentTarget.style.backgroundColor = BORDERFILL;
-          e.currentTarget.style.borderColor = BORDERLINE;
-        }
-      }}
+      className={`w-full h-full aspect-square p-2 bg-[#e4be93ff] border-2 border-[#a0622d] rounded flex flex-col items-center justify-center transition-all duration-200 relative box-border ${
+        onClick ? "cursor-pointer" : "cursor-default"
+      } ${canPurchase ? "opacity-100" : "opacity-60"} ${
+        onClick && canPurchase ? "hover:bg-[#fdf4e8] hover:border-[#2c1810]" : ""
+      }`}
     >
       {/* Item Image */}
       <div
+        className="w-2/5 aspect-square bg-contain bg-no-repeat bg-center mb-1"
         style={{
-          width: "40%",
-          aspectRatio: "1",
           backgroundImage: `url(${image})`,
-          backgroundSize: "contain",
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "center",
-          marginBottom: "5px",
         }}
       />
 
       {/* Item Name */}
-      <div
-        style={{
-          color: FONTCOLOR,
-          fontSize: "10px",
-          fontWeight: "bold",
-          textAlign: "center",
-          wordBreak: "break-word",
-          marginBottom: "2px",
-          lineHeight: "1.1",
-        }}
-      >
+      <div className="text-[#2c1810] text-xs font-bold text-center break-words mb-0.5 leading-tight">
         {name}
       </div>
 
       {/* Price */}
       <div
-        style={{
-          color: canPurchase ? "#4CAF50" : "#FF5722",
-          fontSize: "9px",
-          fontWeight: "bold",
-          textAlign: "center",
-        }}
+        className={`text-xs font-bold text-center ${
+          canPurchase ? "text-[#4CAF50]" : "text-[#FF5722]"
+        }`}
       >
         {price} coins
       </div>
 
       {/* Insufficient funds overlay */}
       {!canPurchase && (
-        <div
-          style={{
-            position: "absolute",
-            top: "4px",
-            right: "4px",
-            backgroundColor: "#FF5722",
-            color: "white",
-            fontSize: "8px",
-            fontWeight: "bold",
-            padding: "1px 4px",
-            borderRadius: "3px",
-          }}
-        >
+        <div className="absolute top-1 right-1 bg-[#FF5722] text-white text-xs font-bold px-1 py-0.5 rounded">
           !
         </div>
       )}

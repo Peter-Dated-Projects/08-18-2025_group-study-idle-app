@@ -1,6 +1,5 @@
 import React from "react";
 import ToolsSection from "./ToolsSection";
-import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 
 // Types for lobby state management
 interface LobbyData {
@@ -40,12 +39,12 @@ export default function MinimizableToolsPanel({
   if (isMinimized) {
     return (
       <div
-        className="relative w-full h-10 border-2 border-gray-300 flex items-center justify-between px-2.5 transition-all duration-200"
+        className="relative w-full h-10 border-2 border-[#a0622d] flex items-center justify-between px-2.5 transition-all duration-200 bg-[#e4be93ff] cursor-pointer hover:bg-[#f5d9b8]"
         onClick={toggleMinimized}
       >
-        <span className="text-gray-900 text-sm font-bold">Tools Section</span>
+        <span className="text-[#2c1810] text-sm font-bold">Tools Section</span>
         <button
-          className="border-none text-gray-900 text-base px-1.5 py-0.5 rounded bg-gray-200 transition-all duration-200"
+          className="border-none text-[#2c1810] text-base px-1.5 py-0.5 rounded bg-[#a0622d] hover:bg-[#8a5425] transition-all duration-200"
           onClick={(e) => {
             e.stopPropagation();
             toggleMinimized();
@@ -58,31 +57,20 @@ export default function MinimizableToolsPanel({
   }
 
   return (
-    <div className="relative w-full h-full flex flex-col" style={{ backgroundColor: PANELFILL }}>
-      {/* Header with minimize button */}
-      <button
-        className="flex items-center justify-between border-b-2 min-h-[30px] p-[4px_10px] cursor-pointer"
-        style={{ borderBottomColor: BORDERLINE, backgroundColor: BORDERFILL }}
-        onClick={toggleMinimized}
-      >
-        <span className="text-sm font-bold" style={{ color: FONTCOLOR }}>
-          Tools Section
-        </span>
-        <i
-          className="fa fa-chevron-down text-base cursor-pointer p-[2px_6px] rounded-sm transition-all duration-200 flex items-center justify-center"
-          style={{ color: FONTCOLOR, backgroundColor: BORDERLINE }}
-          aria-label="Minimize"
-        />
-      </button>
+    <div className="relative w-full h-full bg-[#fdf4e8] border-2 border-[#a0622d] rounded-lg overflow-hidden">
+      {/* Header */}
+      <div className="relative w-full h-10 border-b-2 border-[#a0622d] flex items-center justify-between px-2.5 bg-[#e4be93ff]">
+        <span className="text-[#2c1810] text-sm font-bold">Tools Section</span>
+        <button
+          className="border-none text-[#2c1810] text-base px-1.5 py-0.5 rounded bg-[#a0622d] hover:bg-[#8a5425] transition-all duration-200"
+          onClick={toggleMinimized}
+        >
+          <i className="fa fa-chevron-down"></i>
+        </button>
+      </div>
 
-      {/* Tools content */}
-      <div
-        className="flex-1 flex flex-col"
-        style={{
-          overflow: "hidden",
-          backgroundColor: PANELFILL,
-        }}
-      >
+      {/* Content */}
+      <div className="h-[calc(100%-2.5rem)]">
         <ToolsSection
           lobbyState={lobbyState}
           lobbyData={lobbyData}

@@ -1,13 +1,5 @@
 import React, { useState } from "react";
 import { BaseModal } from "../../common";
-import {
-  FONTCOLOR,
-  BORDERLINE,
-  PANELFILL,
-  BORDERFILL,
-  ACCENT_COLOR,
-  HeaderFont,
-} from "../../constants";
 import GlobalLeaderboardModal from "./GlobalLeaderboardModal";
 import GroupLeaderboardModal from "./GroupLeaderboardModal";
 import { FaChartBar } from "react-icons/fa";
@@ -34,117 +26,83 @@ export default function LeaderboardTabsModal({ isVisible, onClose }: Leaderboard
         icon={<FaChartBar />}
         constrainToCanvas={true}
       >
-        <div
-          style={{
-            padding: "20px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "15px",
-          }}
-        >
+        <div className="p-5 flex flex-col gap-4">
           {/* Tab Buttons */}
-          <div style={{ display: "flex", gap: "8px" }}>
+          <div className="flex gap-2">
             <button
               onClick={() => setActiveTab("global")}
-              style={{
-                flex: 1,
-                padding: "12px 16px",
-                backgroundColor: activeTab === "global" ? ACCENT_COLOR : BORDERFILL,
-                color: activeTab === "global" ? "white" : FONTCOLOR,
-                border: `2px solid ${activeTab === "global" ? ACCENT_COLOR : BORDERLINE}`,
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontSize: "14px",
-                fontWeight: "bold",
-                fontFamily: HeaderFont,
-                transition: "all 0.2s ease",
-              }}
+              className={`flex-1 px-4 py-3 rounded text-sm font-bold transition-colors ${
+                activeTab === "global"
+                  ? "bg-[#a0622d] text-white"
+                  : "bg-[#fdf4e8] text-[#2c1810] border-2 border-[#a0622d] hover:bg-[#e4be93ff]"
+              }`}
             >
-              🌍 Global Leaderboard
+              Global Leaderboard
             </button>
-
             <button
               onClick={() => setActiveTab("group")}
-              style={{
-                flex: 1,
-                padding: "12px 16px",
-                backgroundColor: activeTab === "group" ? ACCENT_COLOR : BORDERFILL,
-                color: activeTab === "group" ? "white" : FONTCOLOR,
-                border: `2px solid ${activeTab === "group" ? ACCENT_COLOR : BORDERLINE}`,
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontSize: "14px",
-                fontWeight: "bold",
-                fontFamily: HeaderFont,
-                transition: "all 0.2s ease",
-              }}
+              className={`flex-1 px-4 py-3 rounded text-sm font-bold transition-colors ${
+                activeTab === "group"
+                  ? "bg-[#a0622d] text-white"
+                  : "bg-[#fdf4e8] text-[#2c1810] border-2 border-[#a0622d] hover:bg-[#e4be93ff]"
+              }`}
             >
-              👥 Group Leaderboard
+              Group Leaderboard
             </button>
           </div>
 
-          {/* Tab Description */}
-          <div
-            style={{
-              padding: "12px",
-              backgroundColor: BORDERFILL,
-              border: `1px solid ${BORDERLINE}`,
-              borderRadius: "6px",
-              color: FONTCOLOR,
-              fontSize: "13px",
-            }}
-          >
+          {/* Tab Content */}
+          <div className="min-h-[400px]">
             {activeTab === "global" ? (
-              <>
-                <strong>Global Leaderboard:</strong> See how you rank against all users worldwide
-                based on your pomodoro focus time.
-              </>
+              <div className="text-center text-[#2c1810] text-sm opacity-70 py-20">
+                <p className="mb-4">View global rankings and compete with users worldwide!</p>
+                <p>Click "Open Global Leaderboard" to see the full leaderboard.</p>
+              </div>
             ) : (
-              <>
-                <strong>Group Leaderboard:</strong> Compare your performance with members of your
-                study groups.
-              </>
+              <div className="text-center text-[#2c1810] text-sm opacity-70 py-20">
+                <p className="mb-4">View rankings within your study groups!</p>
+                <p>Click "Open Group Leaderboard" to see group-specific rankings.</p>
+              </div>
             )}
           </div>
 
-          {/* Continue Button */}
-          <button
-            onClick={() => {
-              // Close this modal and open the selected leaderboard
-              onClose();
-              // The parent component will handle opening the appropriate modal
-            }}
-            style={{
-              padding: "12px 24px",
-              backgroundColor: ACCENT_COLOR,
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: "14px",
-              fontWeight: "bold",
-              fontFamily: HeaderFont,
-            }}
-          >
-            View {activeTab === "global" ? "Global" : "Group"} Leaderboard →
-          </button>
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                onClose();
+                // Open the respective leaderboard modal
+                if (activeTab === "global") {
+                  // This would be handled by the parent component
+                  console.log("Open Global Leaderboard");
+                } else {
+                  // This would be handled by the parent component
+                  console.log("Open Group Leaderboard");
+                }
+              }}
+              className="flex-1 px-4 py-2 bg-[#5cb370] text-white rounded hover:bg-[#4a9c5a] transition-colors font-bold"
+            >
+              Open {activeTab === "global" ? "Global" : "Group"} Leaderboard
+            </button>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-[#7a6b57] text-white rounded hover:bg-[#6a5b47] transition-colors font-bold"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </BaseModal>
 
-      {/* Conditionally render the actual leaderboard modals */}
-      {activeTab === "global" && (
-        <GlobalLeaderboardModal
-          isVisible={false} // We'll control this from parent
-          onClose={onClose}
-        />
-      )}
-
-      {activeTab === "group" && (
-        <GroupLeaderboardModal
-          isVisible={false} // We'll control this from parent
-          onClose={onClose}
-        />
-      )}
+      {/* Individual Leaderboard Modals */}
+      <GlobalLeaderboardModal
+        isVisible={false} // These are controlled by parent component
+        onClose={() => {}}
+      />
+      <GroupLeaderboardModal
+        isVisible={false} // These are controlled by parent component
+        onClose={() => {}}
+      />
     </>
   );
 }

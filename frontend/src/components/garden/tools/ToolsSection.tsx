@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import MusicSync from "./MusicSync";
 import Lobby from "./Lobby";
 import PomoBlockTimer from "./PomoBlockTimer";
-import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../../constants";
 
 // Types for lobby state management
 interface LobbyData {
@@ -80,57 +79,24 @@ export default function ToolsSection({
   }, [hasSubscription, activeTab, tabs]);
 
   return (
-    <div
-      style={{
-        position: "relative",
-        width: "100%",
-        height: "100%",
-        backgroundColor: PANELFILL,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
+    <div className="relative w-full h-full bg-[#fdf4e8] flex flex-col overflow-hidden">
       {/* Header with tabs - this stays fixed */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          borderBottom: `2px solid ${BORDERLINE}`,
-          backgroundColor: BORDERFILL,
-          minHeight: "35px",
-          flexShrink: 0, // Prevent this from shrinking
-        }}
-      >
+      <div className="flex items-center border-b-2 border-[#a0622d] bg-[#e4be93ff] min-h-[35px] flex-shrink-0">
         {/* Tabs */}
-        <div style={{ display: "flex", flex: 1 }}>
+        <div className="flex flex-1">
           {tabs.map((tab, index) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              style={{
-                backgroundColor: activeTab === tab.id ? PANELFILL : "transparent",
-                color: FONTCOLOR,
-                padding: "8px 12px",
-                cursor: "pointer",
-                fontSize: "13px",
-                transition: "all 0.2s ease",
-                fontWeight: activeTab === tab.id ? "bold" : "normal",
-                borderLeft: index === 0 ? "none" : `1px solid ${BORDERLINE}`,
-                borderRight: index === tabs.length - 1 ? "none" : `1px solid ${BORDERLINE}`,
-              }}
-              onMouseEnter={(e) => {
-                if (activeTab !== tab.id) {
-                  e.currentTarget.style.backgroundColor = PANELFILL;
-                  e.currentTarget.style.opacity = "0.8";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeTab !== tab.id) {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.opacity = "1";
-                }
-              }}
+              className={`px-3 py-2 text-[#2c1810] text-xs transition-all duration-200 font-normal ${
+                activeTab === tab.id 
+                  ? "bg-[#fdf4e8] font-bold" 
+                  : "bg-transparent hover:bg-[#fdf4e8] hover:opacity-80"
+              } ${
+                index === 0 ? "border-l-0" : "border-l border-[#a0622d]"
+              } ${
+                index === tabs.length - 1 ? "border-r-0" : "border-r border-[#a0622d]"
+              }`}
             >
               {tab.label}
             </button>
@@ -139,14 +105,7 @@ export default function ToolsSection({
       </div>
 
       {/* Tab content - this scrolls */}
-      <div
-        className="flex-1"
-        style={{
-          backgroundColor: PANELFILL,
-          overflow: "auto",
-          minHeight: 0, // Allow this to shrink below its content height
-        }}
-      >
+      <div className="flex-1 bg-[#fdf4e8] overflow-auto min-h-0">
         {tabs.find((tab) => tab.id === activeTab)?.component}
       </div>
     </div>

@@ -4,14 +4,6 @@ import { useWebSocket } from "../../../hooks/useWebSocket";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import type { RootState } from "../../../store/store";
 import { updateBalance, setLoading, setError } from "../../../store/slices/walletSlice";
-import {
-  FONTCOLOR,
-  SECONDARY_TEXT,
-  ACCENT_COLOR,
-  PANELFILL,
-  BORDERLINE,
-  BodyFont,
-} from "@/components/constants";
 
 interface BankBalanceProps {
   className?: string;
@@ -116,47 +108,23 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
 
   return (
     <div
-      className={className}
-      style={{
-        marginLeft: "2px",
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        padding: "8px 12px",
-        backgroundColor: PANELFILL,
-        border: `1px solid ${BORDERLINE}`,
-        borderRadius: "8px",
-        fontSize: "0.9rem",
-        fontFamily: BodyFont,
-        color: FONTCOLOR,
-        width: "150px", // Fixed width to match avatar
-        boxSizing: "border-box",
-        ...style,
-      }}
+      className={`ml-0.5 flex items-center gap-2 p-2 bg-[#fdf4e8] border border-[#a0622d] rounded text-sm text-[#2c1810] w-[150px] box-border ${className}`}
+      style={style}
     >
       {/* Coin Icon */}
       <i
-        className="fi fi-sr-coins"
-        style={{
-          fontSize: "1.2rem",
-          color: ACCENT_COLOR,
-          display: "flex",
-          alignItems: "center",
-        }}
+        className="fi fi-sr-coins text-xl text-[#d4944a] flex items-center"
       />
 
       {/* Balance Display */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="flex-1 min-w-0">
         {isLoading ? (
-          <span style={{ color: SECONDARY_TEXT }}>...</span>
+          <span className="text-[#7a6b57]">...</span>
         ) : error ? (
-          <span style={{ color: "#ff6b6b", fontSize: "0.8rem" }}>Error</span>
+          <span className="text-[#ff6b6b] text-xs">Error</span>
         ) : (
           <span
-            style={{
-              fontWeight: "bold",
-              color: FONTCOLOR,
-            }}
+            className="font-bold text-[#2c1810]"
             title={`${balance} pomo coins`}
           >
             {formatBalance(balance || 0)}
@@ -167,14 +135,7 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
       {/* Debug info - remove in production */}
       {lastUpdated && (
         <div
-          style={{
-            fontSize: "8px",
-            color: SECONDARY_TEXT,
-            position: "absolute",
-            top: "-12px",
-            right: "0px",
-            opacity: 0.7,
-          }}
+          className="text-xs text-[#7a6b57] absolute -top-3 right-0 opacity-70"
           title={`Last updated: ${new Date(lastUpdated).toLocaleTimeString()}`}
         >
           Redux

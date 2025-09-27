@@ -1,15 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ChatMessage } from "@/types/chat";
-import {
-  BORDERFILL,
-  BORDERLINE,
-  FONTCOLOR,
-  PANELFILL,
-  SECONDARY_TEXT,
-  SUCCESS_COLOR,
-  BodyFont,
-  HeaderFont,
-} from "@/components/constants";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
 import { useChat } from "@/hooks/useChat";
 
@@ -116,86 +106,23 @@ export default function PlayerChat({ isInLobby = false, lobbyCode, onClearChat }
   }
 
   return (
-    <div
-      className="p-1"
-      style={{
-        height: "100%",
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "flex-end", // This ensures content aligns to bottom
-        pointerEvents: "none",
-      }}
-    >
+    <div className="p-1 h-full w-full flex flex-col justify-end pointer-events-none">
       <div
-        style={{
-          width: "100%",
-          backgroundColor: "rgb(253, 244, 232, 0.25)", // 25% opacity
-          backdropFilter: "blur(2px)",
-          border: `4px solid ${BORDERLINE}`, // Thicker border for better visibility
-          borderRadius: "8px",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          pointerEvents: "auto",
-          position: "relative",
-          transition: "all 0.3s ease",
-          justifyContent: "flex-end",
-          height: isMinimized ? "auto" : "100%",
-          // Remove marginTop: "auto" as it's now handled by parent flexbox
-        }}
+        className={`w-full bg-[#fdf4e8]/25 backdrop-blur-sm border-4 border-[#a0622d] rounded-lg flex flex-col overflow-hidden pointer-events-auto relative transition-all duration-300 justify-end ${
+          isMinimized ? "h-auto" : "h-full"
+        }`}
       >
         {/* Chat Header - Only show when expanded, clickable to collapse */}
         {!isMinimized && (
           <div
             onClick={handleHeaderClick}
-            style={{
-              padding: "8px 12px",
-              backgroundColor: `rgb(228, 190, 147)`, // 25% opacity for BORDERFILL
-              borderBottom: `2px solid ${BORDERLINE}`,
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              minHeight: "36px",
-              transition: "all 0.3s ease",
-              cursor: "pointer",
-              pointerEvents: "auto", // Keep header interactive for collapse functionality
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = `rgba(211, 174, 131, 1)`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = `rgba(228, 190, 147, 1)`;
-            }}
+            className="px-3 py-2 bg-[#e4be93ff] border-b-2 border-[#a0622d] flex items-center gap-2 min-h-[36px] transition-all duration-300 cursor-pointer pointer-events-auto hover:bg-[#d3ae83]"
           >
-            <i
-              className="fi fi-rr-comment-dots"
-              style={{
-                color: FONTCOLOR,
-                fontSize: "14px",
-              }}
-            />
-            <span
-              style={{
-                fontFamily: HeaderFont,
-                fontSize: "14px",
-                fontWeight: "bold",
-                color: FONTCOLOR,
-                transition: "opacity 0.3s ease",
-              }}
-            >
+            <i className="fi fi-rr-comment-dots text-[#2c1810] text-sm" />
+            <span className="font-falling-sky text-sm font-bold text-[#2c1810] transition-opacity duration-300">
               Lobby Chat
             </span>
-            <div
-              style={{
-                marginLeft: "auto",
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                backgroundColor: "#5cb370", // SUCCESS_COLOR for "online" status
-                transition: "opacity 0.3s ease",
-              }}
-            />
+            <div className="ml-auto w-2 h-2 rounded-full bg-[#5cb370] transition-opacity duration-300" />
           </div>
         )}
 
@@ -203,48 +130,18 @@ export default function PlayerChat({ isInLobby = false, lobbyCode, onClearChat }
         {!isMinimized && (
           <div
             ref={chatContainerRef}
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              padding: "8px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "6px",
-              minHeight: 0, // Important for flex scrolling
-              pointerEvents: "none", // Make messages transparent to mouse events
-            }}
+            className="flex-1 overflow-y-auto p-2 flex flex-col gap-1.5 min-h-0 pointer-events-none"
           >
             {/* Loading state */}
             {loading && (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  padding: "12px",
-                  color: SECONDARY_TEXT,
-                  fontFamily: BodyFont,
-                  fontSize: "12px",
-                }}
-              >
+              <div className="flex justify-center items-center py-3 text-[#7a6b57] text-xs">
                 Loading messages...
               </div>
             )}
 
             {/* Error state */}
             {error && (
-              <div
-                style={{
-                  padding: "8px",
-                  backgroundColor: "rgba(255, 0, 0, 0.1)",
-                  border: "1px solid rgba(255, 0, 0, 0.3)",
-                  borderRadius: "4px",
-                  color: "#cc0000",
-                  fontFamily: BodyFont,
-                  fontSize: "12px",
-                  textAlign: "center",
-                }}
-              >
+              <div className="p-2 bg-red-100 border border-red-300 rounded text-red-700 text-xs text-center">
                 {error}
               </div>
             )}
@@ -252,56 +149,19 @@ export default function PlayerChat({ isInLobby = false, lobbyCode, onClearChat }
             {/* Messages */}
             {!loading &&
               messages.map((message, index) => (
-                <div
-                  key={index}
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "2px",
-                  }}
-                >
+                <div key={index} className="flex flex-col gap-0.5">
                   {/* Message header with user and time */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      fontSize: "11px",
-                    }}
-                  >
-                    <span
-                      style={{
-                        color: FONTCOLOR,
-                        fontWeight: "bold",
-                        fontFamily: BodyFont,
-                        fontSize: "13px", // Increased by 2px
-                      }}
-                    >
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="text-[#2c1810] font-bold text-sm">
                       {message.username}
                     </span>
-                    <span
-                      style={{
-                        color: SECONDARY_TEXT,
-                        fontFamily: BodyFont,
-                        fontSize: "13px", // Increased by 2px
-                      }}
-                    >
+                    <span className="text-[#7a6b57] text-sm">
                       {formatTime(message.time_created)}
                     </span>
                   </div>
 
                   {/* Message content */}
-                  <div
-                    style={{
-                      fontSize: "14px", // Increased by 2px
-                      color: FONTCOLOR,
-                      fontFamily: BodyFont,
-                      lineHeight: "1.3",
-                      wordWrap: "break-word",
-                      paddingLeft: "4px",
-                      whiteSpace: "pre-wrap", // Preserve newlines
-                    }}
-                  >
+                  <div className="text-sm text-[#2c1810] leading-tight break-words pl-1 whitespace-pre-wrap">
                     {message.content}
                   </div>
                 </div>
@@ -313,16 +173,8 @@ export default function PlayerChat({ isInLobby = false, lobbyCode, onClearChat }
         {/* Chat Input - Hidden when minimized */}
         {!isMinimized && (
           <div
-            style={{
-              padding: "6px 8px",
-              borderTop: `2px solid ${BORDERLINE}`,
-              backgroundColor: `rgba(228, 190, 147, 1)`, // 25% opacity for BORDERFILL
-              display: "flex",
-              gap: "6px",
-              alignItems: "flex-start", // Changed to flex-start to align button to top
-              minHeight: `${textareaHeight + 12}px`, // Dynamic height based on textarea
-              pointerEvents: "auto", // Keep input area interactive
-            }}
+            className="px-2 py-1.5 border-t-2 border-[#a0622d] bg-[#e4be93ff] flex gap-1.5 items-start pointer-events-auto"
+            style={{ minHeight: `${textareaHeight + 12}px` }}
           >
             <textarea
               ref={textareaRef}
@@ -331,49 +183,22 @@ export default function PlayerChat({ isInLobby = false, lobbyCode, onClearChat }
               onKeyPress={handleKeyPress}
               placeholder={`Type a message... (${inputValue.length}/255)`}
               maxLength={255}
-              style={{
-                flex: 1,
-                padding: "4px 6px",
-                fontSize: "14px", // Increased by 2px
-                fontFamily: BodyFont,
-                backgroundColor: "rgba(253, 244, 232, 0.8)", // Higher opacity for better readability
-                border: `2px solid ${BORDERLINE}`, // Slightly thicker border for better visibility
-                borderRadius: "4px",
-                color: FONTCOLOR,
-                outline: "none",
-                height: `${textareaHeight}px`,
-                resize: "none", // Disable manual resize
-                overflow: "hidden", // Hide scrollbar for cleaner look
-              }}
+              className="flex-1 px-1.5 py-1 text-sm bg-[#fdf4e8]/80 border-2 border-[#a0622d] rounded text-[#2c1810] outline-none resize-none overflow-hidden"
+              style={{ height: `${textareaHeight}px` }}
             />
             <button
               onClick={handleSendMessage}
               disabled={!inputValue.trim() || inputValue.length > 255 || sending}
-              style={{
-                padding: "4px 8px",
-                fontSize: "14px", // Increased by 2px
-                backgroundColor:
-                  inputValue.trim() && inputValue.length <= 255 && !sending
-                    ? SUCCESS_COLOR
-                    : SECONDARY_TEXT,
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor:
-                  inputValue.trim() && inputValue.length <= 255 && !sending ? "pointer" : "default",
-                fontFamily: BodyFont,
-                fontWeight: "bold",
-                minWidth: "40px",
-                height: "32px", // Fixed height, aligns to top
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+              className={`px-2 py-1 text-sm border-none rounded cursor-pointer font-bold min-w-[40px] h-8 flex items-center justify-center ${
+                inputValue.trim() && inputValue.length <= 255 && !sending
+                  ? "bg-[#5cb370] text-white hover:bg-[#4a9c5a]"
+                  : "bg-[#7a6b57] text-white cursor-default"
+              }`}
             >
               {sending ? (
-                <i className="fi fi-rr-time-quarter-past" style={{ fontSize: "14px" }} />
+                <i className="fi fi-rr-time-quarter-past text-sm" />
               ) : (
-                <i className="fi fi-rr-paper-plane" style={{ fontSize: "14px" }} />
+                <i className="fi fi-rr-paper-plane text-sm" />
               )}
             </button>
           </div>
@@ -383,60 +208,14 @@ export default function PlayerChat({ isInLobby = false, lobbyCode, onClearChat }
         {isMinimized && (
           <div
             onClick={handleHeaderClick}
-            style={{
-              padding: "6px 12px",
-              backgroundColor: `rgba(228, 190, 147, 1)`, // 25% opacity for BORDERFILL
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              minHeight: "28px", // Smaller height for collapsed state
-              transition: "all 0.3s ease",
-              cursor: "pointer",
-              borderTop: `1px solid ${BORDERLINE}`,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = `rgba(213, 173, 127, 1)`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = `rgba(228, 190, 147, 1)`;
-            }}
+            className="px-3 py-1.5 bg-[#e4be93ff] flex items-center gap-2 min-h-[28px] transition-all duration-300 cursor-pointer border-t border-[#a0622d] hover:bg-[#d3ae83]"
           >
-            <i
-              className="fi fi-rr-comment-dots"
-              style={{
-                color: FONTCOLOR,
-                fontSize: "12px",
-              }}
-            />
-            <span
-              style={{
-                fontFamily: HeaderFont,
-                fontSize: "12px",
-                fontWeight: "bold",
-                color: FONTCOLOR,
-                transition: "opacity 0.3s ease",
-              }}
-            >
+            <i className="fi fi-rr-comment-dots text-[#2c1810] text-xs" />
+            <span className="font-falling-sky text-xs font-bold text-[#2c1810] transition-opacity duration-300">
               Lobby Chat
             </span>
-            <div
-              style={{
-                marginLeft: "auto",
-                width: "6px",
-                height: "6px",
-                borderRadius: "50%",
-                backgroundColor: "#5cb370", // SUCCESS_COLOR for "online" status
-                transition: "opacity 0.3s ease",
-              }}
-            />
-            <i
-              className="fi fi-rr-angle-up"
-              style={{
-                color: FONTCOLOR,
-                fontSize: "10px",
-                marginLeft: "4px",
-              }}
-            />
+            <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#5cb370] transition-opacity duration-300" />
+            <i className="fi fi-rr-angle-up text-[#2c1810] text-xs ml-1" />
           </div>
         )}
       </div>

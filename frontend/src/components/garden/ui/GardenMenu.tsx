@@ -282,11 +282,7 @@ export default function GardenMenu({
 
   return (
     <div
-      className="
-      absolute inset-0 z-[1000] 
-      grid grid-cols-3 grid-rows-3 
-      pointer-events-none
-      "
+      className="absolute inset-0 z-[1000] grid grid-cols-3 grid-rows-3 pointer-events-none"
       style={{
         gridTemplateAreas: `
         "topleft topcenter topright"
@@ -296,31 +292,15 @@ export default function GardenMenu({
       }}
     >
       {/* Avatar and Bank Balance */}
-      <div
-        style={{
-          gridArea: "topleft",
-          pointerEvents: "none",
-          display: "flex",
-          flexDirection: "column",
-          gap: "8px",
-          alignItems: "flex-start",
-          maxWidth: "150px",
-        }}
-      >
+      <div className="col-start-1 row-start-1 pointer-events-none flex flex-col gap-2 items-start max-w-[150px]">
         <canvas
           ref={canvasRefs.avatar}
           width={150}
           height={150}
           onClick={handleAvatarClick}
+          className="w-full h-full max-w-[150px] max-h-[150px] object-contain pointer-events-auto"
           style={{
-            width: "100%",
-            height: "100%",
-            maxWidth: "150px",
-            maxHeight: "150px",
-            objectFit: "contain",
-            // border: "1px solid #333", // Debug border
             imageRendering: "pixelated" as const, // Disable antialiasing for crisp pixels
-            pointerEvents: "auto", // Enable pointer events for avatar click
           }}
         />
 
@@ -330,52 +310,15 @@ export default function GardenMenu({
         {/* Shop Icon Button */}
         <button
           onClick={handleShopClick}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "8px 12px",
-            backgroundColor: "#2d3748",
-            border: "1px solid #4a5568",
-            borderRadius: "8px",
-            fontSize: "0.9rem",
-            color: "#e2e8f0",
-            cursor: "pointer",
-            pointerEvents: "auto",
-            width: "150px", // Fixed width to match avatar and balance
-            marginLeft: "2px",
-            boxSizing: "border-box",
-            transition: "background-color 0.2s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "#4a5568";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "#2d3748";
-          }}
+          className="flex items-center gap-2 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-gray-200 cursor-pointer pointer-events-auto w-[150px] ml-0.5 box-border transition-colors duration-200 hover:bg-gray-600"
         >
-          <BsFillCartFill
-            style={{
-              fontSize: "1.2rem",
-              color: "#f6e05e",
-              display: "flex",
-              alignItems: "center",
-            }}
-          />
-          <span style={{ fontWeight: "bold" }}>Shop</span>
+          <BsFillCartFill className="text-xl text-[#f6e05e] flex items-center" />
+          <span className="font-bold">Shop</span>
         </button>
       </div>
 
       {/* PlayerChat - spans bottom left and bottom center */}
-      <div
-        style={{
-          gridColumn: "1 / 3", // spans from column 1 to column 3 (so columns 1 and 2)
-          gridRow: "3", // bottom row only
-          pointerEvents: "none",
-          display: "flex",
-          alignItems: "stretch",
-        }}
-      >
+      <div className="col-span-2 row-start-3 pointer-events-none flex items-stretch">
         <PlayerChat isInLobby={isInLobby} lobbyCode={lobbyCode} />
       </div>
     </div>

@@ -1,5 +1,4 @@
 import React, { ButtonHTMLAttributes, InputHTMLAttributes } from "react";
-import { commonStyles, hoverEffects } from "./styles";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "danger";
@@ -9,38 +8,20 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export function Button({
   variant = "primary",
   children,
-  style,
-  onMouseEnter,
-  onMouseLeave,
+  className = "",
   ...props
 }: ButtonProps) {
-  const baseStyle = {
-    primary: commonStyles.primaryButton,
-    secondary: commonStyles.secondaryButton,
-    danger: commonStyles.dangerButton,
-  }[variant];
-
-  const hoverStyle = {
-    primary: hoverEffects.primaryButton,
-    secondary: hoverEffects.secondaryButton,
-    danger: hoverEffects.dangerButton,
-  }[variant];
-
-  const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
-    Object.assign(e.currentTarget.style, hoverStyle);
-    onMouseEnter?.(e);
-  };
-
-  const handleMouseLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
-    Object.assign(e.currentTarget.style, baseStyle);
-    onMouseLeave?.(e);
+  const baseClasses = "px-4 py-2 rounded font-bold text-sm transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2";
+  
+  const variantClasses = {
+    primary: "bg-[#e4be93ff] border-2 border-[#a0622d] text-[#2c1810] hover:bg-[#f5d9b8] focus:ring-[#a0622d]",
+    secondary: "bg-transparent border-2 border-[#a0622d] text-[#2c1810] hover:bg-[#e4be93ff] focus:ring-[#a0622d]",
+    danger: "bg-[#c85a54] border-2 border-[#c85a54] text-white hover:bg-[#b84a44] focus:ring-[#c85a54]",
   };
 
   return (
     <button
-      style={{ ...baseStyle, ...style }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      className={`${baseClasses} ${variantClasses[variant]} ${className}`}
       {...props}
     >
       {children}
@@ -52,22 +33,33 @@ interface TextInputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
 }
 
-export function TextInput({ label, style, ...props }: TextInputProps) {
+export function TextInput({ label, className = "", ...props }: TextInputProps) {
   return (
     <div>
-      {label && <label style={commonStyles.label}>{label}</label>}
-      <input style={{ ...commonStyles.textInput, ...style }} {...props} />
+      {label && (
+        <label className="block text-[#2c1810] text-sm font-bold mb-1">
+          {label}
+        </label>
+      )}
+      <input 
+        className={`w-full px-3 py-2 bg-[#fdf4e8] border-2 border-[#a0622d] rounded text-[#2c1810] text-sm outline-none focus:ring-2 focus:ring-[#a0622d] focus:ring-offset-2 ${className}`}
+        {...props} 
+      />
     </div>
   );
 }
 
 interface FormGroupProps {
   children: React.ReactNode;
-  style?: React.CSSProperties;
+  className?: string;
 }
 
-export function FormGroup({ children, style }: FormGroupProps) {
-  return <div style={{ ...commonStyles.formGroup, ...style }}>{children}</div>;
+export function FormGroup({ children, className = "" }: FormGroupProps) {
+  return (
+    <div className={`flex flex-col gap-4 ${className}`}>
+      {children}
+    </div>
+  );
 }
 
 interface InfoDisplayProps {
@@ -80,12 +72,13 @@ interface InfoDisplayProps {
 export function InfoDisplay({ label, value, copyable = false, onCopy }: InfoDisplayProps) {
   return (
     <div>
-      <label style={commonStyles.label}>{label}:</label>
+      <label className="block text-[#2c1810] text-sm font-bold mb-1">
+        {label}:
+      </label>
       <div
-        style={{
-          ...commonStyles.infoDisplay,
-          cursor: copyable ? "pointer" : "default",
-        }}
+        className={`px-3 py-2 bg-[#e4be93ff] border border-[#a0622d] rounded text-[#2c1810] text-sm ${
+          copyable ? "cursor-pointer hover:bg-[#f5d9b8]" : "cursor-default"
+        }`}
         onClick={copyable ? onCopy : undefined}
         title={copyable ? "Click to copy" : undefined}
       >
