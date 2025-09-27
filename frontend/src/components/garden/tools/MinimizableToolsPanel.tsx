@@ -19,6 +19,8 @@ interface MinimizableToolsPanelProps {
   lobbyData?: LobbyData | null;
   onLobbyStateChange?: (state: LobbyState) => void;
   onLobbyDataChange?: (data: LobbyData | null) => void;
+  hasSubscription?: boolean;
+  subscriptionLoading?: boolean;
 }
 
 export default function MinimizableToolsPanel({
@@ -28,6 +30,8 @@ export default function MinimizableToolsPanel({
   lobbyData,
   onLobbyStateChange,
   onLobbyDataChange,
+  hasSubscription = false,
+  subscriptionLoading = false,
 }: MinimizableToolsPanelProps) {
   const toggleMinimized = () => {
     setIsMinimized((prev) => !prev);
@@ -84,6 +88,8 @@ export default function MinimizableToolsPanel({
           lobbyData={lobbyData}
           onLobbyStateChange={onLobbyStateChange}
           onLobbyDataChange={onLobbyDataChange}
+          hasSubscription={hasSubscription}
+          subscriptionLoading={subscriptionLoading}
         />
       </div>
     </div>

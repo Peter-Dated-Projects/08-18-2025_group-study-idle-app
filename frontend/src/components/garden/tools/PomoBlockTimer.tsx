@@ -250,25 +250,24 @@ export default function PomoBlockTimer() {
     <div
       style={{
         height: "100%",
+        width: "100%",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: "16px",
         fontFamily: BodyFont,
-        textAlign: "center",
+        backgroundColor: PANELFILL,
+        overflow: "hidden",
       }}
     >
-      {/* Main timer container */}
+      {/* Main timer container - now fills entire space */}
       <div
         style={{
           backgroundColor: PANELFILL,
-          border: `2px solid ${BORDERLINE}`,
-          borderRadius: "12px",
-          padding: "16px",
-          minWidth: "280px",
-          backdropFilter: "blur(8px)",
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
+          width: "100%",
+          height: "100%",
+          padding: "20px",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "auto",
         }}
       >
         {/* Header */}
@@ -277,7 +276,8 @@ export default function PomoBlockTimer() {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: "12px",
+            marginBottom: "20px",
+            flexShrink: 0,
           }}
         >
           <h3
@@ -305,7 +305,12 @@ export default function PomoBlockTimer() {
         <div
           style={{
             textAlign: "center",
-            marginBottom: "16px",
+            marginBottom: "24px",
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            minHeight: "120px",
           }}
         >
           {!isEditingTime ? (
@@ -313,12 +318,13 @@ export default function PomoBlockTimer() {
               onClick={handleEditTimeStart}
               style={{
                 fontFamily: HeaderFont,
-                fontSize: "36px",
+                fontSize: "48px",
                 color: currentPhase === "work" ? ACCENT_COLOR : FONTCOLOR,
                 cursor: "pointer",
-                padding: "8px",
-                borderRadius: "8px",
+                padding: "16px",
+                borderRadius: "12px",
                 transition: "background-color 0.2s",
+                fontWeight: "bold",
               }}
               onMouseOver={(e) => (e.currentTarget.style.backgroundColor = BORDERFILL)}
               onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
@@ -378,8 +384,8 @@ export default function PomoBlockTimer() {
             style={{
               fontFamily: BodyFont,
               color: SECONDARY_TEXT,
-              fontSize: "12px",
-              marginTop: "4px",
+              fontSize: "14px",
+              marginTop: "8px",
               textTransform: "uppercase",
               letterSpacing: "1px",
             }}
@@ -433,8 +439,9 @@ export default function PomoBlockTimer() {
         <div
           style={{
             display: "flex",
-            gap: "8px",
-            marginBottom: "12px",
+            gap: "12px",
+            marginBottom: "16px",
+            flexShrink: 0,
           }}
         >
           {!isRunning ? (
@@ -442,14 +449,15 @@ export default function PomoBlockTimer() {
               onClick={handleStartTimer}
               style={{
                 flex: 1,
-                padding: "12px",
-                fontSize: "14px",
+                padding: "16px",
+                fontSize: "16px",
                 backgroundColor: SUCCESS_COLOR,
                 color: "white",
                 border: "none",
-                borderRadius: "8px",
+                borderRadius: "10px",
                 cursor: "pointer",
                 fontFamily: BodyFont,
+                fontWeight: "600",
               }}
             >
               {currentPhase === "idle" ? "Start Work" : "Resume"}
@@ -459,14 +467,15 @@ export default function PomoBlockTimer() {
               onClick={handlePauseTimer}
               style={{
                 flex: 1,
-                padding: "12px",
-                fontSize: "14px",
+                padding: "16px",
+                fontSize: "16px",
                 backgroundColor: "#ff6b6b",
                 color: "white",
                 border: "none",
-                borderRadius: "8px",
+                borderRadius: "10px",
                 cursor: "pointer",
                 fontFamily: BodyFont,
+                fontWeight: "600",
               }}
             >
               Pause
@@ -476,14 +485,15 @@ export default function PomoBlockTimer() {
           <button
             onClick={handleResetTimer}
             style={{
-              padding: "12px",
-              fontSize: "12px",
+              padding: "16px 20px",
+              fontSize: "14px",
               backgroundColor: BORDERFILL,
               color: FONTCOLOR,
               border: `1px solid ${BORDERLINE}`,
-              borderRadius: "8px",
+              borderRadius: "10px",
               cursor: "pointer",
               fontFamily: BodyFont,
+              fontWeight: "500",
             }}
           >
             Reset
@@ -515,10 +525,12 @@ export default function PomoBlockTimer() {
         <div
           style={{
             width: "100%",
-            height: "4px",
+            height: "6px",
             backgroundColor: BORDERFILL,
-            borderRadius: "2px",
+            borderRadius: "3px",
             overflow: "hidden",
+            marginTop: "auto",
+            flexShrink: 0,
           }}
         >
           <div
