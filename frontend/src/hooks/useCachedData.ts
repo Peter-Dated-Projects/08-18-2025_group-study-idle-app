@@ -81,7 +81,14 @@ export function useCachedUserFriends(userId: string | null) {
       setError(null);
 
       try {
-        const data = await cacheManager.getUserFriends(userId, forceRefresh);
+        // Temporarily force refresh to bypass cache for debugging
+        console.log(
+          `🔍 useCachedUserFriends: Fetching friends for ${userId}, forceRefresh: ${
+            forceRefresh || true
+          }`
+        );
+        const data = await cacheManager.getUserFriends(userId, forceRefresh || true);
+        console.log(`📦 useCachedUserFriends: Received ${data.length} friends:`, data);
         setFriends(data);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Failed to load friends";

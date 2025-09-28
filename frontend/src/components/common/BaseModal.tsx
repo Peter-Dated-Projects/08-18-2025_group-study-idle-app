@@ -65,7 +65,7 @@ export default function BaseModal({
 
   // Set default dimensions for canvas-constrained modals
   const modalWidth = constrainToCanvas ? "50%" : width;
-  const modalMaxHeight = constrainToCanvas ? "50%" : maxHeight;
+  const modalMaxHeight = constrainToCanvas ? "80%" : maxHeight;
 
   return (
     <div style={overlayStyle} onClick={onClose}>
@@ -76,7 +76,7 @@ export default function BaseModal({
           borderRadius: "8px",
           width: modalWidth,
           maxHeight: modalMaxHeight,
-          height: constrainToCanvas ? "50%" : "auto",
+          height: constrainToCanvas ? "80%" : "auto",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",

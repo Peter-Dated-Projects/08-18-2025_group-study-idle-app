@@ -42,6 +42,31 @@ export default function FriendsModal({ isVisible, onClose, userId }: FriendsModa
     }
   }, [friendsError]);
 
+  // Debug friends data
+  useEffect(() => {
+    console.log("🔍 FriendsModal Debug:", {
+      userId,
+      friendsCount: friends.length,
+      friendsLoading,
+      friendsError,
+      friends: friends.map((f) => ({ id: f.friend_id, display_name: f.display_name })),
+    });
+  }, [userId, friends, friendsLoading, friendsError]);
+
+  // Test direct API call
+  const testDirectAPI = async () => {
+    console.log("🧪 Testing direct API call...");
+    try {
+      const response = await fetch(`/api/friends/list/${userId}`);
+      const data = await response.json();
+      console.log("🧪 Direct API response:", data);
+      showMessage(`Direct API returned ${data.friends?.length || 0} friends`, "success");
+    } catch (error) {
+      console.error("🧪 Direct API failed:", error);
+      showMessage("Direct API call failed", "error");
+    }
+  };
+
   // Add friend
   const addFriend = async () => {
     if (!newFriendId.trim()) {
@@ -210,6 +235,22 @@ export default function FriendsModal({ isVisible, onClose, userId }: FriendsModa
               Refreshing...
             </span>
           )}
+          {/* Debug button */}
+          <button
+            onClick={testDirectAPI}
+            style={{
+              marginLeft: "10px",
+              padding: "4px 8px",
+              fontSize: "10px",
+              backgroundColor: "#4CAF50",
+              color: "white",
+              border: "none",
+              borderRadius: "3px",
+              cursor: "pointer",
+            }}
+          >
+            Test API
+          </button>
         </h3>
 
         {friendsLoading && friends.length === 0 ? (

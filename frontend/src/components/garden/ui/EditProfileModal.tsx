@@ -395,11 +395,19 @@ export default function EditProfileModal({
             flexWrap: "wrap",
           }}
         >
-          <Button onClick={handleSave} variant="primary" style={{ minWidth: "120px" }}>
+          <Button
+            onClick={handleSave}
+            variant="primary"
+            style={{ minWidth: "120px", backgroundColor: SUCCESS_COLOR }}
+          >
             <FaSave />
             Save Changes
           </Button>
-          <Button onClick={onClose} variant="secondary" style={{ minWidth: "120px" }}>
+          <Button
+            onClick={onClose}
+            variant="secondary"
+            style={{ minWidth: "120px", backgroundColor: ERROR_COLOR }}
+          >
             <FaTimes />
             Cancel
           </Button>
@@ -414,16 +422,6 @@ export default function EditProfileModal({
           style={{ display: "none" }}
         />
       </div>
-
-      {/* Add CSS for hover effect */}
-      <style jsx>{`
-        .upload-overlay:hover {
-          opacity: 1 !important;
-        }
-        [style*="cursor: pointer"]:hover .upload-overlay {
-          opacity: 1 !important;
-        }
-      `}</style>
     </BaseModal>
   );
 }

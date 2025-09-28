@@ -44,8 +44,8 @@ export default function UserProfile({ isVisible, onClose, user }: UserProfilePro
         onClose={onClose}
         title="User Profile"
         icon={<FaUser />}
-        width="650px"
-        maxHeight="700px"
+        width="50%"
+        maxHeight="80%"
         constrainToCanvas={true}
         zIndex={2000}
       >
@@ -73,7 +73,7 @@ export default function UserProfile({ isVisible, onClose, user }: UserProfilePro
               <div
                 style={{
                   position: "absolute",
-                  top: "-5px",
+                  top: "5px",
                   right: "-5px",
                   width: "70px",
                   height: "20px",
@@ -97,7 +97,7 @@ export default function UserProfile({ isVisible, onClose, user }: UserProfilePro
                   zIndex: 10,
                 }}
               >
-                {hasSubscription ? "GOLD" : "WOOD"}
+                {hasSubscription ? "PREMIUM" : "FREE"}
               </div>
 
               {/* Hover Overlay */}
