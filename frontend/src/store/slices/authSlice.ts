@@ -26,14 +26,40 @@ const initialState: AuthState = {
   lastValidated: null,
 };
 
-// Async thunks
+// Async thunks with duplicate request prevention
 export const validateAuth = createAsyncThunk(
   "auth/validateAuth",
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, getState }) => {
+    const state = getState() as { auth: AuthState };
+
+    // Prevent duplicate requests if already loading
+    if (state.auth.isLoading) {
+      // Return current user data if available, otherwise wait
+      if (state.auth.user) {
+        return state.auth.user;
+      }
+      return rejectWithValue("Request already in progress");
+    }
+
+    // Check if we have recent valid data (within 2 minutes)
+    const now = Date.now();
+    const RECENT_THRESHOLD = 2 * 60 * 1000; // 2 minutes
+    if (
+      state.auth.lastValidated &&
+      state.auth.isAuthenticated &&
+      now - state.auth.lastValidated < RECENT_THRESHOLD
+    ) {
+      // Return current user data instead of making a new request
+      return state.auth.user!;
+    }
+
     try {
       const response = await fetch("/api/auth/session", {
         method: "GET",
         credentials: "include",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
       });
 
       const data = await response.json();
@@ -48,6 +74,7 @@ export const validateAuth = createAsyncThunk(
         userName: data.userName,
         sessionId: data.sessionId,
         hasNotionTokens: data.hasNotionTokens,
+        userPictureUrl: data.userPictureUrl,
       };
     } catch (error) {
       return rejectWithValue("Network error");

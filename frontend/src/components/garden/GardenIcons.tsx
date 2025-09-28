@@ -226,8 +226,6 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
         <ShopModal
           locked={showShopModal}
           onClose={() => setShowShopModal(false)}
-          username={user.userName || user.userEmail}
-          userId={user.userId}
         />
       )}
     </>

@@ -66,24 +66,13 @@ function GardenPageContent() {
   const dispatch = useDispatch<AppDispatch>();
   
   // Check subscription status for premium features
-  const { isPaid: hasSubscription, isLoading: subscriptionLoading } = useSubscription();
-  
-  // Enable visual world synchronization between Redux and PIXI
+  const { isPaid: hasSubscription, isLoading: subscriptionLoading } = useSubscription();  // Enable visual world synchronization between Redux and PIXI
   useVisualWorldSync();
 
-  // Test Redux auth alongside existing auth (we'll switch over gradually)
-  const reduxAuth = useReduxAuth();
-  console.log("🔍 Redux Auth Status:", {
-    isAuthenticated: reduxAuth.isAuthenticated,
-    user: reduxAuth.user,
-    isLoading: reduxAuth.isLoading,
-    error: reduxAuth.error,
-  });
-  
   console.log("🔒 Subscription Status:", {
     hasSubscription,
     subscriptionLoading,
-    userId: user?.userId
+    userId: user?.userId,
   });
 
   const [isClicking, setIsClicking] = useState(false);

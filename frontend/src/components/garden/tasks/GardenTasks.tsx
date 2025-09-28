@@ -68,7 +68,7 @@ export default function GardenTasks() {
   const { addNotification } = useGlobalNotification();
 
   // Use our authentication hook
-  const { user, isLoading, isAuthenticated, error: authError } = useSessionAuth();
+    const { user, isLoading, isAuthenticated, error: authError } = useSessionAuth();
 
   // Cache expiration time (5 minutes)
   const CACHE_EXPIRATION_TIME = 5 * 60 * 1000;
