@@ -84,7 +84,7 @@ export default function ShopModal({ locked, onClose }: ShopModalProps) {
       try {
         const result = await purchaseStructure(user.userId, itemId, itemPrice);
         console.log("Purchase result:", result);
-        
+
         if (result.success) {
           // Update balance in Redux store
           if (result.balance) {

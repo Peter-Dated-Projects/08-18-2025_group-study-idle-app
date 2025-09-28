@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 // Usage:
 // const { addError, addInfo } = useGlobalNotification();
@@ -36,11 +37,19 @@ interface NotificationProviderProps {
 
 function GlobalNotificationDisplay() {
   const { notifications, removeNotification } = useGlobalNotification();
+  const [mounted, setMounted] = useState(false);
 
-  if (notifications.length === 0) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  return (
-    <div className="fixed bottom-5 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2">
+  if (notifications.length === 0 || !mounted) return null;
+
+  const notificationPortal = (
+    <div
+      className="fixed bottom-5 left-1/2 transform -translate-x-1/2 flex flex-col gap-2 pointer-events-none"
+      style={{ zIndex: 2147483647 }} // Maximum z-index value
+    >
       {notifications.map((notification, index) => {
         const containerPalette =
           notification.type === "error"
@@ -55,10 +64,11 @@ function GlobalNotificationDisplay() {
         return (
           <div
             key={notification.id}
-            className={`${containerPalette} border-2 rounded-xl px-5 py-4 text-sm font-medium shadow-lg max-w-sm md:max-w-md lg:max-w-lg min-w-80 text-center transition-all duration-300 ease-out z-50`}
+            className={`${containerPalette} border-2 rounded-xl px-5 py-4 text-sm font-medium shadow-lg max-w-sm md:max-w-md lg:max-w-lg min-w-80 text-center transition-all duration-300 ease-out pointer-events-auto`}
             style={{
               animation: `slideUp 0.3s ease-out`,
               marginBottom: index > 0 ? "8px" : "0",
+              zIndex: 2147483647,
             }}
           >
             <div className="flex items-center justify-between">
@@ -90,6 +100,9 @@ function GlobalNotificationDisplay() {
       `}</style>
     </div>
   );
+
+  // Render the notifications as a portal at the document body level
+  return typeof document !== "undefined" ? createPortal(notificationPortal, document.body) : null;
 }
 
 export function NotificationProvider({ children }: NotificationProviderProps) {
