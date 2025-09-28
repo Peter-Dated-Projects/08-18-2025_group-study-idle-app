@@ -223,10 +223,7 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
 
       {/* Shop Modal */}
       {showShopModal && (
-        <ShopModal
-          locked={showShopModal}
-          onClose={() => setShowShopModal(false)}
-        />
+        <ShopModal locked={showShopModal} onClose={() => setShowShopModal(false)} />
       )}
     </>
   );

@@ -64,9 +64,9 @@ function GardenPageContent() {
   const { addNotification } = useGlobalNotification();
   const { isAuthenticated, isLoading, user, error } = useSessionAuth();
   const dispatch = useDispatch<AppDispatch>();
-  
+
   // Check subscription status for premium features
-  const { isPaid: hasSubscription, isLoading: subscriptionLoading } = useSubscription();  // Enable visual world synchronization between Redux and PIXI
+  const { isPaid: hasSubscription, isLoading: subscriptionLoading } = useSubscription(); // Enable visual world synchronization between Redux and PIXI
   useVisualWorldSync();
 
   console.log("🔒 Subscription Status:", {

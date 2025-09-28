@@ -19,8 +19,8 @@ export function useReduxAuth() {
   useEffect(() => {
     const now = Date.now();
     const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-    const shouldValidate = 
-      !auth.lastValidated || 
+    const shouldValidate =
+      !auth.lastValidated ||
       now - auth.lastValidated > CACHE_DURATION ||
       (!auth.isAuthenticated && !auth.isLoading && !auth.error);
 
