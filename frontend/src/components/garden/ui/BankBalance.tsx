@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { useReduxAuth } from "../../../hooks/useReduxAuth";
+import { useSessionAuth } from "../../../hooks/useSessionAuth";
 import { useWebSocket } from "../../../hooks/useWebSocket";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import type { RootState } from "../../../store/store";
@@ -19,7 +19,7 @@ interface BankBalanceProps {
 }
 
 export default function BankBalance({ className, style }: BankBalanceProps) {
-  const { user } = useReduxAuth();
+  const { user } = useSessionAuth();
   const { onPomoBankEvent } = useWebSocket();
   const dispatch = useAppDispatch();
 

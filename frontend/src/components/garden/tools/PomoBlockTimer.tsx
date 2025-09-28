@@ -11,7 +11,7 @@ import {
   BORDERFILL,
 } from "../../constants";
 import { useAppSelector, useAppDispatch, useTimer } from "../../../store/hooks";
-import { useReduxAuth } from "../../../hooks/useReduxAuth";
+import { useSessionAuth } from "../../../hooks/useSessionAuth";
 import { updateBalance } from "../../../store/slices/walletSlice";
 import {
   startTimer,
@@ -28,7 +28,7 @@ import {
 } from "../../../store/slices/timerSlice";
 
 export default function PomoBlockTimer() {
-  const { user } = useReduxAuth();
+  const { user } = useSessionAuth();
   const dispatch = useAppDispatch();
 
   // Get all timer state from Redux

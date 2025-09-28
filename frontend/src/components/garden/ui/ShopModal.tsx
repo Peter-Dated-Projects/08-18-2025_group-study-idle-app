@@ -7,7 +7,7 @@ import { getAllStructureConfigs } from "../../../config/structureConfigs";
 import { purchaseStructure } from "../../../services/inventoryService";
 import { BsFillCartFill } from "react-icons/bs";
 import { useAppDispatch, useAppSelector, useWallet, useInventory } from "../../../store/hooks";
-import { useReduxAuth } from "../../../hooks/useReduxAuth";
+import { useSessionAuth } from "../../../hooks/useSessionAuth";
 import { updateBalance, fetchBalance } from "../../../store/slices/walletSlice";
 import { fetchInventory } from "../../../store/slices/inventorySlice";
 import { useGlobalNotification } from "../../NotificationProvider";
@@ -19,7 +19,7 @@ interface ShopModalProps {
 
 export default function ShopModal({ locked, onClose }: ShopModalProps) {
   const dispatch = useAppDispatch();
-  const { user } = useReduxAuth();
+  const { user } = useSessionAuth();
   const { balance, isLoading: isWalletLoading, error: walletError } = useWallet();
   const { structures, isLoading: isInventoryLoading, error: inventoryError } = useInventory();
   const { addNotification } = useGlobalNotification();
@@ -95,30 +95,17 @@ export default function ShopModal({ locked, onClose }: ShopModalProps) {
           // Refresh inventory to get updated counts
           dispatch(fetchInventory(user.userId));
 
-          // Show success notification with item name
-          addNotification("info", `Successfully purchased ${itemName}!`);
-
           console.log(`Successfully purchased ${itemName} (${itemId}) for ${itemPrice} coins`);
         } else {
           console.error(`Failed to purchase ${itemName}:`, result.message);
-          addNotification(
-            "error",
-            `Failed to purchase ${itemName}: ${result.message || "Unknown error"}`
-          );
         }
       } catch (error) {
         console.error(`Error purchasing ${itemName}:`, error);
-        const errorMessage = error instanceof Error ? error.message : "Network error occurred";
-        addNotification("error", `Error purchasing ${itemName}: ${errorMessage}`);
       } finally {
         setIsPurchasing(false);
       }
     } else {
       console.log(`Insufficient funds to purchase ${itemName}`);
-      addNotification(
-        "error",
-        `Insufficient funds! You need ${itemPrice} coins but only have ${balance}.`
-      );
     }
   };
 
@@ -177,22 +164,6 @@ export default function ShopModal({ locked, onClose }: ShopModalProps) {
           accountBalance={balance}
         />
 
-        {/* Loading State */}
-        {(isWalletLoading || isInventoryLoading) && (
-          <div
-            style={{
-              padding: "20px",
-              textAlign: "center",
-              color: FONTCOLOR,
-              backgroundColor: BORDERFILL,
-              borderRadius: "6px",
-              marginBottom: "15px",
-            }}
-          >
-            Loading shop data...
-          </div>
-        )}
-
         {/* Error States */}
         {(walletError || inventoryError) && (
           <div
@@ -208,24 +179,6 @@ export default function ShopModal({ locked, onClose }: ShopModalProps) {
             }}
           >
             Error loading shop data: {walletError || inventoryError}
-          </div>
-        )}
-
-        {/* Purchasing State */}
-        {isPurchasing && (
-          <div
-            style={{
-              padding: "15px",
-              textAlign: "center",
-              color: FONTCOLOR,
-              backgroundColor: "#4CAF50",
-              borderRadius: "6px",
-              marginBottom: "15px",
-              fontSize: "14px",
-              fontWeight: "bold",
-            }}
-          >
-            Processing purchase...
           </div>
         )}
 
