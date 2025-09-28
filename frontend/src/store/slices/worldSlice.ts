@@ -324,14 +324,20 @@ const worldSlice = createSlice({
     },
 
     // Sync plots from visual world service
-    syncPlotsFromVisualWorld: (state, action: PayloadAction<Array<{index: number, structureId: string}>>) => {
+    syncPlotsFromVisualWorld: (
+      state,
+      action: PayloadAction<Array<{ index: number; structureId: string }>>
+    ) => {
       const plots = action.payload;
-      state.currentPlots = plots.map(({index, structureId}) => ({
+      state.currentPlots = plots.map(({ index, structureId }) => ({
         index,
         currentStructureId: structureId,
         position: getPlotPosition(index),
       }));
-      console.log(`🔄 Synced ${plots.length} plots from visual world:`, plots.map(p => ({ index: p.index, structure: p.structureId })));
+      console.log(
+        `🔄 Synced ${plots.length} plots from visual world:`,
+        plots.map((p) => ({ index: p.index, structure: p.structureId }))
+      );
     },
 
     // Optimistic Updates for Immediate UI Feedback
@@ -491,7 +497,7 @@ const worldSlice = createSlice({
       .addCase(initializePlotsFromConfig.fulfilled, (state, action) => {
         state.isLoading = false;
         const levelConfig = action.payload;
-        
+
         // Ensure we have exactly 7 plots (indices 0-6)
         state.currentPlots = [];
         for (let i = 0; i < 7; i++) {
@@ -502,8 +508,11 @@ const worldSlice = createSlice({
             position: getPlotPosition(i),
           });
         }
-        
-        console.log(`🏗️ Initialized ${state.currentPlots.length} plots from config:`, state.currentPlots.map(p => ({ index: p.index, structure: p.currentStructureId })));
+
+        console.log(
+          `🏗️ Initialized ${state.currentPlots.length} plots from config:`,
+          state.currentPlots.map((p) => ({ index: p.index, structure: p.currentStructureId }))
+        );
       })
       .addCase(initializePlotsFromConfig.rejected, (state, action) => {
         state.isLoading = false;
@@ -519,7 +528,11 @@ const worldSlice = createSlice({
 
         // Update current plots (plots should exist after initialization)
         if (state.currentPlots[plotIndex]) {
+          const oldStructure = state.currentPlots[plotIndex].currentStructureId;
           state.currentPlots[plotIndex].currentStructureId = structureId;
+          console.log(
+            `🎯 Database update successful: Plot ${plotIndex} changed from ${oldStructure} to ${structureId}`
+          );
         }
 
         // Remove from pending placements
@@ -529,7 +542,10 @@ const worldSlice = createSlice({
         addToArray(state.pendingVisualUpdates, plotIndex);
         state.lastVisualUpdate = Date.now();
         state.lastUpdated = Date.now();
-        console.log(`🎯 Added plot ${plotIndex} to visual update queue. Current plots count: ${state.currentPlots.length}`);
+        console.log(
+          `🎯 Added plot ${plotIndex} to visual update queue. Current plots count: ${state.currentPlots.length}`
+        );
+        console.log(`🎯 Pending visual updates:`, state.pendingVisualUpdates);
       })
       .addCase(placeStructureOnPlot.rejected, (state, action) => {
         state.isSaving = false;

@@ -163,23 +163,6 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
           </span>
         )}
       </div>
-
-      {/* Debug info - remove in production */}
-      {lastUpdated && (
-        <div
-          style={{
-            fontSize: "8px",
-            color: SECONDARY_TEXT,
-            position: "absolute",
-            top: "-12px",
-            right: "0px",
-            opacity: 0.7,
-          }}
-          title={`Last updated: ${new Date(lastUpdated).toLocaleTimeString()}`}
-        >
-          Redux
-        </div>
-      )}
     </div>
   );
 }

@@ -158,12 +158,6 @@ export class VisualWorldUpdateService {
           const structure = entity as Structure;
           callGlobalStructureClickHandler(structure);
         },
-        onEnter: (entity) => {
-          console.log("Mouse entered structure plot:", entity.id);
-        },
-        onLeave: (entity) => {
-          console.log("Mouse left structure plot:", entity.id);
-        },
       };
 
       console.log(

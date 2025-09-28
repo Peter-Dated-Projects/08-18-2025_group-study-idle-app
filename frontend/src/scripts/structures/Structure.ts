@@ -92,10 +92,6 @@ export class Structure extends PhysicsEntity {
 
       // Set pixel-perfect rendering
       texture.source.scaleMode = "nearest";
-
-      console.log(
-        `Structure sprite initialized at position (${this.position.x}, ${this.position.y})`
-      );
     } catch (error) {
       console.error("Failed to initialize Structure sprite:", error);
     }
@@ -170,7 +166,7 @@ export class Structure extends PhysicsEntity {
 
     // add a white border if not already present
     if (this.sprite! && !this.hoverBorder) {
-      this.sprite.filters = [new OutlineFilter(4, 0xffffff)];
+      this.sprite.filters = [new OutlineFilter(4, 0xffffff) as any];
     }
   }
 
