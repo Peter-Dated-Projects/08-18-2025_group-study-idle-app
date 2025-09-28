@@ -6,26 +6,25 @@ import AccountHeader from "./AccountHeader";
 import { getAllStructureConfigs } from "../../../config/structureConfigs";
 import { purchaseStructure } from "../../../services/inventoryService";
 import { BsFillCartFill } from "react-icons/bs";
+import { useAppDispatch, useAppSelector, useWallet, useInventory } from "../../../store/hooks";
+import { useReduxAuth } from "../../../hooks/useReduxAuth";
+import { updateBalance, fetchBalance } from "../../../store/slices/walletSlice";
+import { fetchInventory } from "../../../store/slices/inventorySlice";
+import { useGlobalNotification } from "../../NotificationProvider";
 
 interface ShopModalProps {
   locked: boolean;
   onClose: () => void;
-  username?: string;
-  accountBalance?: number;
-  userId?: string;
-  onBalanceUpdate?: (newBalance: number) => void;
 }
 
-export default function ShopModal({
-  locked,
-  onClose,
-  username = "Player",
-  accountBalance = 0,
-  userId = "test-user",
-  onBalanceUpdate,
-}: ShopModalProps) {
+export default function ShopModal({ locked, onClose }: ShopModalProps) {
+  const dispatch = useAppDispatch();
+  const { user } = useReduxAuth();
+  const { balance, isLoading: isWalletLoading, error: walletError } = useWallet();
+  const { structures, isLoading: isInventoryLoading, error: inventoryError } = useInventory();
+  const { addNotification } = useGlobalNotification();
+
   const [windowWidth, setWindowWidth] = useState(750); // Default width
-  const [currentBalance, setCurrentBalance] = useState(accountBalance);
   const [isPurchasing, setIsPurchasing] = useState(false);
 
   // Get structure configurations (these would be shop items)
@@ -39,6 +38,14 @@ export default function ShopModal({
     price: (index + 1) * 10, // Sample pricing logic
     count: 1, // Shop items don't show count, but we need it for StorageItem component
   }));
+
+  // Load wallet balance and inventory when modal opens
+  useEffect(() => {
+    if (locked && user?.userId) {
+      dispatch(fetchBalance(user.userId));
+      dispatch(fetchInventory(user.userId));
+    }
+  }, [locked, user?.userId, dispatch]);
 
   // Update window width for responsive grid
   useEffect(() => {
@@ -67,37 +74,81 @@ export default function ShopModal({
     return columns;
   };
 
-  const handleItemClick = async (itemId: string, itemPrice: number) => {
-    if (isPurchasing) return;
+  const handleItemClick = async (itemId: string, itemName: string, itemPrice: number) => {
+    if (isPurchasing || !user?.userId) {
+      return;
+    }
 
-    if (currentBalance >= itemPrice) {
+    if (balance >= itemPrice) {
       setIsPurchasing(true);
       try {
-        const result = await purchaseStructure(userId, itemId, itemPrice);
-        if (result.success && result.data?.balance) {
-          const newBalance = result.data.balance.bank_value;
-          setCurrentBalance(newBalance);
-          if (onBalanceUpdate) {
-            onBalanceUpdate(newBalance);
+        const result = await purchaseStructure(user.userId, itemId, itemPrice);
+        console.log("Purchase result:", result);
+        
+        if (result.success) {
+          // Update balance in Redux store
+          if (result.balance) {
+            console.log("Updating balance to:", result.balance.bank_value);
+            dispatch(updateBalance(result.balance.bank_value));
           }
-          console.log(`Successfully purchased ${itemId} for ${itemPrice} coins`);
+
+          // Refresh inventory to get updated counts
+          dispatch(fetchInventory(user.userId));
+
+          // Show success notification with item name
+          addNotification("info", `Successfully purchased ${itemName}!`);
+
+          console.log(`Successfully purchased ${itemName} (${itemId}) for ${itemPrice} coins`);
         } else {
-          console.error(`Failed to purchase ${itemId}:`, result.message);
-          alert(`Failed to purchase ${itemId}: ${result.message || "Unknown error"}`);
+          console.error(`Failed to purchase ${itemName}:`, result.message);
+          addNotification(
+            "error",
+            `Failed to purchase ${itemName}: ${result.message || "Unknown error"}`
+          );
         }
       } catch (error) {
-        console.error(`Error purchasing ${itemId}:`, error);
-        alert(`Error purchasing ${itemId}. Please try again.`);
+        console.error(`Error purchasing ${itemName}:`, error);
+        const errorMessage = error instanceof Error ? error.message : "Network error occurred";
+        addNotification("error", `Error purchasing ${itemName}: ${errorMessage}`);
       } finally {
         setIsPurchasing(false);
       }
     } else {
-      console.log(`Insufficient funds to purchase ${itemId}`);
-      alert(`Insufficient funds! You need ${itemPrice} coins but only have ${currentBalance}.`);
+      console.log(`Insufficient funds to purchase ${itemName}`);
+      addNotification(
+        "error",
+        `Insufficient funds! You need ${itemPrice} coins but only have ${balance}.`
+      );
     }
   };
 
   if (!locked) return null;
+
+  // Don't show modal if user is not authenticated
+  if (!user?.userId) {
+    return (
+      <BaseModal
+        isVisible={locked}
+        onClose={onClose}
+        title="Item Shop"
+        icon={<BsFillCartFill />}
+        width="750px"
+        maxHeight="600px"
+        constrainToCanvas={true}
+        zIndex={2000}
+      >
+        <div
+          style={{
+            padding: "40px",
+            textAlign: "center",
+            color: FONTCOLOR,
+          }}
+        >
+          Please log in to access the shop.
+        </div>
+      </BaseModal>
+    );
+  }
 
   const gridColumns = getGridColumns();
 
@@ -121,7 +172,62 @@ export default function ShopModal({
         }}
       >
         {/* Header with username and balance */}
-        <AccountHeader username={username} accountBalance={currentBalance} />
+        <AccountHeader
+          username={user?.userName || user?.userEmail || "Player"}
+          accountBalance={balance}
+        />
+
+        {/* Loading State */}
+        {(isWalletLoading || isInventoryLoading) && (
+          <div
+            style={{
+              padding: "20px",
+              textAlign: "center",
+              color: FONTCOLOR,
+              backgroundColor: BORDERFILL,
+              borderRadius: "6px",
+              marginBottom: "15px",
+            }}
+          >
+            Loading shop data...
+          </div>
+        )}
+
+        {/* Error States */}
+        {(walletError || inventoryError) && (
+          <div
+            style={{
+              padding: "15px",
+              textAlign: "center",
+              color: "#FF5722",
+              backgroundColor: BORDERFILL,
+              border: "1px solid #FF5722",
+              borderRadius: "6px",
+              marginBottom: "15px",
+              fontSize: "14px",
+            }}
+          >
+            Error loading shop data: {walletError || inventoryError}
+          </div>
+        )}
+
+        {/* Purchasing State */}
+        {isPurchasing && (
+          <div
+            style={{
+              padding: "15px",
+              textAlign: "center",
+              color: FONTCOLOR,
+              backgroundColor: "#4CAF50",
+              borderRadius: "6px",
+              marginBottom: "15px",
+              fontSize: "14px",
+              fontWeight: "bold",
+            }}
+          >
+            Processing purchase...
+          </div>
+        )}
 
         {/* Shop Grid */}
         <div
@@ -146,8 +252,8 @@ export default function ShopModal({
                   image={item.image}
                   name={item.name}
                   price={item.price}
-                  canPurchase={currentBalance >= item.price && !isPurchasing}
-                  onClick={() => handleItemClick(item.id, item.price)}
+                  canPurchase={balance >= item.price && !isPurchasing && !isWalletLoading}
+                  onClick={() => handleItemClick(item.id, item.name, item.price)}
                 />
               </div>
             </div>

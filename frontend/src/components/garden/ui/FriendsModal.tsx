@@ -235,22 +235,6 @@ export default function FriendsModal({ isVisible, onClose, userId }: FriendsModa
               Refreshing...
             </span>
           )}
-          {/* Debug button */}
-          <button
-            onClick={testDirectAPI}
-            style={{
-              marginLeft: "10px",
-              padding: "4px 8px",
-              fontSize: "10px",
-              backgroundColor: "#4CAF50",
-              color: "white",
-              border: "none",
-              borderRadius: "3px",
-              cursor: "pointer",
-            }}
-          >
-            Test API
-          </button>
         </h3>
 
         {friendsLoading && friends.length === 0 ? (

@@ -111,7 +111,12 @@ export async function purchaseStructure(
   userId: string,
   structureName: string,
   price: number
-): Promise<APIResponse<{ balance: UserBalanceData; inventory: UserInventoryData }>> {
+): Promise<{
+  success: boolean;
+  message?: string;
+  balance?: any;
+  inventory?: any;
+}> {
   try {
     const response = await createAPIRequest(`/api/shop/purchase`, {
       method: "POST",
@@ -122,7 +127,7 @@ export async function purchaseStructure(
       }),
     });
     const data = await response.json();
-    return data;
+    return data; // Return the response directly as it matches the backend structure
   } catch (error) {
     console.error("Error purchasing structure:", error);
     return {

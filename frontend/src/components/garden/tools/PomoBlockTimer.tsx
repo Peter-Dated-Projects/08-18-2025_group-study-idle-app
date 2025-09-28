@@ -414,6 +414,15 @@ export default function PomoBlockTimer() {
                 border: "none",
                 borderRadius: "4px",
                 cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = "#45a049";
+                e.currentTarget.style.transform = "scale(1.05)";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = SUCCESS_COLOR;
+                e.currentTarget.style.transform = "scale(1)";
               }}
             >
               Apply
@@ -428,6 +437,15 @@ export default function PomoBlockTimer() {
                 border: `1px solid ${BORDERLINE}`,
                 borderRadius: "4px",
                 cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = BORDERLINE;
+                e.currentTarget.style.transform = "scale(1.05)";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = BORDERFILL;
+                e.currentTarget.style.transform = "scale(1)";
               }}
             >
               Cancel
@@ -458,6 +476,17 @@ export default function PomoBlockTimer() {
                 cursor: "pointer",
                 fontFamily: BodyFont,
                 fontWeight: "600",
+                transition: "all 0.2s ease",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = "#45a049";
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.2)";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = SUCCESS_COLOR;
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
               }}
             >
               {currentPhase === "idle" ? "Start Work" : "Resume"}
@@ -476,6 +505,17 @@ export default function PomoBlockTimer() {
                 cursor: "pointer",
                 fontFamily: BodyFont,
                 fontWeight: "600",
+                transition: "all 0.2s ease",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = "#ff5252";
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.2)";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = "#ff6b6b";
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
               }}
             >
               Pause
@@ -494,6 +534,17 @@ export default function PomoBlockTimer() {
               cursor: "pointer",
               fontFamily: BodyFont,
               fontWeight: "500",
+              transition: "all 0.2s ease",
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = BORDERLINE;
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = BORDERFILL;
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "none";
             }}
           >
             Reset
@@ -515,6 +566,17 @@ export default function PomoBlockTimer() {
               cursor: "pointer",
               fontFamily: BodyFont,
               marginBottom: "8px",
+              transition: "all 0.2s ease",
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = BORDERFILL;
+              e.currentTarget.style.color = FONTCOLOR;
+              e.currentTarget.style.borderStyle = "solid";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.color = SECONDARY_TEXT;
+              e.currentTarget.style.borderStyle = "dashed";
             }}
           >
             Skip Session (Partial Credit)

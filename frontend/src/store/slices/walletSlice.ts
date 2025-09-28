@@ -21,7 +21,7 @@ export const fetchBalance = createAsyncThunk(
   "wallet/fetchBalance",
   async (userId: string, { rejectWithValue }) => {
     try {
-      const response = await fetch(`/api/pomo-bank/${userId}`, {
+      const response = await fetch(`/api/pomo-bank/balance`, {
         credentials: "include",
       });
 
@@ -30,7 +30,7 @@ export const fetchBalance = createAsyncThunk(
       }
 
       const data = await response.json();
-      return data.balance;
+      return data.balance; // Backend returns { success, user_id, balance, message }
     } catch (error) {
       return rejectWithValue("Network error");
     }

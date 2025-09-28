@@ -55,7 +55,7 @@ function GlobalNotificationDisplay() {
         return (
           <div
             key={notification.id}
-            className={`${containerPalette} border-2 rounded-xl px-5 py-4 text-sm font-medium shadow-lg max-w-sm md:max-w-md lg:max-w-lg min-w-80 text-center transition-all duration-300 ease-out`}
+            className={`${containerPalette} border-2 rounded-xl px-5 py-4 text-sm font-medium shadow-lg max-w-sm md:max-w-md lg:max-w-lg min-w-80 text-center transition-all duration-300 ease-out z-50`}
             style={{
               animation: `slideUp 0.3s ease-out`,
               marginBottom: index > 0 ? "8px" : "0",
