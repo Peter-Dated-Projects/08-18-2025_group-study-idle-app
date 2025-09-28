@@ -32,44 +32,77 @@ class FriendService:
 
     def add_friend(self, user_id: str, friend_id: str) -> bool:
         """
-        Adds a bidirectional friendship between two users.
+        Adds a bidirectional friendship between two users using the graph API.
         Returns True if the friendship was created, False if it already existed.
         """
         self._ensure_user_exists(user_id)
         self._ensure_user_exists(friend_id)
 
-        # Check if friendship already exists
-        if self.friend_relations.find({"_from": f"{USERS_COLLECTION}/{user_id}", "_to": f"{USERS_COLLECTION}/{friend_id}"}).count() > 0:
+        # Check if friendship already exists using graph traversal
+        aql_check_query = f"""
+        FOR v IN 1..1 OUTBOUND '{USERS_COLLECTION}/{user_id}' GRAPH '{FRIENDS_GRAPH}'
+            FILTER v._key == '{friend_id}'
+            RETURN v
+        """
+        try:
+            check_cursor = self.db.aql.execute(aql_check_query)
+            existing_friends = list(check_cursor)
+            if len(existing_friends) > 0:
+                logger.info(f"Friendship already exists between '{user_id}' and '{friend_id}'")
+                return False
+        except Exception as e:
+            logger.error(f"Failed to check existing friendship: {e}")
             return False
 
-        # Add friendship in both directions
-        self.friend_relations.insert({"_from": f"{USERS_COLLECTION}/{user_id}", "_to": f"{USERS_COLLECTION}/{friend_id}"})
-        self.friend_relations.insert({"_from": f"{USERS_COLLECTION}/{friend_id}", "_to": f"{USERS_COLLECTION}/{user_id}"})
+        # Instead of using graph.edge_collection, let's use direct collection access
+        # but ensure we're working within the graph context
+        try:
+            # Add friendship in both directions using direct collection insertion
+            self.friend_relations.insert({
+                "_from": f"{USERS_COLLECTION}/{user_id}", 
+                "_to": f"{USERS_COLLECTION}/{friend_id}"
+            })
+            self.friend_relations.insert({
+                "_from": f"{USERS_COLLECTION}/{friend_id}", 
+                "_to": f"{USERS_COLLECTION}/{user_id}"
+            })
 
-        logger.info(f"Friendship created between '{user_id}' and '{friend_id}'.")
-        return True
+            logger.info(f"Friendship created between '{user_id}' and '{friend_id}' using direct collection insert.")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to create friendship between '{user_id}' and '{friend_id}': {e}")
+            return False
 
     def remove_friend(self, user_id: str, friend_id: str) -> bool:
         """
-        Removes a bidirectional friendship between two users.
+        Removes a bidirectional friendship between two users using the graph API.
         Returns True if the friendship was removed, False if it didn't exist.
         """
-        edge1_cursor = self.friend_relations.find({"_from": f"{USERS_COLLECTION}/{user_id}", "_to": f"{USERS_COLLECTION}/{friend_id}"})
-        edge2_cursor = self.friend_relations.find({"_from": f"{USERS_COLLECTION}/{friend_id}", "_to": f"{USERS_COLLECTION}/{user_id}"})
-
+        edge_collection = self.graph.edge_collection(FRIEND_RELATIONS_COLLECTION)
+        
+        # Find and remove edges using graph API
+        aql_find_edges = f"""
+        FOR e IN {FRIEND_RELATIONS_COLLECTION}
+            FILTER (e._from == '{USERS_COLLECTION}/{user_id}' AND e._to == '{USERS_COLLECTION}/{friend_id}') OR 
+                   (e._from == '{USERS_COLLECTION}/{friend_id}' AND e._to == '{USERS_COLLECTION}/{user_id}')
+            RETURN e
+        """
+        
+        edge_cursor = self.db.aql.execute(aql_find_edges)
         removed = False
-        if edge1_cursor.count() > 0:
-            self.friend_relations.delete(edge1_cursor.next())
-            removed = True
+        
+        try:
+            for edge in edge_cursor:
+                edge_collection.delete(edge)
+                removed = True
 
-        if edge2_cursor.count() > 0:
-            self.friend_relations.delete(edge2_cursor.next())
-            removed = True
+            if removed:
+                logger.info(f"Friendship removed between '{user_id}' and '{friend_id}' using graph API.")
 
-        if removed:
-            logger.info(f"Friendship removed between '{user_id}' and '{friend_id}'.")
-
-        return removed
+            return removed
+        except Exception as e:
+            logger.error(f"Failed to remove friendship between '{user_id}' and '{friend_id}': {e}")
+            return False
 
     def get_friends(self, user_id: str) -> list[str]:
         """
@@ -83,10 +116,12 @@ class FriendService:
 
         aql_query = f"""
         FOR friend IN 1..1 OUTBOUND '{USERS_COLLECTION}/{user_id}' GRAPH '{FRIENDS_GRAPH}'
-            RETURN friend.user_id ? friend.user_id : friend._key
+            RETURN friend.user_id != null ? friend.user_id : friend._key
         """
         cursor = self.db.aql.execute(aql_query)
-        return [friend_id for friend_id in cursor if friend_id is not None]
+        result = [friend_id for friend_id in cursor if friend_id is not None and friend_id != ""]
+        logger.info(f"Found {len(result)} friends for user {user_id}: {result}")
+        return result
 
     def get_friends_of_friends(self, user_id: str) -> list[str]:
         """

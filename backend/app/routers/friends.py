@@ -123,7 +123,19 @@ async def get_friends_list(
                     last_login=resolved_user.last_login,
                     provider=resolved_user.provider
                 )
-                friends_with_info.append(friend_info)
+            else:
+                # Fallback: include friend even if username resolution fails
+                logger.warning(f"Could not resolve username for friend_id: {friend_id}, including with fallback data")
+                friend_info = FriendInfo(
+                    friend_id=friend_id,
+                    display_name=friend_id,  # Use friend_id as fallback display name
+                    email=None,
+                    photo_url=None,
+                    created_at=None,
+                    last_login=None,
+                    provider=None
+                )
+            friends_with_info.append(friend_info)
         
         return FriendsListResponse(success=True, friends=friends_with_info)
         
