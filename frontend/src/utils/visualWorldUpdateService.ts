@@ -154,7 +154,6 @@ export class VisualWorldUpdateService {
       const plotPosition = this.getPlotPosition(plotIndex);
       const mouseCallbacks: MouseInteractionCallbacks = {
         onClick: (entity) => {
-          console.log("Structure plot clicked:", entity.id);
           const structure = entity as Structure;
           callGlobalStructureClickHandler(structure);
         },

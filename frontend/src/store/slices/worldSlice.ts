@@ -176,6 +176,11 @@ export const placeStructureOnPlot = createAsyncThunk(
       }
 
       const data = await response.json();
+
+      // Invalidate local cache after successful update
+      const { localDataManager } = await import("../../utils/localDataManager");
+      localDataManager.invalidateLevelConfig(userId);
+
       return { plotIndex, structureId, ...data };
     } catch (error) {
       return rejectWithValue("Network error");
@@ -214,6 +219,11 @@ export const swapStructures = createAsyncThunk(
       }
 
       const data = await response.json();
+
+      // Invalidate local cache after successful update
+      const { localDataManager } = await import("../../utils/localDataManager");
+      localDataManager.invalidateLevelConfig(userId);
+
       return { plot1Index, plot2Index, data };
     } catch (error) {
       return rejectWithValue("Network error");
@@ -240,6 +250,11 @@ export const removeStructure = createAsyncThunk(
       }
 
       const data = await response.json();
+
+      // Invalidate local cache after successful update
+      const { localDataManager } = await import("../../utils/localDataManager");
+      localDataManager.invalidateLevelConfig(userId);
+
       return { plotIndex, data };
     } catch (error) {
       return rejectWithValue("Network error");
@@ -334,10 +349,6 @@ const worldSlice = createSlice({
         currentStructureId: structureId,
         position: getPlotPosition(index),
       }));
-      console.log(
-        `🔄 Synced ${plots.length} plots from visual world:`,
-        plots.map((p) => ({ index: p.index, structure: p.structureId }))
-      );
     },
 
     // Optimistic Updates for Immediate UI Feedback
@@ -528,11 +539,7 @@ const worldSlice = createSlice({
 
         // Update current plots (plots should exist after initialization)
         if (state.currentPlots[plotIndex]) {
-          const oldStructure = state.currentPlots[plotIndex].currentStructureId;
           state.currentPlots[plotIndex].currentStructureId = structureId;
-          console.log(
-            `🎯 Database update successful: Plot ${plotIndex} changed from ${oldStructure} to ${structureId}`
-          );
         }
 
         // Remove from pending placements
@@ -542,10 +549,6 @@ const worldSlice = createSlice({
         addToArray(state.pendingVisualUpdates, plotIndex);
         state.lastVisualUpdate = Date.now();
         state.lastUpdated = Date.now();
-        console.log(
-          `🎯 Added plot ${plotIndex} to visual update queue. Current plots count: ${state.currentPlots.length}`
-        );
-        console.log(`🎯 Pending visual updates:`, state.pendingVisualUpdates);
       })
       .addCase(placeStructureOnPlot.rejected, (state, action) => {
         state.isSaving = false;

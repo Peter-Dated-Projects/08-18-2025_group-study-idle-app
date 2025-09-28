@@ -122,13 +122,18 @@ class LevelConfigService:
             if len(level_config) != 7:
                 raise ValueError(f"Level config must have exactly 7 slots, got {len(level_config)}")
             
+            self.logger.info(f"Updating full level config for user {user_id}: {level_config}")
+            
             with self._get_db() as db:
                 # Get current config
                 current_config = self.get_user_level_config(user_id)
                 
                 if not current_config:
                     # Create new config if doesn't exist
+                    self.logger.info(f"Creating new config during update for user {user_id}")
                     return self.create_user_level_config(user_id, level_config)
+                
+                self.logger.info(f"Updating existing config for user {user_id}")
                 
                 # Update existing config
                 query = text("""
@@ -145,12 +150,16 @@ class LevelConfigService:
                 
                 db.commit()
                 
-                return {
-                    "user_id": result.user_id,
-                    "level_config": result.level_config,
-                    "created_at": result.created_at.isoformat() if result.created_at else None,
-                    "updated_at": result.updated_at.isoformat() if result.updated_at else None
-                }
+                if result:
+                    self.logger.info(f"Database update successful for user {user_id}")
+                    return {
+                        "user_id": result.user_id,
+                        "level_config": result.level_config,
+                        "created_at": result.created_at.isoformat() if result.created_at else None,
+                        "updated_at": result.updated_at.isoformat() if result.updated_at else None
+                    }
+                else:
+                    raise Exception("Update query returned no result")
                 
         except Exception as e:
             self.logger.error(f"Error updating level config for user {user_id}: {e}")
@@ -172,11 +181,14 @@ class LevelConfigService:
             if not (0 <= slot_index <= 6):
                 raise ValueError(f"Slot index must be between 0 and 6, got {slot_index}")
             
+            self.logger.info(f"Updating slot {slot_index} to '{structure_id}' for user {user_id}")
+            
             # Get current config
             current_config = self.get_user_level_config(user_id)
             
             if not current_config:
                 # Create new config if doesn't exist
+                self.logger.info(f"Creating new level config for user {user_id}")
                 current_config = self.create_user_level_config(user_id)
             
             # Update the specific slot
@@ -184,9 +196,14 @@ class LevelConfigService:
             if isinstance(level_config, str):
                 level_config = json.loads(level_config)
             
+            old_structure = level_config[slot_index]
             level_config[slot_index] = structure_id
             
-            return self.update_user_level_config(user_id, level_config)
+            self.logger.info(f"Slot {slot_index} changed from '{old_structure}' to '{structure_id}' for user {user_id}")
+            
+            result = self.update_user_level_config(user_id, level_config)
+            self.logger.info(f"Successfully updated level config for user {user_id}")
+            return result
             
         except Exception as e:
             self.logger.error(f"Error updating slot {slot_index} for user {user_id}: {e}")
