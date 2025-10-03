@@ -18,7 +18,7 @@ def test_auth_fix():
     url = f"{base_url}/api/inventory/bulk-update"
     payload = {
         "inventory_updates": [
-            {"structure_name": "TestStructure", "count": 1, "currently_in_use": 1}
+            {"structure_name": "TestStructure", "count": 1}
         ]
     }
     

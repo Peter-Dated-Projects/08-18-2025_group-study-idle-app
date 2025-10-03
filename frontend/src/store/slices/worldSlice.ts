@@ -177,10 +177,6 @@ export const placeStructureOnPlot = createAsyncThunk(
 
       const data = await response.json();
 
-      // Invalidate local cache after successful update
-      const { localDataManager } = await import("../../utils/localDataManager");
-      localDataManager.invalidateLevelConfig(userId);
-
       return { plotIndex, structureId, ...data };
     } catch (error) {
       return rejectWithValue("Network error");
@@ -220,10 +216,6 @@ export const swapStructures = createAsyncThunk(
 
       const data = await response.json();
 
-      // Invalidate local cache after successful update
-      const { localDataManager } = await import("../../utils/localDataManager");
-      localDataManager.invalidateLevelConfig(userId);
-
       return { plot1Index, plot2Index, data };
     } catch (error) {
       return rejectWithValue("Network error");
@@ -251,10 +243,6 @@ export const removeStructure = createAsyncThunk(
 
       const data = await response.json();
 
-      // Invalidate local cache after successful update
-      const { localDataManager } = await import("../../utils/localDataManager");
-      localDataManager.invalidateLevelConfig(userId);
-
       return { plotIndex, data };
     } catch (error) {
       return rejectWithValue("Network error");
@@ -272,6 +260,7 @@ export const fetchStructureInventory = createAsyncThunk(
         return rejectWithValue(`Failed to fetch inventory: ${response.status}`);
       }
       const data = await response.json();
+      console.log("data", data);
       if (data.success && data.data) {
         return data.data.structure_inventory;
       } else {
@@ -300,6 +289,40 @@ export const placeStructureWithInventory = createAsyncThunk(
         return result.payload;
       } else {
         return rejectWithValue(result.payload);
+      }
+    } catch (error) {
+      return rejectWithValue("Network error");
+    }
+  }
+);
+
+// Reset all structures to empty
+export const resetAllStructures = createAsyncThunk(
+  "world/resetAllStructures",
+  async (userId: string, { rejectWithValue, dispatch }) => {
+    try {
+      const response = await fetch(`/api/level-config/${userId}/reset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        return rejectWithValue("Failed to reset structures");
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        // Refresh the world data to reflect the reset
+        await dispatch(initializePlotsFromConfig(userId));
+
+        // Refresh inventory to get latest counts
+        await dispatch(fetchStructureInventory(userId));
+
+        return data.data.level_config;
+      } else {
+        return rejectWithValue("Failed to reset structures");
       }
     } catch (error) {
       return rejectWithValue("Network error");
@@ -602,6 +625,36 @@ const worldSlice = createSlice({
         state.lastUpdated = Date.now();
       })
       .addCase(removeStructure.rejected, (state, action) => {
+        state.error = action.payload as string;
+      })
+      // Reset All Structures
+      .addCase(resetAllStructures.pending, (state) => {
+        state.isSaving = true;
+        state.error = null;
+      })
+      .addCase(resetAllStructures.fulfilled, (state, action) => {
+        state.isSaving = false;
+
+        // Clear all structures from world data
+        if (state.worldData) {
+          state.worldData.structures = [];
+        }
+
+        // Reset current plots to empty
+        state.currentPlots = state.currentPlots.map((plot) => ({
+          ...plot,
+          currentStructureId: "empty",
+        }));
+
+        // Mark all plots for visual update
+        for (let i = 0; i < 7; i++) {
+          addToArray(state.pendingVisualUpdates, i);
+        }
+
+        state.lastUpdated = Date.now();
+      })
+      .addCase(resetAllStructures.rejected, (state, action) => {
+        state.isSaving = false;
         state.error = action.payload as string;
       });
   },

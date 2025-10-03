@@ -11,6 +11,7 @@ import {
   optimisticPlaceStructure,
   optimisticUpdateInventory,
   closeStructuresModal,
+  resetAllStructures,
 } from "../../../store/slices/worldSlice";
 import {
   selectStructureInventory,
@@ -20,6 +21,7 @@ import {
   selectIsStructuresModalOpen,
 } from "../../../store/selectors/worldSelectors";
 import { BsFillBuildingsFill, BsFillCartFill } from "react-icons/bs";
+import { FaTrash } from "react-icons/fa";
 
 interface StructuresModalProps {
   username?: string;
@@ -43,8 +45,9 @@ export default function StructuresModal({
   const selectedPlotIndex = useSelector(selectSelectedPlotIndex);
   const isModalOpen = useSelector(selectIsStructuresModalOpen);
 
-  // Local state for window sizing
+  // Local state for window sizing and reset confirmation
   const [windowWidth, setWindowWidth] = useState(750);
+  const [isResetConfirming, setIsResetConfirming] = useState(false);
 
   // Get structure configurations
   const structureConfigs = getAllStructureConfigs();
@@ -53,6 +56,7 @@ export default function StructuresModal({
   const storageItems = structureConfigs
     .map((config) => {
       const inventoryItem = inventory.find((item) => item.structure_name === config.id);
+
       return {
         id: config.id,
         image: config.image,
@@ -151,6 +155,57 @@ export default function StructuresModal({
       // TODO: Show error message to user and revert optimistic updates
     }
   };
+
+  const handleResetStructures = async () => {
+    if (!userId) {
+      console.error("No user ID provided for structure reset");
+      return;
+    }
+
+    // First click - enter confirmation state
+    if (!isResetConfirming) {
+      setIsResetConfirming(true);
+      return;
+    }
+
+    // Second click - execute reset
+    try {
+      const result = await dispatch(resetAllStructures(userId));
+
+      if (resetAllStructures.fulfilled.match(result)) {
+        console.log("Successfully reset all structures");
+        // Close modal after successful reset
+        dispatch(closeStructuresModal());
+      } else {
+        console.error("Failed to reset structures:", result.payload);
+        // TODO: Show error message to user
+      }
+    } catch (error) {
+      console.error("Error resetting structures:", error);
+      // TODO: Show error message to user
+    } finally {
+      // Reset confirmation state
+      setIsResetConfirming(false);
+    }
+  };
+
+  // Reset confirmation state when modal closes
+  useEffect(() => {
+    if (!isModalOpen) {
+      setIsResetConfirming(false);
+    }
+  }, [isModalOpen]);
+
+  // Auto-reset confirmation state after 5 seconds
+  useEffect(() => {
+    if (isResetConfirming) {
+      const timeout = setTimeout(() => {
+        setIsResetConfirming(false);
+      }, 5000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isResetConfirming]);
 
   if (!isModalOpen) return null;
 
@@ -291,6 +346,62 @@ export default function StructuresModal({
               <br />
               <em>Click on items to place them in your garden</em>
             </div>
+
+            {/* Reset Structures Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleResetStructures();
+              }}
+              disabled={isSaving}
+              style={{
+                width: "100%",
+                marginTop: "15px",
+                padding: "12px 20px",
+                backgroundColor: isResetConfirming ? "#dc2626" : "#fca5a5", // Darker red when confirming
+                border: `2px solid ${isResetConfirming ? "#b91c1c" : "#f87171"}`,
+                borderRadius: "6px",
+                color: isResetConfirming ? "#ffffff" : "#7f1d1d", // White text when confirming
+                fontSize: "14px",
+                fontWeight: "bold",
+                cursor: isSaving ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                transition: "all 0.2s ease",
+                opacity: isSaving ? 0.6 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!isSaving) {
+                  if (isResetConfirming) {
+                    e.currentTarget.style.backgroundColor = "#b91c1c";
+                    e.currentTarget.style.borderColor = "#991b1b";
+                  } else {
+                    e.currentTarget.style.backgroundColor = "#f87171";
+                    e.currentTarget.style.borderColor = "#ef4444";
+                  }
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isSaving) {
+                  if (isResetConfirming) {
+                    e.currentTarget.style.backgroundColor = "#dc2626";
+                    e.currentTarget.style.borderColor = "#b91c1c";
+                  } else {
+                    e.currentTarget.style.backgroundColor = "#fca5a5";
+                    e.currentTarget.style.borderColor = "#f87171";
+                  }
+                }
+              }}
+            >
+              <FaTrash style={{ fontSize: "16px" }} />
+              {isSaving
+                ? "Resetting..."
+                : isResetConfirming
+                ? "Click Again to Confirm Reset"
+                : "Reset All Structures"}
+            </button>
           </>
         )}
       </div>

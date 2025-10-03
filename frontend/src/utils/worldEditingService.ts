@@ -5,7 +5,7 @@
 
 import { localDataManager } from "./localDataManager";
 import { fetchJSON, AuthenticationError, triggerAuthFlow } from "./authUtils";
-import { updateSlotConfig, updateStructureUsage } from "../services/levelConfigService";
+import { updateSlotConfig } from "../services/levelConfigService";
 import { getStructureConfig } from "../config/structureConfigs";
 import { visualWorldUpdateService } from "./visualWorldUpdateService";
 
@@ -105,49 +105,13 @@ class WorldEditingService {
       plot.currentStructureId = structureId;
 
       // Get current state for updates
-      const [currentConfig, currentInventory] = await Promise.all([
-        localDataManager.getLevelConfig(this.userId),
-        localDataManager.getInventory(this.userId),
-      ]);
+      const currentConfig = await localDataManager.getLevelConfig(this.userId);
 
       // Update level config
       currentConfig[plotIndex] = structureId;
 
-      // Update inventory if needed
-      let inventoryChanged = false;
-      if (previousStructureId !== "empty") {
-        // Return previous structure to inventory
-        const prevStructureConfig = getStructureConfig(previousStructureId);
-        if (prevStructureConfig) {
-          const prevItem = currentInventory.find(
-            (item) => item.structure_name === prevStructureConfig.name
-          );
-          if (prevItem) {
-            prevItem.currently_in_use = Math.max(0, prevItem.currently_in_use - 1);
-            inventoryChanged = true;
-          }
-        }
-      }
-
-      if (structureId !== "empty") {
-        // Remove new structure from available inventory
-        const newStructureConfig = getStructureConfig(structureId);
-        if (newStructureConfig) {
-          const newItem = currentInventory.find(
-            (item) => item.structure_name === newStructureConfig.name
-          );
-          if (newItem) {
-            newItem.currently_in_use += 1;
-            inventoryChanged = true;
-          }
-        }
-      }
-
       // Batch update to backend
       const updates = [this.updateLevelConfigBulk(currentConfig)];
-      if (inventoryChanged) {
-        updates.push(this.updateInventoryBulk(currentInventory));
-      }
       await Promise.all(updates);
 
       // Update visual representation
@@ -292,33 +256,10 @@ class WorldEditingService {
   }
 
   /**
-   * Update structure inventory usage
-   */
-  private async updateStructureInventoryUsage(structureId: string, change: number): Promise<void> {
-    if (!this.userId) throw new Error("User ID not set");
-
-    // Get structure name from config
-    const structureConfig = getStructureConfig(structureId);
-    if (!structureConfig) {
-      console.warn(`No config found for structure ID: ${structureId}`);
-      return;
-    }
-
-    // Update usage in backend
-    const response = await updateStructureUsage(this.userId, structureConfig.name, change);
-    if (!response.success) {
-      throw new Error(`Failed to update usage for ${structureConfig.name}: ${response.message}`);
-    }
-
-    // Invalidate inventory cache to force refresh
-    localDataManager.invalidateInventory(this.userId);
-  }
-
-  /**
    * Bulk update inventory in backend and cache
    */
   private async updateInventoryBulk(
-    inventory: Array<{ structure_name: string; count: number; currently_in_use: number }>
+    inventory: Array<{ structure_name: string; count: number }>
   ): Promise<void> {
     if (!this.userId) throw new Error("User ID not set");
 
@@ -389,8 +330,7 @@ class WorldEditingService {
       return false;
     }
 
-    const available = inventoryItem.count - inventoryItem.currently_in_use;
-    return available > 0;
+    return inventoryItem.count > 0;
   }
 
   /**

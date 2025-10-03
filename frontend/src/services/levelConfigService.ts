@@ -108,48 +108,6 @@ export async function resetUserLevelConfig(
   }
 }
 
-// Inventory usage API calls (extending existing functionality)
-export async function updateStructureUsage(
-  userId: string,
-  structureName: string,
-  currentlyInUse: number
-): Promise<APIResponse<import("./inventoryService").UserInventoryData>> {
-  try {
-    const response = await createAPIRequest(`/api/inventory/${userId}/usage`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        structure_name: structureName,
-        currently_in_use: currentlyInUse,
-      }),
-    });
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error updating structure usage:", error);
-    return {
-      success: false,
-      message: "Failed to update structure usage",
-    };
-  }
-}
-
-export async function getStructureUsage(
-  userId: string,
-  structureName: string
-): Promise<APIResponse<{ currently_in_use: number }>> {
-  try {
-    const response = await createAPIRequest(`/api/inventory/${userId}/usage/${structureName}`);
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error getting structure usage:", error);
-    return {
-      success: false,
-      message: "Failed to get structure usage",
-    };
-  }
-}
-
 export async function getAvailableStructures(
   userId: string,
   structureName: string

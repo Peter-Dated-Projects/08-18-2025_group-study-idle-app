@@ -13,21 +13,21 @@ def test_patch_request():
     base_url = "http://localhost:8000"
     user_id = "803db0b1a2085280bdc9a1ba40e5bfbef8f4c9723e423a7e505d3e33f9f762cd"
     
-    print("🧪 Testing PATCH Request Fix")
+    print("🧪 Testing Inventory Add Request")
     print("=" * 50)
     
-    # Test the request that was failing
-    url = f"{base_url}/api/inventory/{user_id}/usage"
+    # Test adding inventory items (since usage endpoint is removed)
+    url = f"{base_url}/api/inventory/{user_id}/add"
     payload = {
         "structure_name": "Mailbox",
-        "currently_in_use": 1
+        "count": 1
     }
     
-    print(f"\n📝 Making PATCH request to: {url}")
+    print(f"\n📝 Making POST request to: {url}")
     print(f"📝 Payload: {json.dumps(payload, indent=2)}")
     
     try:
-        response = requests.patch(url, json=payload)
+        response = requests.post(url, json=payload)
         
         print(f"\n📊 Response Status: {response.status_code}")
         print(f"📊 Response Body: {response.text}")

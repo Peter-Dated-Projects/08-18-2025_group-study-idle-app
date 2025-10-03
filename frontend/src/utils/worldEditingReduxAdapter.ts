@@ -7,9 +7,11 @@
 import { store } from "../store/store";
 import type { AppDispatch } from "../store/store";
 import {
+  selectWorldData,
   selectCurrentPlots,
-  selectSelectedPlotIndex,
   selectStructureInventory,
+  selectIsWorldLoading,
+  selectSelectedPlotIndex,
 } from "../store/selectors/worldSelectors";
 import {
   initializePlotsFromConfig,

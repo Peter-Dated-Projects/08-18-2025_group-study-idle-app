@@ -1,5 +1,8 @@
 /**
- * API service for user inventory and balance management
+ *export interface InventoryItem {
+  structure_name: string;
+  count: number;
+}service for user inventory and balance management
  */
 
 import { createAPIRequest } from "../config/api";
@@ -7,7 +10,6 @@ import { createAPIRequest } from "../config/api";
 export interface StructureInventoryItem {
   structure_name: string;
   count: number;
-  currently_in_use: number;
 }
 
 export interface UserInventoryData {

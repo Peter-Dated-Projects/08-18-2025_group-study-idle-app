@@ -16,7 +16,6 @@ import { callGlobalStructureClickHandler } from "@/utils/globalStructureHandler"
 // Import configuration and services
 import { getStructureConfig, EMPTY_STRUCTURE_CONFIG } from "@/config/structureConfigs";
 import { getUserLevelConfig, updateSlotConfig } from "@/services/levelConfigService";
-import { updateStructureUsage } from "@/services/levelConfigService";
 import { localDataManager } from "@/utils/localDataManager";
 import { createStructureById as factoryCreateStructureById } from "@/utils/structureFactory";
 
@@ -282,20 +281,6 @@ async function createUserStructurePlots(config: DefaultWorldConfig): Promise<Str
           position.y
         }) with structure: ${structureId}`
       );
-
-      // Update usage in inventory if not empty
-      if (structureId !== "empty" && config.userId) {
-        try {
-          // Get the structure name from config
-          const structureConfig = getStructureConfig(structureId);
-          if (structureConfig) {
-            await updateStructureUsage(config.userId, structureConfig.name, 1);
-            console.log(`Updated usage for ${structureConfig.name}`);
-          }
-        } catch (error) {
-          console.error(`Error updating usage for structure ${structureId}:`, error);
-        }
-      }
     } catch (error) {
       console.error(`Failed to create plot ${i + 1} with structure ${structureId}:`, error);
 

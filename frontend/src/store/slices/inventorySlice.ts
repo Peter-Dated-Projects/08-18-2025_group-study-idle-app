@@ -1,5 +1,10 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 
+export interface InventoryItem {
+  structure_name: string;
+  count: number;
+}
+
 export interface StructureInventoryItem {
   structure_name: string;
   count: number;
