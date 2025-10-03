@@ -1,5 +1,15 @@
 import type { RootState } from "../store";
 import type { WorldState } from "../slices/worldSlice";
+import { getAllStructureConfigs } from "../../config/structureConfigs";
+import type { StructureConfig } from "../../config/structureConfigs";
+
+// Enhanced structure inventory item with usage tracking
+export interface AvailableStructureItem {
+  structure_name: string;
+  count: number; // Total owned
+  available_count: number; // Available to use (not currently placed)
+  placed_count: number; // Currently placed in level config
+}
 
 // World selectors
 export const selectWorldData = (state: RootState) => (state.world as WorldState).worldData;
@@ -37,3 +47,70 @@ export const selectSelectedPlot = (state: RootState) => {
 
 export const selectHasPendingUpdates = (state: RootState) =>
   (state.world as WorldState).pendingVisualUpdates.length > 0;
+
+// Computed selector for available (unused) structures
+export const selectAvailableStructureCounts = (state: RootState): AvailableStructureItem[] => {
+  const worldState = state.world as WorldState;
+  const { structureInventory, currentPlots } = worldState;
+
+  // Handle case where data hasn't loaded yet
+  if (!structureInventory || !currentPlots) {
+    return [];
+  }
+
+  // Count how many of each structure type are currently placed in level config
+  const placedCounts: Record<string, number> = {};
+  
+  currentPlots.forEach((plot) => {
+    if (plot.currentStructureId && plot.currentStructureId !== "empty") {
+      const structureId = plot.currentStructureId;
+      placedCounts[structureId] = (placedCounts[structureId] || 0) + 1;
+    }
+  });
+
+  // Calculate available counts by subtracting placed from inventory
+  return structureInventory.map((inventoryItem): AvailableStructureItem => {
+    // Try to find the structure config by matching either ID or name
+    // This handles both cases: inventory storing IDs vs display names
+    const structureConfig = getAllStructureConfigs().find(
+      (config: StructureConfig) => 
+        config.id === inventoryItem.structure_name || // ID match (preferred)
+        config.name === inventoryItem.structure_name   // Name match (fallback)
+    );
+    
+    if (!structureConfig) {
+      // If we can't find the structure config, return the inventory item as-is
+      return {
+        structure_name: inventoryItem.structure_name,
+        count: inventoryItem.count,
+        available_count: inventoryItem.count,
+        placed_count: 0,
+      };
+    }
+
+    // For placed count calculation, always use the structure ID
+    const placedCount = placedCounts[structureConfig.id] || 0;
+    const availableCount = Math.max(0, inventoryItem.count - placedCount);
+
+    return {
+      structure_name: inventoryItem.structure_name,
+      count: inventoryItem.count, // Total owned
+      available_count: availableCount, // Available to use
+      placed_count: placedCount, // Currently placed
+    };
+  });
+};
+
+// Helper function to get available count for a specific structure name
+export const selectAvailableCountForStructure = (structureName: string) => (state: RootState) => {
+  const availableCounts = selectAvailableStructureCounts(state);
+  const item = availableCounts.find((item) => item.structure_name === structureName);
+  return item ? item.available_count : 0;
+};
+
+// Helper to get placed count for a specific structure name
+export const selectPlacedCountForStructure = (structureName: string) => (state: RootState) => {
+  const availableCounts = selectAvailableStructureCounts(state);
+  const item = availableCounts.find((item) => item.structure_name === structureName);
+  return item ? item.placed_count : 0;
+};

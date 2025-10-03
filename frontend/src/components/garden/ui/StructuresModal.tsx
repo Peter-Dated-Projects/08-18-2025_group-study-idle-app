@@ -12,6 +12,7 @@ import {
   optimisticUpdateInventory,
   closeStructuresModal,
   resetAllStructures,
+  initializePlotsFromConfig,
 } from "../../../store/slices/worldSlice";
 import {
   selectStructureInventory,
@@ -19,6 +20,8 @@ import {
   selectIsWorldSaving,
   selectSelectedPlotIndex,
   selectIsStructuresModalOpen,
+  selectCurrentPlots,
+  selectAvailableStructureCounts,
 } from "../../../store/selectors/worldSelectors";
 import { BsFillBuildingsFill, BsFillCartFill } from "react-icons/bs";
 import { FaTrash } from "react-icons/fa";
@@ -40,6 +43,8 @@ export default function StructuresModal({
 
   // Redux selectors
   const inventory = useSelector(selectStructureInventory);
+  const availableStructures = useSelector(selectAvailableStructureCounts);
+  const currentPlots = useSelector(selectCurrentPlots);
   const isLoading = useSelector(selectIsWorldLoading);
   const isSaving = useSelector(selectIsWorldSaving);
   const selectedPlotIndex = useSelector(selectSelectedPlotIndex);
@@ -52,24 +57,31 @@ export default function StructuresModal({
   // Get structure configurations
   const structureConfigs = getAllStructureConfigs();
 
-  // Convert structure configs to storage items format, using actual inventory data
+  // Convert structure configs to storage items format, using available inventory data
   const storageItems = structureConfigs
     .map((config) => {
-      const inventoryItem = inventory.find((item) => item.structure_name === config.id);
+      // Try to find inventory item by either ID or name
+      const availableItem = availableStructures.find((item) => 
+        item.structure_name === config.id ||    // ID match (preferred)
+        item.structure_name === config.name     // Name match (fallback)
+      );
 
       return {
         id: config.id,
         image: config.image,
         name: config.name,
-        count: inventoryItem ? inventoryItem.count : 0, // Use actual count or 0 if not in inventory
+        count: availableItem ? availableItem.available_count : 0, // Use available count instead of total
+        totalCount: availableItem ? availableItem.count : 0, // Total owned for reference
+        placedCount: availableItem ? availableItem.placed_count : 0, // Currently placed
       };
     })
-    .filter((item) => item.count > 0); // Only show items with count > 0
+    .filter((item) => item.count > 0); // Only show items with available count > 0
 
-  // Load user inventory when modal opens or userId changes
+  // Load user inventory and level config when modal opens or userId changes
   useEffect(() => {
     if (isModalOpen && userId) {
       dispatch(fetchStructureInventory(userId));
+      dispatch(initializePlotsFromConfig(userId));
     }
   }, [isModalOpen, userId, dispatch]);
 
@@ -341,10 +353,16 @@ export default function StructuresModal({
                 textAlign: "center",
               }}
             >
-              <strong>Storage Capacity:</strong>{" "}
+              <strong>Available Structures:</strong>{" "}
               {storageItems.reduce((sum, item) => sum + item.count, 0)} items
               <br />
-              <em>Click on items to place them in your garden</em>
+              <strong>Total Owned:</strong>{" "}
+              {storageItems.reduce((sum, item) => sum + item.totalCount, 0)} items
+              <br />
+              <strong>Currently Placed:</strong>{" "}
+              {storageItems.reduce((sum, item) => sum + item.placedCount, 0)} items
+              <br />
+              <em>Only available (unused) structures are shown for placement</em>
             </div>
 
             {/* Reset Structures Button */}
