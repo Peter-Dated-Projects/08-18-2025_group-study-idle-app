@@ -13,7 +13,7 @@ import {
 import { FaUser, FaEdit } from "react-icons/fa";
 import { BORDERFILL, BORDERLINE } from "../constants";
 import EditProfileModal from "./ui/EditProfileModal";
-import { useSubscription } from "@/hooks/useSubscription";
+import { useReduxSubscriptionReadOnly } from "@/store/hooks/useReduxSubscription";
 
 interface UserProfileProps {
   isVisible: boolean;
@@ -25,7 +25,11 @@ export default function UserProfile({ isVisible, onClose, user }: UserProfilePro
   const { copyMessage, copyToClipboard } = useCopyToClipboard();
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [isHoveringPicture, setIsHoveringPicture] = useState(false);
-  const { isPaid: hasSubscription } = useSubscription();
+
+  // Use read-only subscription hook - does NOT trigger fetches
+  // Only displays cached data from Redux store
+  const { isPaid: hasSubscription, isLoading: subscriptionLoading } =
+    useReduxSubscriptionReadOnly();
 
   if (!isVisible) return null;
 

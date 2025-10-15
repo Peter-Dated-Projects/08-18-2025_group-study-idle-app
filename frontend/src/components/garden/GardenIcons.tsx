@@ -16,6 +16,7 @@ import {
   setGlobalStructureClickHandler,
 } from "@/utils/globalStructureHandler";
 import GardenIcon from "./ui/GardenIcon";
+import { useReduxSubscription } from "@/store/hooks/useReduxSubscription";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface GardenIconsProps {
@@ -26,6 +27,10 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
   const { user } = useSessionAuth();
   const dispatch = useDispatch<AppDispatch>();
   const { user: reduxUser } = useSelector((state: RootState) => state.auth);
+
+  // Eagerly fetch subscription status when component mounts
+  // This ensures the data is cached before UserProfileModal opens
+  useReduxSubscription();
 
   const [showFriendsMenu, setShowFriendsMenu] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);

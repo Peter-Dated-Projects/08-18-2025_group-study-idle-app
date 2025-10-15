@@ -12,6 +12,7 @@ import notificationReducer from "./slices/notificationSlice";
 import musicReducer from "./slices/musicSlice";
 import uiReducer from "./slices/uiSlice";
 import profilePicturesReducer from "./slices/profilePicturesSlice";
+import subscriptionReducer from "./slices/subscriptionSlice";
 
 export const store = configureStore({
   reducer: {
@@ -28,6 +29,7 @@ export const store = configureStore({
     music: musicReducer,
     ui: uiReducer,
     profilePictures: profilePicturesReducer,
+    subscription: subscriptionReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
