@@ -94,21 +94,10 @@ export async function POST(req: Request) {
   };
 
   try {
-    console.log(
-      `Processing deltas: ${requestBody.creates.length} creates, ${requestBody.updates.length} updates, ${requestBody.deletes.length} deletes`
-    );
 
     // Debug: Log the actual delete IDs being processed
     if (requestBody.deletes.length > 0) {
-      console.log("Delete IDs received:", requestBody.deletes);
-      console.log(
-        "Delete IDs types:",
-        requestBody.deletes.map((id) => typeof id)
-      );
-      console.log(
-        "Delete IDs with undefined/null:",
-        requestBody.deletes.filter((id) => id === undefined || id === null || id === "")
-      );
+
     }
 
     // 1. Process deletes first
@@ -139,7 +128,7 @@ export async function POST(req: Request) {
 
         if (deleteResponse.ok) {
           result.deleted.push({ id: blockId, attemptCount: 0 });
-          console.log(`Deleted block: ${blockId}`);
+
         } else {
           const errorText = deleteResponse.statusText;
           console.warn(`Failed to delete block ${blockId}:`, errorText);
@@ -217,7 +206,7 @@ export async function POST(req: Request) {
               id: newId,
               attemptCount: create.attemptCount,
             });
-            console.log(`Created block: ${newId}`);
+
             i++;
           }
         } else {
@@ -287,7 +276,7 @@ export async function POST(req: Request) {
 
           if (updateResponse.ok) {
             result.updated.push({ id: update.id, attemptCount: update.attemptCount });
-            console.log(`Updated block: ${update.id}`);
+
           } else {
             console.warn(`Failed to update block ${update.id}:`, updateResponse.statusText);
             if (update.attemptCount < attemptLimit) {
@@ -304,10 +293,6 @@ export async function POST(req: Request) {
         console.error(`Error updating block ${update.id}:`, error);
       }
     }
-
-    console.log(
-      `Delta sync completed: ${result.created.length} created, ${result.updated.length} updated, ${result.deleted.length} deleted`
-    );
 
     return NextResponse.json(result);
   } catch (error) {

@@ -45,9 +45,7 @@ export const fetchProfilePicture = createAsyncThunk(
     { userId, forceRefresh = false }: { userId: string; forceRefresh?: boolean },
     { rejectWithValue }
   ) => {
-    console.log(
-      `[fetchProfilePicture] 🚀 CALLED for user: ${userId}, forceRefresh: ${forceRefresh}`
-    );
+
     const startTime = performance.now();
 
     try {
@@ -56,7 +54,7 @@ export const fetchProfilePicture = createAsyncThunk(
         // First, check cache manager (LocalStorage + IndexedDB)
         const cached = await imageCacheManager.get(userId);
         if (cached) {
-          console.debug(`[ProfilePictures] Cache hit for user ${userId}`);
+
           return {
             userId,
             data: cached,
@@ -64,13 +62,11 @@ export const fetchProfilePicture = createAsyncThunk(
           };
         }
       } else {
-        console.debug(
-          `[ProfilePictures] Force refresh requested for user ${userId}, skipping cache`
-        );
+
       }
 
       // Cache miss or force refresh - fetch from backend
-      console.debug(`[ProfilePictures] Fetching from backend for user ${userId}`);
+
       const response = await fetch(`${BACKEND_URL}/images/user/${userId}/info`, {
         method: "GET",
         credentials: "include", // Use session-based auth
@@ -121,7 +117,6 @@ export const fetchProfilePicture = createAsyncThunk(
 export const prefetchProfilePictures = createAsyncThunk(
   "profilePictures/prefetch",
   async ({ userIds }: { userIds: string[] }, { dispatch }) => {
-    console.debug(`[ProfilePictures] Prefetching ${userIds.length} profile pictures`);
 
     const promises = userIds.map((userId) => dispatch(fetchProfilePicture({ userId })));
 
@@ -223,10 +218,10 @@ const profilePicturesSlice = createSlice({
 
         // Record Redux cache hit (for subsequent accesses)
         if (fromCache) {
-          console.debug(`[ProfilePictures] Loaded from cache for user ${userId}`);
+
         } else {
           // This is initial load - next access will be Redux cache hit
-          console.debug(`[ProfilePictures] Cached in Redux for user ${userId}`);
+
         }
       })
       .addCase(fetchProfilePicture.rejected, (state, action) => {
@@ -247,7 +242,7 @@ const profilePicturesSlice = createSlice({
       })
       .addCase(prefetchProfilePictures.fulfilled, (state, action) => {
         state.prefetching = false;
-        console.debug(`[ProfilePictures] Prefetched ${action.payload.count} pictures`);
+
       })
       .addCase(prefetchProfilePictures.rejected, (state) => {
         state.prefetching = false;
@@ -258,14 +253,14 @@ const profilePicturesSlice = createSlice({
       const { userId } = action.payload;
       delete state.pictures[userId];
       delete state.loading[userId];
-      console.debug(`[ProfilePictures] Invalidated cache for user ${userId}`);
+
     });
 
     // Clear All
     builder.addCase(clearAllProfilePictures.fulfilled, (state) => {
       state.pictures = {};
       state.loading = {};
-      console.debug("[ProfilePictures] Cleared all cached pictures");
+
     });
   },
 });

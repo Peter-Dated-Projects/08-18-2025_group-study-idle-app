@@ -40,10 +40,10 @@ export function useReduxSubscription(): UseReduxSubscriptionReturn {
     if (isAuthenticated && user?.userId && !authLoading) {
       // Only fetch if we don't have cached data
       if (!data && !isLoading && !lastFetched) {
-        console.log("🔒 Fetching subscription status (no cache in Redux)");
+
         dispatch(fetchSubscriptionStatus());
       } else if (data) {
-        console.log("🔒 Using cached subscription from Redux store");
+
       }
     } else if (!isAuthenticated) {
       // Clear subscription data on logout
@@ -53,14 +53,14 @@ export function useReduxSubscription(): UseReduxSubscriptionReturn {
 
   // Manual refetch function - clears cache and fetches fresh data
   const refetch = useCallback(async () => {
-    console.log("🔄 Manually refetching subscription status");
+
     dispatch(clearSubscription());
     await dispatch(fetchSubscriptionStatus());
   }, [dispatch]);
 
   // Invalidate both frontend and backend cache
   const invalidateCacheFn = useCallback(async () => {
-    console.log("🗑️ Invalidating subscription cache (Redux + Backend)");
+
     await dispatch(invalidateCache());
     // Fetch fresh data after invalidation
     await dispatch(fetchSubscriptionStatus());
@@ -91,14 +91,14 @@ export function useReduxSubscriptionReadOnly(): UseReduxSubscriptionReturn {
 
   // Manual refetch function - clears cache and fetches fresh data
   const refetch = useCallback(async () => {
-    console.log("🔄 Manually refetching subscription status");
+
     dispatch(clearSubscription());
     await dispatch(fetchSubscriptionStatus());
   }, [dispatch]);
 
   // Invalidate both frontend and backend cache
   const invalidateCacheFn = useCallback(async () => {
-    console.log("🗑️ Invalidating subscription cache (Redux + Backend)");
+
     await dispatch(invalidateCache());
     // Fetch fresh data after invalidation
     await dispatch(fetchSubscriptionStatus());

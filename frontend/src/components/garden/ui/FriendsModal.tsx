@@ -44,22 +44,16 @@ export default function FriendsModal({ isVisible, onClose, userId }: FriendsModa
 
   // Debug friends data
   useEffect(() => {
-    console.log("🔍 FriendsModal Debug:", {
-      userId,
-      friendsCount: friends.length,
-      friendsLoading,
-      friendsError,
-      friends: friends.map((f) => ({ id: f.friend_id, display_name: f.display_name })),
-    });
+
   }, [userId, friends, friendsLoading, friendsError]);
 
   // Test direct API call
   const testDirectAPI = async () => {
-    console.log("🧪 Testing direct API call...");
+
     try {
       const response = await fetch(`/api/friends/list/${userId}`);
       const data = await response.json();
-      console.log("🧪 Direct API response:", data);
+
       showMessage(`Direct API returned ${data.friends?.length || 0} friends`, "success");
     } catch (error) {
       console.error("🧪 Direct API failed:", error);

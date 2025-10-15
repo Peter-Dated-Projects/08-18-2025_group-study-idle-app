@@ -88,7 +88,6 @@ export default function EditProfileModal({
     try {
       // Upload the image (pass userId to enable old image deletion and auto-update of user_picture_url)
       const uploadResult = await uploadProfilePicture(file, userId);
-      console.log("Upload result:", uploadResult);
 
       // No need to call updateUserProfilePicture - the upload endpoint now handles storing the URL in the database
 

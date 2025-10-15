@@ -117,7 +117,7 @@ export default function GardenTasks() {
       }
 
       // Verify and set up the storage database
-      console.log("Verifying Notion storage setup...");
+
       const verifyResponse = await fetch("/api/notion/storage/verify", {
         credentials: "include",
       });
@@ -143,7 +143,7 @@ export default function GardenTasks() {
       }
 
       const verifyData = await verifyResponse.json();
-      console.log("Storage verification successful:", verifyData);
+
       return true;
     } catch (error) {
       console.error("Notion setup check failed:", error);
@@ -168,7 +168,6 @@ export default function GardenTasks() {
           return;
         }
 
-        console.log("Fetching fresh study sessions data");
         const response = await fetch("/api/notion/storage/pages", {
           credentials: "include",
         });
@@ -185,13 +184,13 @@ export default function GardenTasks() {
           }
           if (errorData.needsVerification) {
             // Database ID not set up, try to verify first
-            console.log("Database not found, running verification...");
+
             const verifyResponse = await fetch("/api/notion/storage/verify", {
               credentials: "include",
             });
 
             if (verifyResponse.ok) {
-              console.log("Verification successful, retrying session load...");
+
               // Retry loading sessions after successful verification
               await loadStudySessions(true);
               return;
@@ -212,8 +211,6 @@ export default function GardenTasks() {
         const responseData = await response.json();
         const fetchedSessions = responseData.results || [];
 
-        console.log(`Loaded ${fetchedSessions.length} study sessions`);
-
         // Generate hash for change detection
         const newHash = generateSessionsHash(fetchedSessions);
 
@@ -224,17 +221,13 @@ export default function GardenTasks() {
         const shouldUpdate = isFirstLoad || hasDataChanged;
 
         if (shouldUpdate) {
-          console.log(
-            isFirstLoad
-              ? "First load - updating with fetched sessions"
-              : "Sessions data changed, updating cache"
-          );
+
           setStudySessions(fetchedSessions);
           setSessionsCache(fetchedSessions);
           setSessionsHash(newHash);
           setLastFetchTime(now);
         } else {
-          console.log("No changes detected, using existing data");
+
           setStudySessions(sessionsCache);
         }
       } catch (error) {
@@ -248,7 +241,7 @@ export default function GardenTasks() {
 
         // Fall back to cache if available
         if (sessionsCache.length > 0) {
-          console.log("Using cached data as fallback");
+
           setStudySessions(sessionsCache);
         }
       } finally {
@@ -284,7 +277,7 @@ export default function GardenTasks() {
   // Load study sessions after authentication and Notion setup
   useEffect(() => {
     if (isAuthenticated && user) {
-      console.log("Loading sessions for authenticated user");
+
       loadStudySessions();
     }
   }, [isAuthenticated, user, loadStudySessions]);

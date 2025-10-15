@@ -97,13 +97,13 @@ class WebSocketManager {
 
   connect() {
     if (!this.userId) {
-      console.log("WebSocket: No user ID available for connection");
+
       return;
     }
 
     // Don't reconnect if already connected with same user
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log("WebSocket: Already connected");
+
       return;
     }
 
@@ -115,13 +115,11 @@ class WebSocketManager {
     // Convert HTTP backend URL to WebSocket URL
     const wsUrl = WEBSOCKET_URL + `/ws?user_id=${encodeURIComponent(this.userId)}`;
 
-    console.log("WebSocket: Connecting to", wsUrl);
-
     const ws = new WebSocket(wsUrl);
     this.ws = ws;
 
     ws.onopen = () => {
-      console.log("🟢 WebSocket: Connection established");
+
       this.isConnected = true;
       this.connectionError = null;
       this.reconnectAttempts = 0;
@@ -136,11 +134,10 @@ class WebSocketManager {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log("🔵 WebSocket: Received message", data);
 
         // Handle pong response
         if (data.type === "pong") {
-          console.log("📡 WebSocket: Pong received, connections:", data.connections);
+
           this.connectionCount = data.connections || 0;
           this.notifyConnectionCountListeners(this.connectionCount);
           return;
@@ -148,50 +145,35 @@ class WebSocketManager {
 
         // Handle system messages
         if (data.type === "system") {
-          console.log("⚙️ WebSocket: System message", data);
+
           return;
         }
 
         // Handle lobby events
         if (data.type === "lobby") {
           const lobbyEvent = data as LobbyEvent;
-          console.log(
-            `🏠 WebSocket: Lobby event - ${lobbyEvent.action.toUpperCase()} in lobby ${
-              lobbyEvent.lobby_code
-            }`,
-            lobbyEvent
-          );
+
           this.lobbyEventHandlers.forEach((handler) => handler(lobbyEvent));
         }
 
         // Handle game events
         if (data.type === "game") {
           const gameEvent = data as GameEvent;
-          console.log(`🎮 WebSocket: Game event - ${gameEvent.action.toUpperCase()}`, gameEvent);
+
           this.gameEventHandlers.forEach((handler) => handler(gameEvent));
         }
 
         // Handle chat events
         if (data.type === "chat_message") {
           const chatEvent = data as ChatEvent;
-          console.log(
-            `💬 WebSocket: Chat event - ${chatEvent.action.toUpperCase()} in lobby ${
-              chatEvent.lobby_code
-            }`,
-            chatEvent
-          );
+
           this.chatEventHandlers.forEach((handler) => handler(chatEvent));
         }
 
         // Handle pomo bank events
         if (data.type === "pomo_bank_update") {
           const pomoBankEvent = data as PomoBankEvent;
-          console.log(
-            `💰 WebSocket: Pomo bank event - ${pomoBankEvent.action.toUpperCase()} for user ${
-              pomoBankEvent.user_id
-            }`,
-            pomoBankEvent
-          );
+
           this.pomoBankEventHandlers.forEach((handler) => handler(pomoBankEvent));
         }
 
@@ -209,7 +191,7 @@ class WebSocketManager {
     };
 
     ws.onclose = (event) => {
-      console.log(`🔴 WebSocket: Connection closed (code: ${event.code}, reason: ${event.reason})`);
+
       this.isConnected = false;
       this.ws = null;
       this.notifyConnectionStateListeners(false);
@@ -217,11 +199,6 @@ class WebSocketManager {
       // Attempt to reconnect if not manually closed
       if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
         const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
-        console.log(
-          `🔄 WebSocket: Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1}/${
-            this.maxReconnectAttempts
-          })`
-        );
 
         this.connectionError = `Connection lost. Reconnecting... (${this.reconnectAttempts + 1}/${
           this.maxReconnectAttempts
@@ -233,7 +210,7 @@ class WebSocketManager {
           this.connect();
         }, delay);
       } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-        console.log("❌ WebSocket: Max reconnection attempts reached");
+
         this.connectionError =
           "Server is unreachable. Please check your connection and try refreshing the page.";
         this.notifyConnectionErrorListeners(this.connectionError);

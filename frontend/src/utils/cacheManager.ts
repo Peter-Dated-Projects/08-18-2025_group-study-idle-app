@@ -247,23 +247,20 @@ class CacheManager {
    */
   async getUserFriends(userId: string, forceRefresh = false): Promise<Friend[]> {
     const key = this.getUserCacheKey(userId, "userFriends");
-    console.log(
-      `🔍 CacheManager: getUserFriends called for ${userId}, forceRefresh: ${forceRefresh}`
-    );
 
     return this.getCachedWithRefresh(
       key,
       async () => {
-        console.log(`📡 CacheManager: Making API call to /api/friends/list/${userId}`);
+
         const response = await fetch(`/api/friends/list/${userId}`);
         if (!response.ok) {
           console.error(`❌ CacheManager: API call failed with status ${response.status}`);
           throw new Error("Failed to fetch friends");
         }
         const data = await response.json();
-        console.log(`📦 CacheManager: API response:`, data);
+
         const friends = data.success ? data.friends : [];
-        console.log(`✅ CacheManager: Returning ${friends.length} friends`);
+
         return friends;
       },
       { forceRefresh }

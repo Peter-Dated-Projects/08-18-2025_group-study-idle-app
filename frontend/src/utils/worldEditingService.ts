@@ -115,7 +115,7 @@ class WorldEditingService {
       await Promise.all(updates);
 
       // Update visual representation
-      console.log(`Updating visual plot ${plotIndex} to ${structureId}`);
+
       const visualUpdateSuccess = await visualWorldUpdateService.updateStructurePlot(
         plotIndex,
         structureId
@@ -127,7 +127,6 @@ class WorldEditingService {
         );
       }
 
-      console.log(`Successfully placed ${structureId} on plot ${plotIndex}`);
       return true;
     } catch (error) {
       // Revert local changes on error
@@ -182,9 +181,7 @@ class WorldEditingService {
       await this.updateLevelConfigBulk(currentConfig);
 
       // Update visual representations
-      console.log(
-        `Updating visual swap: plot ${fromPlotIndex} to ${toStructureId}, plot ${toPlotIndex} to ${fromStructureId}`
-      );
+
       const visualUpdates = await Promise.all([
         visualWorldUpdateService.updateStructurePlot(fromPlotIndex, toStructureId),
         visualWorldUpdateService.updateStructurePlot(toPlotIndex, fromStructureId),
@@ -196,9 +193,6 @@ class WorldEditingService {
         );
       }
 
-      console.log(
-        `Successfully swapped structures between plots ${fromPlotIndex} and ${toPlotIndex}`
-      );
       return true;
     } catch (error) {
       // Revert local changes on error
@@ -303,7 +297,6 @@ class WorldEditingService {
         this.updateInventoryBulk(inventory),
       ]);
 
-      console.log("Successfully synced all changes to backend");
     } catch (error) {
       console.error("Error syncing changes:", error);
       throw error;

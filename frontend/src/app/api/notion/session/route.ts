@@ -56,7 +56,6 @@ export async function GET() {
     // Check if we have Notion tokens
     const hasNotionTokens = !!session.notionTokens?.access_token;
 
-    // console.log("/api/notion/session:", "Notion tokens found:", hasNotionTokens);
     return NextResponse.json(
       {
         success: true,

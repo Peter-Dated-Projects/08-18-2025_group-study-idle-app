@@ -59,7 +59,7 @@ class LocalDataManager {
       this.levelConfigCache.userId === userId &&
       this.isValidCache(this.levelConfigCache.timestamp)
     ) {
-      console.log("Using in-memory level config cache for user:", userId);
+
       return this.levelConfigCache.levelConfig;
     }
 
@@ -69,7 +69,7 @@ class LocalDataManager {
       if (cached) {
         const parsedCache: CachedLevelConfig = JSON.parse(cached);
         if (parsedCache.userId === userId && this.isValidCache(parsedCache.timestamp)) {
-          console.log("Using localStorage level config cache for user:", userId);
+
           this.levelConfigCache = parsedCache;
           return parsedCache.levelConfig;
         }
@@ -79,7 +79,7 @@ class LocalDataManager {
     }
 
     // Fetch from backend
-    console.log("Fetching level config from backend for user:", userId);
+
     try {
       const response = await getUserLevelConfig(userId);
       if (response.success && response.data) {
@@ -113,7 +113,7 @@ class LocalDataManager {
       this.inventoryCache.userId === userId &&
       this.isValidCache(this.inventoryCache.timestamp)
     ) {
-      console.log("Using in-memory inventory cache for user:", userId);
+
       return this.inventoryCache.inventory;
     }
 
@@ -123,7 +123,7 @@ class LocalDataManager {
       if (cached) {
         const parsedCache: CachedInventory = JSON.parse(cached);
         if (parsedCache.userId === userId && this.isValidCache(parsedCache.timestamp)) {
-          console.log("Using localStorage inventory cache for user:", userId);
+
           this.inventoryCache = parsedCache;
           return parsedCache.inventory;
         }
@@ -133,7 +133,7 @@ class LocalDataManager {
     }
 
     // Fetch from backend
-    console.log("Fetching inventory from backend for user:", userId);
+
     try {
       const response = await getUserInventory(userId);
       if (response.success && response.data) {
@@ -206,7 +206,7 @@ class LocalDataManager {
     if (!userId || (this.levelConfigCache && this.levelConfigCache.userId === userId)) {
       this.levelConfigCache = null;
       localStorage.removeItem(LEVEL_CONFIG_KEY);
-      console.log("Invalidated level config cache");
+
     }
   }
 
@@ -217,7 +217,7 @@ class LocalDataManager {
     if (!userId || (this.inventoryCache && this.inventoryCache.userId === userId)) {
       this.inventoryCache = null;
       localStorage.removeItem(INVENTORY_KEY);
-      console.log("Invalidated inventory cache");
+
     }
   }
 
@@ -229,7 +229,7 @@ class LocalDataManager {
     this.inventoryCache = null;
     localStorage.removeItem(LEVEL_CONFIG_KEY);
     localStorage.removeItem(INVENTORY_KEY);
-    console.log("Cleared all local data caches");
+
   }
 }
 

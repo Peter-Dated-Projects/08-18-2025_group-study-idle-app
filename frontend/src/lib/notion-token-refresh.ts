@@ -24,7 +24,6 @@ interface TokenRefreshResponse {
  */
 export async function refreshNotionToken(userId: string): Promise<string | null> {
   try {
-    console.log(`🔄 Attempting to refresh Notion token for user: ${userId}`);
 
     const session = await getUserSession(userId);
     if (!session || !session.notionTokens?.refresh_token) {
@@ -74,7 +73,6 @@ export async function refreshNotionToken(userId: string): Promise<string | null>
 
     await updateUserSession(userId, updatedSession);
 
-    console.log("✅ Notion token refreshed successfully");
     return newTokenData.access_token;
   } catch (error) {
     console.error("❌ Error refreshing Notion token:", error);
@@ -125,14 +123,11 @@ export async function fetchWithTokenRefresh(
 
     // If it's a 401 unauthorized error and we have retries left, try to refresh token
     if (response.status === 401 && attempt < maxRetries) {
-      console.log(
-        `🔄 Got 401 error, attempting token refresh (attempt ${attempt + 1}/${maxRetries + 1})`
-      );
 
       const newToken = await refreshNotionToken(userId);
       if (newToken) {
         accessToken = newToken;
-        console.log("✅ Token refreshed, retrying request");
+
         continue; // Retry with new token
       } else {
         console.error("❌ Token refresh failed, giving up");

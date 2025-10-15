@@ -33,7 +33,7 @@ interface UseSubscriptionReturn {
 // NOTE: Now using Redux for actual caching, these are kept for backward compatibility
 let subscriptionCache: SubscriptionStatus | null = null;
 let subscriptionCacheUserId: string | null = null;
-let isFetchingSubscription = false;
+const isFetchingSubscription = false;
 
 /**
  * Hook to check user subscription status
@@ -172,5 +172,5 @@ export function useInvalidateSubscriptionCache() {
 export function clearSubscriptionCache(): void {
   subscriptionCache = null;
   subscriptionCacheUserId = null;
-  console.log("🗑️ Legacy subscription cache cleared (use Redux invalidateCache for full clearing)");
+
 }

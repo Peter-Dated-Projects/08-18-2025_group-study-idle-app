@@ -53,8 +53,7 @@ export class VisualWorldUpdateService {
 
     // Track existing structures
     this.trackExistingStructures();
-    console.log(`[VisualWorldUpdateService] Initialized for user: ${userId}`);
-    console.log(`[VisualWorldUpdateService] Tracking ${this.trackedStructures.size} structures`);
+
   }
 
   /**
@@ -136,9 +135,6 @@ export class VisualWorldUpdateService {
 
       // Remove current structure entity and renderer if it exists
       if (currentTracked) {
-        console.log(
-          `[VisualWorldUpdateService] Removing structure ${currentTracked.entity.id} from plot ${plotIndex}`
-        );
 
         // Remove from renderer system
         this.rendererHandler.removeRenderer(currentTracked.rendererId);
@@ -159,10 +155,6 @@ export class VisualWorldUpdateService {
         },
       };
 
-      console.log(
-        `[VisualWorldUpdateService] Creating new structure ${newStructureId} at plot ${plotIndex}`
-      );
-
       // Create new structure
       const newStructure = await createStructureById(newStructureId, plotPosition, mouseCallbacks);
 
@@ -181,10 +173,6 @@ export class VisualWorldUpdateService {
         rendererId: newStructure.id,
         structureId: newStructureId, // Store the original structure ID
       });
-
-      console.log(
-        `[VisualWorldUpdateService] Successfully updated plot ${plotIndex} to ${newStructureId}`
-      );
 
       return true;
     } catch (error) {
@@ -260,8 +248,6 @@ export class VisualWorldUpdateService {
   async refreshAllStructures(): Promise<void> {
     if (!this.worldHandler || !this.rendererHandler) return;
 
-    console.log("[VisualWorldUpdateService] Force refreshing all structures");
-
     // Clear all tracked structures and their renderers
     this.trackedStructures.forEach((tracked) => {
       this.rendererHandler!.removeRenderer(tracked.rendererId);
@@ -284,7 +270,7 @@ export class VisualWorldUpdateService {
     this.worldHandler = null;
     this.rendererHandler = null;
     this.userId = null;
-    console.log("[VisualWorldUpdateService] Cleaned up resources");
+
   }
 }
 

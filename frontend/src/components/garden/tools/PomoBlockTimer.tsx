@@ -118,9 +118,7 @@ export default function PomoBlockTimer() {
       }
 
       const result = await response.json();
-      console.log(
-        `💰 Earned ${result.earnings} coins for ${completionType} completion (${minutesWorked} minutes)`
-      );
+
     } catch (error) {
       console.error("Error updating pomo bank:", error);
     }
@@ -192,7 +190,7 @@ export default function PomoBlockTimer() {
         oscillator.start(audioContext.currentTime);
         oscillator.stop(audioContext.currentTime + 0.5);
       } catch {
-        console.log("Audio notification not available");
+
       }
     }
   };

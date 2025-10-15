@@ -156,23 +156,16 @@ export class CharacterAnimation {
       // Only restore if the frame is valid for the new animation
       if (preservedFrame < newAnimatedTile.animationFrames.length) {
         newAnimatedTile.currentFrame = preservedFrame;
-        // console.log(
-        //   `🔄 State Transition: "${
-        //     this.previousState?.id
-        //   }" → "${stateId}" | Frame Preserved: ${preservedFrame} | GlobalFrame: ${
-        //     (newAnimatedTile as any).animationFrameData?.[preservedFrame]?.frameIndex || "unknown"
+        // .animationFrameData?.[preservedFrame]?.frameIndex || "unknown"
         //   }`
         // );
       } else {
-        // console.log(
-        //   `🔄 State Transition: "${this.previousState?.id}" → "${stateId}" | Frame Reset (preserved frame ${preservedFrame} invalid for ${newAnimatedTile.animationFrames.length} frames)`
+        // `
         // );
       }
     } else {
       // Reset frame to 0 for new state
-      // console.log(
-      //   `🔄 State Transition: "${this.previousState?.id}" → "${stateId}" | Frame Reset to 0`
-      // );
+
     }
 
     // CRITICAL: Immediately update sprite display after state transition
@@ -180,7 +173,7 @@ export class CharacterAnimation {
     // before any frame advancement logic runs
     this.updateSpriteDisplayImmediate();
 
-    // console.log(`Transitioned to state: ${stateId} (resetFrame: ${resetFrame})`);
+    // `);
   }
 
   /**
@@ -270,13 +263,6 @@ export class CharacterAnimation {
         : "unknown";
 
       // Log frame change with global frame IDs
-      //   console.log(
-      //     `🎬 Frame Change: State="${
-      //       this.currentState.id
-      //     }" | LocalFrame: ${prevFrameIndex}→${nextFrameIndex} | GlobalFrame: ${currentGlobalFrameId}→${nextGlobalFrameId} | Time: ${timeSinceLastFrame}ms${
-      //       this.pendingTransition ? " [TRANSITION PENDING - FRAME HELD]" : ""
-      //     }`
-      //   );
 
       // Check if animation loop completed (wrapped back to 0) - but only if no pending transition
       if (
@@ -284,9 +270,6 @@ export class CharacterAnimation {
         nextFrameIndex === 0 &&
         prevFrameIndex === animationTextures.length - 1
       ) {
-        // console.log(
-        //   `🔄 Animation Loop Completed: State="${this.currentState.id}" | TotalFrames: ${animationTextures.length}`
-        // );
 
         // Call state-specific animation loop callback
         this.currentState.onAnimationLoop();
@@ -507,7 +490,7 @@ export class CharacterAnimationBuilder {
     if (fromState) {
       // We need to get the actual state instance to add the transition
       // This is a limitation of the current design - let's note it for future improvement
-      console.log(`Added transition: ${fromStateId} --[${event}]--> ${toStateId}`);
+
     }
     return this;
   }

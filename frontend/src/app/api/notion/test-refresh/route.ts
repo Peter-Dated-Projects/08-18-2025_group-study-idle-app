@@ -16,8 +16,6 @@ export async function GET() {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    console.log("🧪 Testing automatic token refresh for user:", userId);
-
     // Make a simple API call that should trigger refresh if token is expired
     const response = await fetchWithTokenRefresh(userId, "https://api.notion.com/v1/users/me", {
       method: "GET",

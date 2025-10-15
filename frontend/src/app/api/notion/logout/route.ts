@@ -30,7 +30,7 @@ export async function POST(request: Request) {
         notionTokens: null,
         updated_at: new Date(),
       });
-      console.log("Notion tokens cleared successfully for user:", userId);
+
     } catch (error) {
       console.error("Error clearing Notion tokens:", error);
       return NextResponse.json({ error: "Failed to clear Notion tokens" }, { status: 500 });

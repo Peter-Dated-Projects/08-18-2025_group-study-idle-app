@@ -55,12 +55,9 @@ export async function GET(req: Request) {
     );
   }
 
-  console.log(`/api/notion/storage/pages: Using database ID: ${databaseId}`);
-
   try {
     // Get the primary data source ID for this database
     const dataSourceId = await getPrimaryDataSourceId(userId, databaseId);
-    console.log(`/api/notion/storage/pages: Using data source ID: ${dataSourceId}`);
 
     // Query the data source instead of the database
     const response = await queryDataSource(userId, dataSourceId, {
@@ -81,7 +78,6 @@ export async function GET(req: Request) {
       );
     }
 
-    // console.log("Fetched pages:", responseData.results);
     return NextResponse.json(responseData);
   } catch (error) {
     console.error("/api/notion/storage/pages: Error:", error);
@@ -129,7 +125,6 @@ export async function POST(req: Request) {
   try {
     // Get the primary data source ID for this database
     const dataSourceId = await getPrimaryDataSourceId(userId, databaseId);
-    console.log(`/api/notion/storage/pages: Creating page in data source: ${dataSourceId}`);
 
     const newPage: Record<string, unknown> = {
       parent: { data_source_id: dataSourceId }, // Updated to use data_source_id

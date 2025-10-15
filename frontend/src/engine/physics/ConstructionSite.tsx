@@ -100,9 +100,6 @@ export class ConstructionSite extends Entity {
     this.constructionProgress = 0;
     this.addTag("under_construction");
 
-    console.log(
-      `Construction started on ${this.constructionType} at (${this.position.x}, ${this.position.y})`
-    );
     return true;
   }
 
@@ -138,9 +135,6 @@ export class ConstructionSite extends Entity {
     this.removeTag("under_construction");
     this.addTag("completed");
 
-    console.log(
-      `Construction completed for ${this.constructionType} at (${this.position.x}, ${this.position.y})`
-    );
   }
 
   /**
@@ -157,9 +151,6 @@ export class ConstructionSite extends Entity {
     this.removeTag("under_construction");
     this.removeTag("completed");
 
-    console.log(
-      `Construction cancelled for ${this.constructionType} at (${this.position.x}, ${this.position.y})`
-    );
   }
 
   /**

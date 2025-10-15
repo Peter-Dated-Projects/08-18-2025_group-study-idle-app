@@ -97,7 +97,6 @@ export async function refreshWorldStructures(
   worldHandler: WorldPhysicsHandler,
   userId: string
 ): Promise<void> {
-  console.log(`Refreshing world structures for user: ${userId}`);
 
   try {
     // Clear cached data to ensure we fetch fresh backend state
@@ -134,9 +133,6 @@ export async function refreshWorldStructures(
       worldHandler.registerEntityRenderer(plot.id, spriteRenderer);
     });
 
-    console.log(
-      `Successfully refreshed ${newStructurePlots.length} structure plots with renderers`
-    );
   } catch (error) {
     console.error("Error refreshing world structures:", error);
     throw error;
@@ -191,7 +187,7 @@ async function createBabyCowEntities(
       babyCow.setMaxRadius(150);
 
       babyCows.push(babyCow);
-      console.log(`Created baby cow ${i + 1} at position (${position.x}, ${position.y})`);
+
     } catch (error) {
       console.error(`Failed to create baby cow ${i + 1}:`, error);
     }
@@ -250,7 +246,6 @@ async function createUserStructurePlots(config: DefaultWorldConfig): Promise<Str
   // Mouse interaction callbacks with save functionality
   const onPlotMouseCallbacks: MouseInteractionCallbacks = {
     onClick: (entity) => {
-      console.log("Structure plot clicked:", entity.id);
 
       // Cast entity to Structure since we know it's a structure in this context
       const structure = entity as Structure;
@@ -259,10 +254,10 @@ async function createUserStructurePlots(config: DefaultWorldConfig): Promise<Str
       callGlobalStructureClickHandler(structure);
     },
     onEnter: (entity) => {
-      console.log("Mouse entered structure plot:", entity.id);
+
     },
     onLeave: (entity) => {
-      console.log("Mouse left structure plot:", entity.id);
+
     },
   };
 
@@ -276,11 +271,6 @@ async function createUserStructurePlots(config: DefaultWorldConfig): Promise<Str
       const plot = await createStructureById(structureId, position, onPlotMouseCallbacks);
       plots.push(plot);
 
-      console.log(
-        `Created plot ${i + 1} at position (${position.x}, ${
-          position.y
-        }) with structure: ${structureId}`
-      );
     } catch (error) {
       console.error(`Failed to create plot ${i + 1} with structure ${structureId}:`, error);
 
@@ -288,7 +278,7 @@ async function createUserStructurePlots(config: DefaultWorldConfig): Promise<Str
       try {
         const plot = await Structure.create(position, onPlotMouseCallbacks);
         plots.push(plot);
-        console.log(`Created fallback empty plot ${i + 1}`);
+
       } catch (fallbackError) {
         console.error(`Failed to create fallback plot ${i + 1}:`, fallbackError);
       }
@@ -330,12 +320,6 @@ export async function constructDefaultWorld(
   config.entities.forEach((entity) => {
     worldHandler.addEntity(entity);
   });
-
-  console.log(
-    `World constructed with ${worldHandler.getEntityCount()} entities for user: ${
-      userId || "guest"
-    }`
-  );
 
   return worldHandler;
 }

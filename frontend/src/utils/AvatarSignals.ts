@@ -85,15 +85,15 @@ export function ExampleGameUI() {
   // Subscribe to signals in useEffect
   // useEffect(() => {
   //   const unsubscribe1 = onSignal('player.gotItem', (data) => {
-  //     console.log('Player got item:', data?.item);
+
   //     // Show UI notification, play sound, etc.
   //   });
-  //
+
   //   const unsubscribe2 = onSignal('player.tookDamage', (data) => {
-  //     console.log('Player took damage:', data?.damage);
+
   //     // Flash screen red, shake camera, etc.
   //   });
-  //
+
   //   return () => {
   //     unsubscribe1();
   //     unsubscribe2();
@@ -133,14 +133,6 @@ if (typeof window !== "undefined") {
     levelUp: playerLeveledUp,
   };
 
-  console.log("🎮 Avatar signal testing functions available:");
-  console.log("testAvatarSignals.cheer() - Make avatar cheer");
-  console.log("testAvatarSignals.love() - Make avatar show love");
-  console.log("testAvatarSignals.click() - Same as clicking avatar (triggers cheer)");
-  console.log('testAvatarSignals.setState("idle_emote_1") - Set specific state');
-  console.log('testAvatarSignals.gotItem("sword", 100) - Player got item');
-  console.log("testAvatarSignals.tookDamage(50) - Player took damage");
-  console.log("testAvatarSignals.levelUp(5) - Player leveled up");
 }
 
 /**

@@ -74,12 +74,6 @@ function GardenPageContent() {
   const { isPaid: hasSubscription, isLoading: subscriptionLoading } = useSubscription(); // Enable visual world synchronization between Redux and PIXI
   useVisualWorldSync();
 
-  console.log("🔒 Subscription Status:", {
-    hasSubscription,
-    subscriptionLoading,
-    userId: user?.userId,
-  });
-
   const [isClicking, setIsClicking] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [pixiApp, setPixiApp] = useState<PIXI.Application | undefined>(undefined); // PIXI.js Application state
@@ -215,10 +209,9 @@ function GardenPageContent() {
   // Initialize plots when user is authenticated
   useEffect(() => {
     if (isAuthenticated && user?.userId && !isLoading) {
-      console.log("🏗️ Initializing plots for user:", user.userId);
 
       // Clear all cached data to ensure we get fresh data from PostgreSQL database
-      console.log("🔄 Clearing cached data to ensure fresh database fetch");
+
       clearLevelConfigCache();
       localDataManager.invalidateLevelConfig(user.userId);
       localDataManager.invalidateInventory(user.userId);
@@ -227,12 +220,12 @@ function GardenPageContent() {
       // Dispatch both calls to ensure they complete before UI calculates inventory
       const initializeData = async () => {
         try {
-          console.log("📊 Starting parallel data fetch...");
+
           await Promise.all([
             dispatch(initializePlotsFromConfig(user.userId)),
             dispatch(fetchStructureInventory(user.userId)),
           ]);
-          console.log("✅ Both plots and inventory data loaded");
+
         } catch (error) {
           console.error("❌ Error loading initial data:", error);
         }
@@ -323,7 +316,7 @@ function GardenPageContent() {
           >
             <GardenCanvas
               onAppCreated={(app) => {
-                console.log("PIXI App created:", app);
+
                 setPixiApp(app);
               }}
               userId={user?.userId} // Pass the real user ID to the canvas

@@ -4,11 +4,10 @@
  */
 
 export const testStructurePlacement = async (userId: string, plotIndex: number, structureId: string) => {
-  console.log(`🧪 Testing structure placement: ${structureId} on plot ${plotIndex} for user ${userId}`);
-  
+
   try {
     // Test the API endpoint directly
-    console.log("1. Testing API endpoint...");
+
     const response = await fetch(`/api/level-config/${userId}/slot`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -27,27 +26,24 @@ export const testStructurePlacement = async (userId: string, plotIndex: number, 
     }
 
     const data = await response.json();
-    console.log("✅ API call successful:", data);
 
     // Test Redux action
-    console.log("2. Testing Redux action...");
+
     const { store } = await import("../store/store");
     const { placeStructureOnPlot } = await import("../store/slices/worldSlice");
     
     const result = await store.dispatch(placeStructureOnPlot({ userId, plotIndex, structureId }));
     
     if (placeStructureOnPlot.fulfilled.match(result)) {
-      console.log("✅ Redux action successful:", result.payload);
-      
+
       // Check if visual update was queued
       const state = store.getState();
       const pendingUpdates = state.world.pendingVisualUpdates;
-      console.log("📋 Pending visual updates:", pendingUpdates);
-      
+
       if (pendingUpdates.includes(plotIndex)) {
-        console.log("✅ Plot added to visual update queue");
+
       } else {
-        console.log("❌ Plot NOT added to visual update queue");
+
       }
       
       return true;

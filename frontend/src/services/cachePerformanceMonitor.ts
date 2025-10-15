@@ -79,7 +79,7 @@ class CachePerformanceMonitor {
     this.saveToStorage();
 
     // Log for debugging
-    console.debug(`[Cache Monitor] ${layer} hit for user ${userId} (${loadTime}ms)`);
+
   }
 
   /**
@@ -237,7 +237,7 @@ class CachePerformanceMonitor {
     this.hits = [];
     this.startTime = Date.now();
     this.saveToStorage();
-    console.log("[Cache Monitor] Metrics cleared");
+
   }
 
   /**
@@ -277,7 +277,7 @@ class CachePerformanceMonitor {
         const data = JSON.parse(stored);
         this.hits = data.hits || [];
         this.startTime = data.startTime || Date.now();
-        console.log("[Cache Monitor] Loaded metrics from storage");
+
       }
     } catch (error) {
       console.warn("[Cache Monitor] Failed to load metrics:", error);
@@ -291,38 +291,9 @@ class CachePerformanceMonitor {
     const report = this.getReport();
 
     console.group("🎯 Profile Picture Cache Performance Report");
-    console.log(
-      `Period: ${report.period.start.toLocaleString()} - ${report.period.end.toLocaleString()}`
-    );
-    console.log(`Duration: ${report.period.durationHours} hours`);
-    console.log("");
-    console.log("📊 Metrics:");
-    console.log(`  Total Requests: ${report.metrics.totalRequests}`);
-    console.log(`  Cache Hit Rate: ${report.metrics.cacheHitRate}%`);
-    console.log(`  Average Load Time: ${report.metrics.averageLoadTime}ms`);
-    console.log(`  Bandwidth Saved: ${(report.metrics.bandwidthSaved / 1024).toFixed(2)} KB`);
-    console.log(`  Time Saved: ${(report.metrics.timeSaved / 1000).toFixed(2)}s`);
-    console.log("");
-    console.log("📈 Layer Breakdown:");
-    console.log(
-      `  Redux: ${report.breakdown.redux.hits} hits (${report.breakdown.redux.percentage}%) - ${report.breakdown.redux.avgTime}ms avg`
-    );
-    console.log(
-      `  LocalStorage: ${report.breakdown.localStorage.hits} hits (${report.breakdown.localStorage.percentage}%) - ${report.breakdown.localStorage.avgTime}ms avg`
-    );
-    console.log(
-      `  IndexedDB: ${report.breakdown.indexedDB.hits} hits (${report.breakdown.indexedDB.percentage}%) - ${report.breakdown.indexedDB.avgTime}ms avg`
-    );
-    console.log(
-      `  Service Worker: ${report.breakdown.serviceWorker.hits} hits (${report.breakdown.serviceWorker.percentage}%) - ${report.breakdown.serviceWorker.avgTime}ms avg`
-    );
-    console.log(
-      `  Network: ${report.breakdown.network.hits} hits (${report.breakdown.network.percentage}%) - ${report.breakdown.network.avgTime}ms avg`
-    );
-    console.log("");
-    console.log("💡 Recommendations:");
+
     report.recommendations.forEach((rec, i) => {
-      console.log(`  ${i + 1}. ${rec}`);
+
     });
     console.groupEnd();
   }
@@ -334,8 +305,7 @@ export const cacheMonitor = new CachePerformanceMonitor();
 // Expose to window for debugging
 if (typeof window !== "undefined") {
   (window as any).cacheMonitor = cacheMonitor;
-  console.log("[Cache Monitor] Available globally as window.cacheMonitor");
-  console.log("[Cache Monitor] Try: cacheMonitor.logSummary()");
+
 }
 
 // Auto-log summary every hour in development

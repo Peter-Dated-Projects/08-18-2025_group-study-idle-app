@@ -29,28 +29,26 @@ const monitorAuthCalls = () => {
     const url = args[0];
     if (typeof url === "string" && url.includes("/api/auth/session")) {
       callCount++;
-      console.log(`🔍 Auth call #${callCount} at ${Date.now() - startTime}ms:`, url);
+
     }
     return originalFetch.apply(this, args);
   };
 
   // Reset counter
   setTimeout(() => {
-    console.log(`📊 Total auth calls in 10 seconds: ${callCount}`);
-    console.log(`✅ Expected: 1-2 calls, Actual: ${callCount}`);
+
     if (callCount <= 2) {
-      console.log("🎉 Optimization successful!");
+
     } else {
-      console.log("⚠️ More optimization needed");
+
     }
   }, 10000);
 
-  console.log("🚀 Monitoring auth calls for 10 seconds...");
 };
 
 // Browser console test
 if (typeof window !== "undefined") {
-  console.log("To test auth optimization, run: monitorAuthCalls()");
+
   (window as any).monitorAuthCalls = monitorAuthCalls;
 }
 

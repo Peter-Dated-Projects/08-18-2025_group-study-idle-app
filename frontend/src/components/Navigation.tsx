@@ -13,13 +13,10 @@ const Navigation: React.FC = () => {
   useEffect(() => {
     const checkUserAuth = async () => {
       try {
-        console.log('🔐 Checking authentication via server-side API...');
+
         const response = await fetch('/api/auth/check-cookie');
         const data = await response.json();
-        
-        console.log('🔐 Auth check response:', data);
-        console.log('🔐 Has user cookies:', data.hasCookie);
-        
+
         setHasUserCookies(data.hasCookie);
         // Set redirect based on authentication status
         setButtonPressRedirect(data.hasCookie ? '/garden' : '/login');

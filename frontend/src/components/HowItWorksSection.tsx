@@ -55,7 +55,7 @@ const HowItWorksSection: React.FC<HowItWorksSectionProps> = ({ onButtonClick }) 
             How Your Quest Unfolds
           </h2>
           <p className="text-xl text-gray-700 max-w-3xl mx-auto">
-            Transform your study routine into an epic adventure. Here's how our engaging
+            Transform your study routine into an epic adventure. Here&apos;s how our engaging
             learning environment helps you level up and achieve your goals.
           </p>
         </div>
@@ -177,7 +177,6 @@ const HowItWorksSection: React.FC<HowItWorksSectionProps> = ({ onButtonClick }) 
                       </p>
                     </div>
                   </div>
-
 
                 </div>
               </div>

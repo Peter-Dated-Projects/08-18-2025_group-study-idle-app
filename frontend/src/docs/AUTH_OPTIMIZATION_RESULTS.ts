@@ -36,7 +36,7 @@
  * const originalFetch = window.fetch;
  * window.fetch = function(...args) {
  *   if (args[0].includes('/api/auth/session')) {
- *     console.log(`🔍 Auth call #${++callCount}:`, args[0]);
+ *     
  *   }
  *   return originalFetch.apply(this, args);
  * };

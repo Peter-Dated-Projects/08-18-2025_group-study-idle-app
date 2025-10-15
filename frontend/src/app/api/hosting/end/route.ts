@@ -6,7 +6,6 @@ const backendURL = BACKEND_URL;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log("Next.js API received end lobby request:", body);
 
     // Create AbortController for timeout
     const controller = new AbortController();
@@ -29,7 +28,6 @@ export async function POST(request: NextRequest) {
     clearTimeout(timeoutId); // Clear timeout if request completes
 
     const responseData = await backendResponse.json();
-    console.log("Backend response:", backendResponse.status, responseData);
 
     // Return the response with the same status code
     return NextResponse.json(responseData, {

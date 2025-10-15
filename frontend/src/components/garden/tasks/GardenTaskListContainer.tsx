@@ -153,10 +153,7 @@ export default function GardenTaskListContainer({
   const createSyncFunction = useCallback(() => {
     return async () => {
       if (!selectedSession || taskSync.isSyncing) {
-        console.log("Sync skipped:", {
-          hasSession: !!selectedSession,
-          isSyncing: taskSync.isSyncing,
-        });
+
         return;
       }
       if (
@@ -164,20 +161,14 @@ export default function GardenTaskListContainer({
         taskSync.pendingUpdates.length === 0 &&
         taskSync.pendingDeletes.length === 0
       ) {
-        console.log("Sync skipped: no pending changes");
+
         return;
       }
-
-      console.log("Starting sync with deltas:", {
-        creates: taskSync.pendingCreates.length,
-        updates: taskSync.pendingUpdates.length,
-        deletes: taskSync.pendingDeletes.length,
-      });
 
       // Use the hook's sync method
       try {
         await taskSync.syncTasksToServer(editingTaskId || undefined, editingText);
-        console.log("Sync completed successfully");
+
       } catch (error) {
         console.error("Sync failed:", error);
         addNotification("error", "Failed to sync changes to server");
@@ -198,7 +189,7 @@ export default function GardenTaskListContainer({
   }, [taskSync]);
 
   const markAsChanged = useCallback(() => {
-    console.log("Marking as changed, scheduling sync");
+
     scheduleSync();
   }, [scheduleSync]);
 
@@ -273,11 +264,7 @@ export default function GardenTaskListContainer({
         if (isCacheValid) {
           // Only log if there are actually tasks to show, to avoid spam for empty sessions
           if (cachedTasks.length > 0) {
-            console.log(
-              `Using cached tasks for session: ${
-                selectedSession?.title || selectedSession?.id || "Unknown"
-              }`
-            );
+
           }
           setTaskList([...cachedTasks]);
           setOriginalTaskOrder([...cachedTasks]);
@@ -287,12 +274,6 @@ export default function GardenTaskListContainer({
           lastLoadedSessionRef.current = sessionId; // Mark as loaded
           return;
         }
-
-        console.log(
-          `Fetching fresh task data for session: ${
-            selectedSession?.title || selectedSession?.id || "Unknown"
-          }`
-        );
 
         // Get blocks from the selected study session page
         const response = await fetch(`/api/notion/blocks/${selectedSession.id}?children=true`, {
@@ -313,7 +294,6 @@ export default function GardenTaskListContainer({
         }
 
         const data = await response.json();
-        console.log("Session blocks data:", data);
 
         // Convert blocks to tasks - focusing on to_do blocks
         const tasks: Task[] = [];
@@ -359,7 +339,6 @@ export default function GardenTaskListContainer({
 
         // Only update if data has changed or it's the first load
         if (newHash !== existingHash || !cachedTasks) {
-          console.log("Task data changed, updating cache");
 
           // Update cache using hook methods
           taskCache.updateCache(sessionId, tasks);
@@ -371,11 +350,8 @@ export default function GardenTaskListContainer({
           setCompletionSortMode("custom");
           lastLoadedSessionRef.current = sessionId; // Mark as loaded
 
-          console.log(
-            `Loaded and cached ${tasks.length} tasks from session: ${selectedSession.title}`
-          );
         } else {
-          console.log("No task changes detected, using existing cache");
+
           setTaskList([...cachedTasks]);
           setOriginalTaskOrder([...cachedTasks]);
           setTaskDetailsSortMode("custom");
@@ -392,7 +368,7 @@ export default function GardenTaskListContainer({
         // Fall back to cache if available
         const cachedTasks = taskCache.taskCache[sessionId];
         if (cachedTasks) {
-          console.log("Using cached tasks as fallback");
+
           setTaskList([...cachedTasks]);
           setOriginalTaskOrder([...cachedTasks]);
           setTaskDetailsSortMode("custom");

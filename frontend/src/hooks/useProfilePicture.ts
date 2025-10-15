@@ -61,14 +61,14 @@ export function useProfilePicture(
     // 4. Not currently loading
     // 5. autoFetch is enabled
     if (userId && isAuthenticated && !cachedPicture && !loading && autoFetch) {
-      console.debug(`[useProfilePicture] Auto-fetching for user ${userId}`);
+
       dispatch(fetchProfilePicture({ userId }));
     }
   }, [userId, isAuthenticated, cachedPicture, loading, autoFetch, dispatch]);
 
   const refetch = () => {
     if (userId && isAuthenticated) {
-      console.debug(`[useProfilePicture] Manual refetch for user ${userId}`);
+
       dispatch(fetchProfilePicture({ userId }));
     }
   };
@@ -93,7 +93,7 @@ export function usePrefetchProfilePictures(userIds: string[]) {
 
   useEffect(() => {
     if (isAuthenticated && userIds.length > 0) {
-      console.debug(`[usePrefetchProfilePictures] Prefetching ${userIds.length} pictures`);
+
       // This will check cache and only fetch missing ones
       userIds.forEach((userId) => {
         dispatch(fetchProfilePicture({ userId }));

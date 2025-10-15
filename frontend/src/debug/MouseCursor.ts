@@ -36,13 +36,13 @@ export class MouseCursor {
 
     // Mouse enter - show cursor
     canvas.addEventListener("mouseenter", () => {
-      console.log("[MouseCursor] Mouse entered - showing cursor");
+
       this.cursor.visible = true;
     });
 
     // Mouse leave - hide cursor
     canvas.addEventListener("mouseleave", () => {
-      console.log("[MouseCursor] Mouse left - hiding cursor");
+
       this.cursor.visible = false;
     });
 

@@ -66,15 +66,12 @@ export async function GET(req: Request) {
 
     // Query Notion for the token's status
     const tokenData = await tokenResponse.json();
-    console.log("/api/notion/callback: tokenData:", tokenData);
 
     // IMPORTANT: check if user used the template
     if (!tokenData.duplicated_template_id) {
       console.warn("User failed to use template Notion Page.");
       return NextResponse.json({ error: "User did not use the template" }, { status: 400 });
     }
-
-    console.log("/api/notion/callback: tokenData:", tokenData);
 
     // Check if valid user ID
     if (!userId) {

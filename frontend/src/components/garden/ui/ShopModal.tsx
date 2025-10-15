@@ -83,19 +83,17 @@ export default function ShopModal({ locked, onClose }: ShopModalProps) {
       setIsPurchasing(true);
       try {
         const result = await purchaseStructure(user.userId, itemId, itemPrice);
-        console.log("Purchase result:", result);
 
         if (result.success) {
           // Update balance in Redux store
           if (result.balance) {
-            console.log("Updating balance to:", result.balance.bank_value);
+
             dispatch(updateBalance(result.balance.bank_value));
           }
 
           // Refresh inventory to get updated counts
           dispatch(fetchInventory(user.userId));
 
-          console.log(`Successfully purchased ${itemName} (${itemId}) for ${itemPrice} coins`);
         } else {
           console.error(`Failed to purchase ${itemName}:`, result.message);
         }
@@ -105,7 +103,7 @@ export default function ShopModal({ locked, onClose }: ShopModalProps) {
         setIsPurchasing(false);
       }
     } else {
-      console.log(`Insufficient funds to purchase ${itemName}`);
+
     }
   };
 

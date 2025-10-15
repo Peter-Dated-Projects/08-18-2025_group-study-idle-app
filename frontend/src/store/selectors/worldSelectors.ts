@@ -69,20 +69,9 @@ export const selectAvailableStructureCounts = (state: RootState): AvailableStruc
   // We expect exactly 7 plots after initialization and at least some inventory data
   // (even if inventory is empty, the array should exist)
   if (isLoading || currentPlots.length !== 7 || structureInventory === undefined) {
-    console.log("🚫 selectAvailableStructureCounts: Data not ready", {
-      isLoading,
-      plotsLength: currentPlots.length,
-      hasInventory: structureInventory !== undefined,
-      inventoryLength: structureInventory?.length || 0
-    });
+
     return [];
   }
-
-  console.log("✅ selectAvailableStructureCounts: Calculating with data", {
-    inventoryLength: structureInventory.length,
-    plotsLength: currentPlots.length,
-    plots: currentPlots.map(p => ({ index: p.index, structure: p.currentStructureId }))
-  });
 
   // Count how many of each structure type are currently placed in level config
   const placedCounts: Record<string, number> = {};
@@ -106,7 +95,7 @@ export const selectAvailableStructureCounts = (state: RootState): AvailableStruc
     
     if (!structureConfig) {
       // If we can't find the structure config, return the inventory item as-is
-      console.log(`⚠️ No structure config found for: ${inventoryItem.structure_name}`);
+
       return {
         structure_name: inventoryItem.structure_name,
         count: inventoryItem.count,
@@ -119,8 +108,6 @@ export const selectAvailableStructureCounts = (state: RootState): AvailableStruc
     const placedCount = placedCounts[structureConfig.id] || 0;
     const availableCount = Math.max(0, inventoryItem.count - placedCount);
 
-    console.log(`📊 ${inventoryItem.structure_name}: total=${inventoryItem.count}, placed=${placedCount}, available=${availableCount}`);
-
     return {
       structure_name: inventoryItem.structure_name,
       count: inventoryItem.count, // Total owned
@@ -129,7 +116,6 @@ export const selectAvailableStructureCounts = (state: RootState): AvailableStruc
     };
   });
 
-  console.log("🎯 selectAvailableStructureCounts final result:", result);
   return result;
 };
 

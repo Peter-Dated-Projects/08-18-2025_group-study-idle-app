@@ -66,40 +66,36 @@ export default function GardenCanvas({
     async function init() {
       // Ensure we're in client environment before initializing PIXI
       if (!isClient) {
-        console.log("[GardenCanvas] Not in client environment, skipping initialization...");
+
         return;
       }
 
       // Prevent multiple initializations from running simultaneously
       if (initializationInProgress) {
-        console.log("[GardenCanvas] Initialization already in progress, skipping...");
+
         return;
       }
 
       initializationInProgress = true;
 
       try {
-        console.log("[GardenCanvas] Starting PIXI app initialization...");
 
         // Check if component was disposed before we even start
         if (disposed) {
-          console.log("[GardenCanvas] Component disposed before initialization, aborting...");
+
           return;
         }
 
         // Re-check element validity (React might have unmounted)
         const currentEl = parentRef.current;
         if (!currentEl) {
-          console.log(
-            "[GardenCanvas] Parent element no longer available, aborting initialization..."
-          );
+
           return;
         }
 
         // ------------------------------------------------------------------------------ //
         const app = new PIXI.Application();
         app.stage.interactive = true; // Enable interactivity on the stage
-        console.log("[GardenCanvas] PIXI Application created:", app);
 
         if (!app) {
           throw new Error("Failed to create PIXI Application - app is null/undefined");
@@ -107,12 +103,11 @@ export default function GardenCanvas({
 
         // Store app reference immediately to prevent race conditions
         appRef.current = app;
-        console.log("[GardenCanvas] App stored in ref:", appRef.current);
 
         // Double-check element is still valid before initializing
         const elementCheck = parentRef.current;
         if (!elementCheck || disposed) {
-          console.log("[GardenCanvas] Element became invalid during setup, cleaning up...");
+
           app.destroy(true);
           appRef.current = null;
           return;
@@ -128,30 +123,24 @@ export default function GardenCanvas({
         });
         // Don't stop the ticker - we want it running for FPS management
 
-        console.log("[GardenCanvas] PIXI app initialized successfully");
-        console.log("[GardenCanvas] Canvas element:", app.canvas);
-
         if (disposed) {
-          console.log("[GardenCanvas] Component was disposed during init, cleaning up...");
+
           if (app && typeof app.destroy === "function") {
             app.destroy(true);
           }
           return;
         }
 
-        console.log("[GardenCanvas] Calling onAppCreated callback...");
         onAppCreated(app);
 
         // Final check before DOM manipulation
         const finalElementCheck = parentRef.current;
         if (!finalElementCheck || disposed) {
-          console.log("[GardenCanvas] Element no longer valid for DOM append, cleaning up...");
+
           app.destroy(true);
           appRef.current = null;
           return;
         }
-
-        console.log("[GardenCanvas] Appending canvas to DOM...");
 
         // Apply CSS styles to make canvas fill parent completely
         app.canvas.style.width = "100%";
@@ -213,40 +202,33 @@ export default function GardenCanvas({
         worldContainerRef.current = worldContainer;
 
         // Initialize Dynamic FPS Manager for performance optimization
-        console.log("[GardenCanvas] Initializing Dynamic FPS Manager...");
+
         initializeFPSManager(app);
 
         // Initialize MouseHandler for mouse-to-world coordinate conversion with visual indicator
-        console.log(
-          "[GardenCanvas] Initializing MouseHandler with world container and render sprite..."
-        );
+
         initializeMouseHandler(app, worldContainer, renderSprite);
 
         // Test the new reactive MouseHandler system
-        console.log("[GardenCanvas] MouseHandler initialized in IDLE mode by default");
+
         if (mouseHandler) {
           // Test toggling to ACTIVE mode
           setTimeout(() => {
-            console.log("[GardenCanvas] Testing reactive MouseHandler system:");
-            console.log("Current mode:", getMouseHandlerMode());
 
-            console.log("Toggling to ACTIVE state...");
             const newState = toggleMouseHandlerState();
-            console.log("New state after toggle:", newState);
+
           }, 1000);
 
           // Test auto-return to IDLE mode
           setTimeout(() => {
-            console.log("[GardenCanvas] Checking auto-return to IDLE mode after 2 seconds...");
-            console.log("Current mode should be IDLE:", getMouseHandlerMode());
+
           }, 3000);
         }
 
         // Create mouse cursor for basic testing
-        console.log("[GardenCanvas] Creating mouse cursor for basic testing...");
+
         createMouseCursor(app);
 
-        console.log("[GardenCanvas] Initializing WorldPhysicsHandler for entity management...");
         // Use real user ID from props, fallback to demo user
         const worldUserId = userId || "demo_user_123";
         const worldHandler = await constructDefaultWorld(app, worldContainer, worldUserId);
@@ -255,22 +237,13 @@ export default function GardenCanvas({
         // Set up global world refresh handler
         const refreshHandler = async () => {
           if (worldHandlerRef.current && worldUserId) {
-            console.log("[GardenCanvas] Refreshing world structures");
+
             await refreshWorldStructures(worldHandlerRef.current, worldUserId);
           }
         };
         setGlobalWorldRefreshHandler(refreshHandler);
 
-        console.log("[GardenCanvas] Default world constructed with entities:", {
-          entityCount: worldHandler.getEntityCount(),
-          userId: worldUserId,
-          entities: worldHandler
-            .getAllEntities()
-            .map((e) => ({ id: e.id, tags: e.tags, position: e.position })),
-        });
-
         // Create visual content for the world container (tilemap, sprites, etc.)
-        console.log("[GardenCanvas] Setting up visual world content...");
 
         // Add tilemap as background
         const tilemapTexture = await PIXI.Assets.load("/level/map.png");
@@ -283,20 +256,13 @@ export default function GardenCanvas({
         tilemapTexture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
         worldContainer.addChild(tilemapSprite);
 
-        console.log("[GardenCanvas] Tilemap added to world container:", {
-          texture: tilemapTexture,
-          scale: initialScale,
-          position: { x: DESIGN_WIDTH / 2, y: DESIGN_HEIGHT / 2 },
-          containerChildren: worldContainer.children.length,
-        });
-
         // Initialize the rendering system
-        console.log("[GardenCanvas] Initializing rendering system...");
+
         const rendererHandler = new RendererHandler(app, worldContainer);
         rendererHandlerRef.current = rendererHandler;
 
         // Create visual representations for all physics entities using the rendering system
-        console.log("[GardenCanvas] Setting up entity renderers...");
+
         const entities = worldHandler.getAllEntities();
         let renderersCreated = 0;
 
@@ -312,17 +278,11 @@ export default function GardenCanvas({
           renderersCreated++;
         }
 
-        console.log("[GardenCanvas] Entity renderers created:", {
-          entitiesCount: entities.length,
-          renderersCreated,
-          totalWorldContainerChildren: worldContainer.children.length,
-        });
-
         // Sort children by zIndex for proper layering
         worldContainer.sortChildren();
 
         // Initialize the visual world update service
-        console.log("[GardenCanvas] Initializing visual world update service...");
+
         visualWorldUpdateService.initialize(worldHandler, rendererHandler, worldUserId);
 
         // Use the app's built-in ticker for FPS management integration
@@ -406,7 +366,6 @@ export default function GardenCanvas({
           }
         });
 
-        console.log("[GardenCanvas] Initialization completed successfully!");
       } catch (error) {
         console.error("[GardenCanvas] Error during initialization:", error);
 
@@ -426,7 +385,7 @@ export default function GardenCanvas({
         worldContainerRef.current = null;
 
         // Don't re-throw to prevent cascading errors
-        console.log("[GardenCanvas] Initialization failed, but cleanup completed");
+
       } finally {
         initializationInProgress = false;
       }
@@ -437,17 +396,17 @@ export default function GardenCanvas({
     });
 
     return () => {
-      console.log("[GardenCanvas] Cleanup function called");
+
       disposed = true;
       const app = appRef.current;
 
       // Clean up visual world update service
-      console.log("[GardenCanvas] Cleaning up visual world update service...");
+
       visualWorldUpdateService.cleanup();
 
       // Clean up renderer handler
       if (rendererHandlerRef.current) {
-        console.log("[GardenCanvas] Cleaning up renderer handler...");
+
         const entities = worldHandlerRef.current?.getAllEntities() || [];
         for (const entity of entities) {
           rendererHandlerRef.current.removeRenderer(entity.id);
@@ -479,7 +438,7 @@ export default function GardenCanvas({
       // Safely destroy app (destroys stage, children, and textures)
       if (app && typeof app.destroy === "function") {
         try {
-          console.log("[GardenCanvas] Destroying PIXI app...");
+
           app.destroy(true);
         } catch (error) {
           console.error("[GardenCanvas] Error destroying PIXI app:", error);
@@ -493,7 +452,6 @@ export default function GardenCanvas({
       // Clear global world refresh handler
       clearGlobalWorldRefreshHandler();
 
-      console.log("[GardenCanvas] Cleanup completed");
     };
   }, [isMounted]);
 

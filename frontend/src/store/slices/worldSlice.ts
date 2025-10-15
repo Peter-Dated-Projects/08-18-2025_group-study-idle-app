@@ -264,7 +264,7 @@ export const fetchStructureInventory = createAsyncThunk(
         return rejectWithValue(`Failed to fetch inventory: ${response.status}`);
       }
       const data = await response.json();
-      console.log("data", data);
+
       if (data.success && data.data) {
         return data.data.structure_inventory;
       } else {
@@ -547,10 +547,6 @@ const worldSlice = createSlice({
           });
         }
 
-        console.log(
-          `🏗️ Initialized ${state.currentPlots.length} plots from config:`,
-          state.currentPlots.map((p) => ({ index: p.index, structure: p.currentStructureId }))
-        );
       })
       .addCase(initializePlotsFromConfig.rejected, (state, action) => {
         state.isLoading = false;

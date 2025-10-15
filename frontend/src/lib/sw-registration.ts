@@ -31,22 +31,18 @@ class ServiceWorkerManager {
     }
 
     try {
-      console.log("[SW Manager] Registering service worker...");
 
       this.registration = await navigator.serviceWorker.register("/sw.js", {
         scope: "/",
       });
 
-      console.log("[SW Manager] Service worker registered:", this.registration.scope);
-
       // Handle updates
       this.registration.addEventListener("updatefound", () => {
         const newWorker = this.registration!.installing;
-        console.log("[SW Manager] Update found, installing new service worker...");
 
         newWorker?.addEventListener("statechange", () => {
           if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-            console.log("[SW Manager] New service worker installed, update available");
+
             this.notifyUpdate();
           }
         });
@@ -72,7 +68,7 @@ class ServiceWorkerManager {
 
     try {
       const success = await this.registration.unregister();
-      console.log("[SW Manager] Service worker unregistered:", success);
+
       this.stopUpdateChecks();
       return success;
     } catch (error) {
@@ -92,7 +88,7 @@ class ServiceWorkerManager {
 
     try {
       await this.registration.update();
-      console.log("[SW Manager] Service worker update check complete");
+
     } catch (error) {
       console.error("[SW Manager] Failed to update service worker:", error);
     }
@@ -108,11 +104,10 @@ class ServiceWorkerManager {
     }
 
     this.registration.waiting.postMessage({ type: "SKIP_WAITING" });
-    console.log("[SW Manager] Told service worker to skip waiting");
 
     // Reload page after activation
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      console.log("[SW Manager] Controller changed, reloading page...");
+
       window.location.reload();
     });
   }
@@ -189,11 +184,10 @@ class ServiceWorkerManager {
     }
 
     try {
-      // @ts-ignore - Background Sync API may not be in TypeScript definitions
       if ("sync" in this.registration) {
-        // @ts-ignore
+        // @ts-expect-error - Background Sync API types
         await this.registration.sync.register("refresh-profile-pictures");
-        console.log("[SW Manager] Background sync registered");
+
         return true;
       } else {
         console.warn("[SW Manager] Background Sync API not supported");
@@ -227,7 +221,7 @@ class ServiceWorkerManager {
 
     // Check for updates every hour
     this.updateCheckInterval = setInterval(() => {
-      console.log("[SW Manager] Checking for service worker updates...");
+
       this.update();
     }, 60 * 60 * 1000);
   }
@@ -246,7 +240,6 @@ class ServiceWorkerManager {
    * Notify user about available update
    */
   private notifyUpdate(): void {
-    console.log("[SW Manager] New version available!");
 
     // Dispatch custom event that UI can listen to
     if (typeof window !== "undefined") {
@@ -274,7 +267,6 @@ if (typeof window !== "undefined") {
 
   // Listen for service worker update events
   window.addEventListener("sw-update-available", () => {
-    console.log("[SW Manager] Update notification received");
 
     // Show notification to user (can be customized)
     if (window.confirm("New version available! Reload to update?")) {

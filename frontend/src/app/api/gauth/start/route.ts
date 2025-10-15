@@ -40,9 +40,6 @@ export async function GET(req: Request) {
     authUrl.searchParams.set("state", state);
     authUrl.searchParams.set("redirect_uri", `${url.origin}/api/gauth/callback`);
 
-    console.log("Callback URL: ", `${url.origin}/api/gauth/callback`);
-    console.log("Redirecting to Google OAuth:", authUrl.toString());
-
     return NextResponse.redirect(authUrl.toString());
   } catch (error) {
     console.error("Error starting Google OAuth:", error);

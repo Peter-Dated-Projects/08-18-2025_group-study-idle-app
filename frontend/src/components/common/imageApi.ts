@@ -165,7 +165,7 @@ export async function uploadProfilePicture(
     }
 
     const data = await response.json();
-    console.log("Profile picture upload successful:", data);
+
     return data;
   } catch (error) {
     console.error("Network error during profile picture upload:", error);
@@ -240,7 +240,7 @@ export async function updateUserProfilePicture(
     }
 
     const data = await response.json();
-    console.log("User profile picture update successful:", data);
+
     return data;
   } catch (error) {
     console.error("Network error during user profile picture update:", error);

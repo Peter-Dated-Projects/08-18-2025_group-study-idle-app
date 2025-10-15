@@ -231,7 +231,7 @@ const PixiDemoSection: React.FC = () => {
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             See your study progress come to life in a beautiful, interactive world. This is just a
-            preview of what you'll build with your dedication!
+            preview of what you&apos;ll build with your dedication!
           </p>
         </div>
 

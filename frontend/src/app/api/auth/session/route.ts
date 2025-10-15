@@ -7,8 +7,6 @@ export async function GET() {
     const cookieStore = await cookies();
     const userId = cookieStore.get("user_id")?.value;
 
-    // console.log(cookieStore);
-
     // If we don't have a valid user id, then we can't retrieve the session
     if (!userId) {
       return NextResponse.json({ success: false, error: "No user ID found" });
@@ -16,7 +14,6 @@ export async function GET() {
 
     // Try to retrieve user session using userId
     const session = await getUserSession(userId);
-    // console.log("/api/auth/session: ", session);
 
     if (!session) {
       // Clear invalid session cookie and encrypted email

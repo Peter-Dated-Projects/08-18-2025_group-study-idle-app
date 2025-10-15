@@ -41,7 +41,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   try {
     const data = await req.json();
-    console.log(JSON.stringify(data));
 
     const response = await fetchWithTokenRefresh(
       userId,
@@ -57,7 +56,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.log(errorData);
+
       return NextResponse.json({ error: errorData.error }, { status: response.status });
     }
 

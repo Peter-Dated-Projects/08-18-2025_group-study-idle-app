@@ -121,7 +121,7 @@ export default function LoginPage() {
       if (!data.success || !data.hasValidTokens) {
         setIsNotionConnected(false);
         if (!justAuth) {
-          console.log(justAuth);
+
           setError("Failed to confirm Notion auth. Please try reconnecting.");
           return;
         }
@@ -154,7 +154,6 @@ export default function LoginPage() {
         const response = await fetch("/api/notion/storage/verify");
         const responseData = await response.json();
 
-        console.log(responseData);
         if (!response.ok) {
           console.warn("/api/notion/storage/verify: Notion database verification failed");
 

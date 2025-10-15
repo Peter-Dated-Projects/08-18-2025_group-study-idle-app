@@ -74,7 +74,6 @@ export function useTaskSync({
         }
 
         // Additional safety: log what we're about to send
-        console.log("Deletes being sent to server:", realDeletes);
 
         const syncRequest: SyncRequest = {
           sessionPageId: selectedSession.id,
@@ -82,8 +81,6 @@ export function useTaskSync({
           updates: [...pendingUpdates],
           deletes: realDeletes.filter((id) => id && id !== ""), // Extra safety filter
         };
-
-        console.log("Sending sync request:", syncRequest);
 
         // Send delta sync to the new endpoint
         const response = await fetch(`/api/notion/storage/pages/${selectedSession.id}/sync-delta`, {
@@ -131,12 +128,6 @@ export function useTaskSync({
         // Also clean up any temporary IDs that may have gotten into pending deletes
         setPendingDeletes((prev: TaskDelete[]) => prev.filter((d) => !d.id.startsWith("temp-")));
 
-        console.log(
-          `Synced deltas: ${responseData.created?.length || 0} created, ${
-            responseData.updated?.length || 0
-          } updated, ${responseData.deleted?.length || 0} deleted`
-        );
-
         return responseData;
       } catch (error) {
         console.error("Error syncing tasks:", error);
@@ -150,7 +141,7 @@ export function useTaskSync({
   const createSyncFunction = useCallback(() => {
     return async () => {
       if (!selectedSession || isSyncing) {
-        console.log("Sync skipped:", { hasSession: !!selectedSession, isSyncing });
+
         return;
       }
       if (
@@ -158,21 +149,15 @@ export function useTaskSync({
         pendingUpdates.length === 0 &&
         pendingDeletes.length === 0
       ) {
-        console.log("Sync skipped: no pending changes");
+
         return;
       }
-
-      console.log("Starting sync with deltas:", {
-        creates: pendingCreates.length,
-        updates: pendingUpdates.length,
-        deletes: pendingDeletes.length,
-      });
 
       setIsSyncing(true);
       try {
         await syncTasksToServer();
         setHasPendingChanges(false);
-        console.log("Sync completed successfully");
+
       } catch (error) {
         console.error("Sync failed:", error);
         addNotification("error", "Failed to sync changes to server");
@@ -201,19 +186,19 @@ export function useTaskSync({
   }, [createSyncFunction]);
 
   const scheduleSync = useCallback(() => {
-    console.log("Scheduling sync in 2 seconds...");
+
     if (syncTimerRef.current) {
-      console.log("Clearing previous sync timer");
+
       clearTimeout(syncTimerRef.current);
     }
     syncTimerRef.current = setTimeout(() => {
-      console.log("Executing scheduled sync");
+
       syncFunctionRef.current?.();
     }, 2000);
   }, []);
 
   const markAsChanged = useCallback(() => {
-    console.log("Marking as changed, scheduling sync");
+
     setHasPendingChanges(true);
     scheduleSync();
   }, [scheduleSync]);

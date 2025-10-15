@@ -25,7 +25,7 @@ export class AvatarSignalHandler extends SignalHandler {
    * Handle avatar character clicked - immediately set to cheer_idle state
    */
   private handleAvatarClicked(): void {
-    console.log("Avatar clicked! Setting to cheer_idle state");
+
     this.characterAnimation.setState("cheer_idle");
   }
 
@@ -33,7 +33,7 @@ export class AvatarSignalHandler extends SignalHandler {
    * Handle avatar cheer signal
    */
   private handleAvatarCheer(): void {
-    console.log("Avatar cheer signal received");
+
     this.characterAnimation.setState("cheer_idle");
   }
 
@@ -41,7 +41,7 @@ export class AvatarSignalHandler extends SignalHandler {
    * Handle avatar love signal
    */
   private handleAvatarLove(): void {
-    console.log("Avatar love signal received");
+
     this.characterAnimation.setState("heart_idle");
   }
 
@@ -49,7 +49,7 @@ export class AvatarSignalHandler extends SignalHandler {
    * Handle set idle signal
    */
   private handleSetIdle(): void {
-    console.log("Avatar set to idle");
+
     this.characterAnimation.setState("idle");
   }
 

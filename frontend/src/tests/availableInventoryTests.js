@@ -65,11 +65,9 @@ function calculateAvailableStructures(inventory, currentPlots) {
 
 // Test cases
 export function runAvailableInventoryTests() {
-  console.log("🧪 Running Available Inventory Tests");
-  
+
   const result = calculateAvailableStructures(mockStructureInventory, mockCurrentPlots);
-  
-  console.log("Test Results:");
+
   console.table(result);
   
   // Expected results:
@@ -103,7 +101,7 @@ export function runAvailableInventoryTests() {
   
   tests.forEach(test => {
     const passed = test.expected === test.actual;
-    console.log(`${passed ? "✅" : "❌"} ${test.name}: expected ${test.expected}, got ${test.actual}`);
+
   });
   
   return result;

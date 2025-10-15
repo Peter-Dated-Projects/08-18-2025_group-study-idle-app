@@ -119,8 +119,6 @@ export async function GET(req: Request) {
       maxAge: 30 * 24 * 60 * 60, // 30 days
     });
 
-    console.log(`User authenticated: ${userInfo.email} with session: ${sessionId}`);
-
     // Redirect back to the original page with success
     return NextResponse.redirect(`${returnUrl}?auth=success`);
   } catch (error) {

@@ -73,9 +73,7 @@ export async function GET(req: Request) {
     }
 
     sessionDatabaseId = foundDatabaseId;
-    console.log(
-      `/api/notion/storage/verify: Successfully found session database ID: ${sessionDatabaseId}`
-    );
+
   } catch (error) {
     console.error(`/api/notion/storage/verify: Error fetching session database ID`, error);
   }
@@ -128,9 +126,6 @@ export async function GET(req: Request) {
       updated_at: new Date(Date.now()),
     });
 
-    console.log(
-      `/api/notion/storage/verify: Successfully updated session database ID in Firestore: ${sessionDatabaseId}`
-    );
     return NextResponse.json({ success: true, session_database_id: sessionDatabaseId });
   } catch (error) {
     console.error("/api/notion/storage/verify: Error updating Firestore database:", error);

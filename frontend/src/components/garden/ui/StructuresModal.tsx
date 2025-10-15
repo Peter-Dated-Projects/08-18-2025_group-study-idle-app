@@ -113,7 +113,6 @@ export default function StructuresModal({
   };
 
   const handleItemClick = async (itemId: string) => {
-    console.log(`Clicked storage item: ${itemId}`);
 
     if (!userId) {
       console.error("No user ID provided for structure placement");
@@ -126,7 +125,7 @@ export default function StructuresModal({
       if (selectedPlotIndex !== null) {
         // Use the specific plot that was clicked
         targetPlotIndex = selectedPlotIndex;
-        console.log(`Placing ${itemId} on selected plot ${targetPlotIndex}`);
+
       } else {
         // For now, require a selected plot (can enhance later with fallback logic)
         console.warn("No plot selected for structure placement");
@@ -157,7 +156,7 @@ export default function StructuresModal({
       );
 
       if (placeStructureWithInventory.fulfilled.match(result)) {
-        console.log(`Successfully placed ${itemId} on plot ${targetPlotIndex}`);
+
       } else {
         console.error(`Failed to place ${itemId}:`, result.payload);
         // TODO: Show error message to user and revert optimistic updates
@@ -185,7 +184,7 @@ export default function StructuresModal({
       const result = await dispatch(resetAllStructures(userId));
 
       if (resetAllStructures.fulfilled.match(result)) {
-        console.log("Successfully reset all structures");
+
         // Close modal after successful reset
         dispatch(closeStructuresModal());
       } else {

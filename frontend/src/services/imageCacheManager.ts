@@ -58,7 +58,7 @@ class ImageCacheManager {
           }
         },
       });
-      console.debug("[ImageCache] IndexedDB initialized");
+
     } catch (error) {
       console.error("[ImageCache] Failed to initialize IndexedDB:", error);
     }
@@ -83,7 +83,7 @@ class ImageCacheManager {
       // Check expiration
       if (Date.now() > entry.expiresAt) {
         localStorage.removeItem(key);
-        console.debug(`[ImageCache] LocalStorage entry expired for user ${userId}`);
+
         return null;
       }
 
@@ -91,7 +91,6 @@ class ImageCacheManager {
       const loadTime = performance.now() - startTime;
       cacheMonitor.recordHit(userId, "localStorage", loadTime);
 
-      console.debug(`[ImageCache] LocalStorage HIT for user ${userId}`);
       return entry.data;
     } catch (error) {
       console.error("[ImageCache] LocalStorage read error:", error);
@@ -112,7 +111,7 @@ class ImageCacheManager {
         expiresAt: Date.now() + this.LOCALSTORAGE_TTL,
       };
       localStorage.setItem(key, JSON.stringify(entry));
-      console.debug(`[ImageCache] Cached in LocalStorage for user ${userId}`);
+
     } catch (error) {
       console.error("[ImageCache] LocalStorage write error:", error);
       // Handle quota exceeded
@@ -142,15 +141,13 @@ class ImageCacheManager {
       // Check expiration
       if (Date.now() - cached.timestamp > this.INDEXEDDB_TTL) {
         await this.db.delete(this.storeName, imageId);
-        console.debug(`[ImageCache] IndexedDB entry expired for image ${imageId}`);
+
         return null;
       }
 
       // Record cache hit
       const loadTime = performance.now() - startTime;
       cacheMonitor.recordHit(cached.user_id || imageId, "indexedDB", loadTime);
-
-      console.debug(`[ImageCache] IndexedDB HIT for image ${imageId}`);
 
       // Create blob URL from stored blob if available
       if (cached.blob) {
@@ -184,7 +181,6 @@ class ImageCacheManager {
         blob: blob || null,
         timestamp: Date.now(),
       });
-      console.debug(`[ImageCache] Cached in IndexedDB for image ${imageId}`);
 
       // Cleanup old entries if needed
       await this.cleanupOldEntries();
@@ -216,7 +212,6 @@ class ImageCacheManager {
       };
       await this.setInIndexedDB(imageId, cachedData, blob);
 
-      console.debug(`[ImageCache] Cached blob for image ${imageId}`);
       return blob;
     } catch (error) {
       console.error("[ImageCache] Error caching image blob:", error);
@@ -279,7 +274,6 @@ class ImageCacheManager {
       await this.db.delete(this.storeName, imageId);
     }
 
-    console.debug(`[ImageCache] Invalidated caches for user ${userId}`);
   }
 
   /**
@@ -303,7 +297,6 @@ class ImageCacheManager {
           await deleteTx.store.delete(entry.image_id);
         }
 
-        console.debug(`[ImageCache] Cleaned up ${toDelete.length} old cache entries`);
       }
     } catch (error) {
       console.error("[ImageCache] Error cleaning up cache:", error);
@@ -340,7 +333,6 @@ class ImageCacheManager {
       const toRemove = entries.slice(0, Math.floor(entries.length / 2));
       toRemove.forEach(({ key }) => localStorage.removeItem(key));
 
-      console.debug(`[ImageCache] Removed ${toRemove.length} old LocalStorage entries`);
     } catch (error) {
       console.error("[ImageCache] Error clearing old LocalStorage entries:", error);
     }
@@ -362,7 +354,6 @@ class ImageCacheManager {
       await this.db.clear(this.storeName);
     }
 
-    console.debug("[ImageCache] Cleared all profile picture caches");
   }
 
   /**

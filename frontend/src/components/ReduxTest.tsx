@@ -9,7 +9,7 @@ export function ReduxTest() {
   const authState = useAppSelector((state) => state.auth);
 
   const handleTestAuth = () => {
-    console.log("Testing Redux auth...");
+
     dispatch(validateAuth());
   };
 

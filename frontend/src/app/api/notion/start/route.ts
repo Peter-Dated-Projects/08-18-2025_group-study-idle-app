@@ -12,7 +12,7 @@ export async function GET(req: Request) {
 
     // Store the state and returnUrl in cookies for later verification
     const cookieStore = await cookies();
-    console.log(cookieStore);
+
     cookieStore.set("notion_oauth_state", state, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

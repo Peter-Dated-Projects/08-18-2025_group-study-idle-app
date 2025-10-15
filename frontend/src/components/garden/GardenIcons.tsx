@@ -85,9 +85,6 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
       }
     }
 
-    console.log(
-      `Structure at (${structure.position.x}, ${structure.position.y}) mapped to plot ${closestPlotIndex}`
-    );
     return closestPlotIndex;
   };
 
@@ -147,7 +144,7 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
         {/* Global Leaderboard */}
         <GardenIcon
           onClick={() => {
-            console.log("Global Leaderboard clicked");
+
             setShowGlobalLeaderboard(true);
           }}
           title="Global Leaderboard"
@@ -157,7 +154,7 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
         {/* Group Leaderboard */}
         <GardenIcon
           onClick={() => {
-            console.log("Group Leaderboard clicked");
+
             setShowGroupLeaderboard(true);
           }}
           title="Group Leaderboard"

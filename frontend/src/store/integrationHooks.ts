@@ -137,28 +137,12 @@ export function useReduxUI() {
 export function useAutoFetchProfilePicture() {
   const dispatch = useAppDispatch();
 
-  // Use session auth - this is the actual authentication state
   const { isAuthenticated, user } = useSessionAuth();
   const userId = user?.userId;
 
   useEffect(() => {
-    console.log("[useAutoFetchProfilePicture] Hook triggered");
-    console.log("[useAutoFetchProfilePicture] - isAuthenticated (session):", isAuthenticated);
-    console.log("[useAutoFetchProfilePicture] - userId:", userId);
-    console.log("[useAutoFetchProfilePicture] - user:", user);
-
-    // Only fetch if user is authenticated and we have a userId
     if (isAuthenticated && userId) {
-      console.log(
-        "[useAutoFetchProfilePicture] ✅ Force fetching fresh profile picture for user:",
-        userId
-      );
-      // Force refresh to always get the latest profile picture from backend
       dispatch(fetchProfilePicture({ userId, forceRefresh: true }));
-    } else {
-      console.log("[useAutoFetchProfilePicture] ❌ NOT fetching because:");
-      if (!isAuthenticated) console.log("  - Not authenticated (session)");
-      if (!userId) console.log("  - No userId");
     }
   }, [dispatch, isAuthenticated, userId, user]);
 }

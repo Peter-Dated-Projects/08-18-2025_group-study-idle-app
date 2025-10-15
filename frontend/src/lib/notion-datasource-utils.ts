@@ -20,7 +20,6 @@ interface DatabaseResponse {
  */
 export async function getDataSourceIds(userId: string, databaseId: string): Promise<string[]> {
   try {
-    console.log(`🔍 Getting data sources for database: ${databaseId}`);
 
     const response = await fetchWithTokenRefresh(
       userId,
@@ -42,10 +41,6 @@ export async function getDataSourceIds(userId: string, databaseId: string): Prom
     const databaseData: DatabaseResponse = await response.json();
     const dataSourceIds = databaseData.data_sources.map((ds) => ds.id);
 
-    console.log(
-      `✅ Found ${dataSourceIds.length} data sources for database ${databaseId}:`,
-      dataSourceIds
-    );
     return dataSourceIds;
   } catch (error) {
     console.error("❌ Error getting data source IDs:", error);
@@ -82,7 +77,6 @@ export async function queryDataSource(
   dataSourceId: string,
   queryOptions: Record<string, unknown> = {}
 ): Promise<Response> {
-  console.log(`🔍 Querying data source: ${dataSourceId}`);
 
   return fetchWithTokenRefresh(
     userId,

@@ -131,12 +131,10 @@ const CommunitySection: React.FC = () => {
           <div className="grid lg:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
               <div key={index} className="bg-white rounded-2xl shadow-lg p-8 relative">
-                {/* Quote Icon */}
                 <div className="absolute -top-4 -left-4 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xl">
-                  "
+                  &ldquo;
                 </div>
 
-                {/* Rating */}
                 <div className="flex justify-center mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
                     <span key={i} className="text-yellow-400 text-xl">
@@ -145,12 +143,10 @@ const CommunitySection: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Quote */}
                 <p className="text-gray-600 italic text-center mb-6 leading-relaxed">
-                  "{testimonial.quote}"
+                  &ldquo;{testimonial.quote}&rdquo;
                 </p>
 
-                {/* Author Info */}
                 <div className="text-center">
                   <div className="text-4xl mb-3">{testimonial.avatar}</div>
                   <h4 className="font-bold text-gray-900 text-lg">{testimonial.name}</h4>

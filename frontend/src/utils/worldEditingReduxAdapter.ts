@@ -48,7 +48,6 @@ export class WorldEditingReduxAdapter {
       // Load structure inventory
       await this.dispatch(fetchStructureInventory(userId));
 
-      console.log("World state initialized in Redux");
     } catch (error) {
       console.error("Failed to initialize world state:", error);
       // Fall back to singleton service
@@ -168,7 +167,6 @@ export class WorldEditingReduxAdapter {
         await this.dispatch(initializePlotsFromConfig(userId));
         await this.dispatch(fetchStructureInventory(userId));
 
-        console.log("Synced singleton state to Redux");
       }
     } catch (error) {
       console.error("Failed to sync singleton to Redux:", error);

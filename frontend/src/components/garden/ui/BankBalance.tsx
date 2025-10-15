@@ -92,9 +92,7 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
     const cleanup = onPomoBankEvent((event) => {
       // Only update if this event is for the current user
       if (event.user_id === user.userId) {
-        console.log(
-          `💰 Real-time balance update: ${event.old_balance} → ${event.new_balance} (${event.reason})`
-        );
+
         dispatch(updateBalance(event.new_balance));
         dispatch(setError(null)); // Clear any previous errors since we got a successful update
       }

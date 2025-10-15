@@ -21,11 +21,9 @@ async function loadSpriteSheet(
 
   // Check if already cached
   if (spriteSheetCache.has(cacheKey)) {
-    console.log(`Using cached spritesheet: ${cacheKey}`);
+
     return spriteSheetCache.get(cacheKey)!;
   }
-
-  console.log(`Loading new spritesheet: ${file}`);
 
   // PIXI.Assets handles texture caching automatically
   const texture = await PIXI.Assets.load(file);
@@ -56,7 +54,6 @@ async function loadSpriteSheet(
 
   // Cache the processed spritesheet
   spriteSheetCache.set(cacheKey, sheet);
-  console.log(`Cached spritesheet: ${cacheKey} with ${sheet.tiles.length} tiles`);
 
   return sheet;
 }
@@ -101,7 +98,7 @@ async function preloadSpriteSheets(
  */
 function clearSpriteSheetCache() {
   spriteSheetCache.clear();
-  console.log("Cleared spritesheet cache");
+
 }
 
 /**

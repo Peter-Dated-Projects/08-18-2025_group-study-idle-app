@@ -52,13 +52,6 @@ export const fetchSubscriptionStatus = createAsyncThunk(
 
       const data: SubscriptionStatus = await response.json();
 
-      console.log("🔒 Subscription Status (fetched and cached in Redux):", {
-        userId: data.user_id,
-        isPaid: data.is_paid,
-        source: data.source,
-        provider: data.provider,
-      });
-
       return data;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
@@ -88,7 +81,7 @@ export const invalidateSubscriptionCache = createAsyncThunk(
       }
 
       const data = await response.json();
-      console.log("✅ Subscription cache invalidated (backend):", data.message);
+
       return data.success;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
@@ -109,7 +102,7 @@ const subscriptionSlice = createSlice({
       state.data = null;
       state.error = null;
       state.lastFetched = null;
-      console.log("🗑️ Subscription data cleared from Redux");
+
     },
 
     /**
@@ -151,7 +144,7 @@ const subscriptionSlice = createSlice({
       // Clear cached data after invalidation
       state.data = null;
       state.lastFetched = null;
-      console.log("✅ Subscription cache cleared from Redux after invalidation");
+
     });
   },
 });

@@ -137,11 +137,7 @@ export default function Lobby({
 
   // Log WebSocket connection status changes (for debugging only)
   useEffect(() => {
-    console.log("🔌 Lobby: WebSocket connection status", {
-      isConnected,
-      connectionCount,
-      user_id: user?.userId,
-    });
+
   }, [isConnected, connectionCount, user?.userId]);
 
   // Helper functions to manage localStorage persistence
@@ -171,18 +167,18 @@ export default function Lobby({
   // Fetch user information when lobby users change (non-critical)
   useEffect(() => {
     if (lobbyData?.users && lobbyData.users.length > 0) {
-      console.log("🔍 Lobby: Attempting to fetch user info for users:", lobbyData.users);
+
       fetchUsersInfo(lobbyData.users)
         .then((response) => {
           if (response.success) {
-            console.log("✅ Lobby: Successfully fetched user info:", response.users);
+
             setUsersInfo(response.users);
           } else {
-            console.log("⚠️ Lobby: User info fetch unsuccessful, using fallbacks");
+
           }
         })
         .catch((error) => {
-          console.log("⚠️ Lobby: Failed to fetch user info, using fallbacks:", error.message);
+
           // Don't show error to user - we have fallbacks
         });
     }
@@ -193,28 +189,17 @@ export default function Lobby({
     if (!lobbyData || !user?.userId) return;
 
     const cleanup = onLobbyEvent((event) => {
-      console.log("🏠 Lobby: Received event", {
-        action: event.action,
-        lobby_code: event.lobby_code,
-        user_id: event.user_id,
-        users: event.users,
-        current_lobby: lobbyData?.code,
-        current_user: user?.userId,
-      });
 
       // Only process events for our current lobby
       if (event.lobby_code !== lobbyData.code) {
-        console.log("🏠 Lobby: Ignoring event for different lobby", {
-          event_lobby: event.lobby_code,
-          current_lobby: lobbyData.code,
-        });
+
         return;
       }
 
       switch (event.action) {
         case "join":
           if (event.user_id !== user.userId) {
-            console.log("🏠 Lobby: Another user joined", event.user_id);
+
             // Another user joined
             setLobbyData((prevData) => {
               if (!prevData) return prevData;
@@ -224,13 +209,13 @@ export default function Lobby({
               };
             });
           } else {
-            console.log("🏠 Lobby: We joined the lobby");
+
           }
           break;
 
         case "leave":
           if (event.user_id !== user.userId) {
-            console.log("🏠 Lobby: Another user left", event.user_id);
+
             // Another user left
             setLobbyData((prevData) => {
               if (!prevData) return prevData;
@@ -240,23 +225,19 @@ export default function Lobby({
               };
             });
           } else {
-            console.log("🏠 Lobby: We left the lobby");
+
           }
           break;
 
         case "disband":
-          console.log("🏠 Lobby: Lobby was disbanded", {
-            disbanded_by: event.user_id,
-            current_user: user.userId,
-            is_host: event.user_id === user.userId,
-          });
+
           // Lobby was disbanded by host
           if (event.user_id !== user.userId) {
             // Show notification that lobby was disbanded
             setError("Lobby was disbanded by the host");
-            console.log("🏠 Lobby: Showing disband notification to non-host user");
+
           } else {
-            console.log("🏠 Lobby: Host disbanded their own lobby");
+
           }
           setLobbyData(null);
           setLobbyState("empty");
@@ -280,8 +261,6 @@ export default function Lobby({
       // Only validate for non-hosts
       if (lobbyState === "hosting" || lobbyData.host === user.userId) return;
 
-      console.log("🔍 Lobby: Background validation for non-host user...");
-
       try {
         const response = await fetch(`/api/hosting/status?lobby_id=${lobbyData.code}`, {
           method: "GET",
@@ -290,7 +269,7 @@ export default function Lobby({
 
         if (!response.ok) {
           // Network error or server error - show error but don't immediately clear data
-          console.log("🔍 Lobby: Validation failed due to network/server error");
+
           setError("Unable to verify lobby status. Please check your connection.");
           return;
         }
@@ -299,7 +278,7 @@ export default function Lobby({
 
         // Check if lobby exists and user is still a member
         if (!statusData.lobby_exists || !statusData.is_member) {
-          console.log("🔍 Lobby: Validation failed - lobby doesn't exist or user not a member");
+
           setError("The lobby you were in is no longer available");
           setLobbyData(null);
           setLobbyState("empty");
@@ -309,7 +288,7 @@ export default function Lobby({
 
         // Update lobby data with current state from server
         if (statusData.success) {
-          console.log("🔍 Lobby: Validation successful, updating local data");
+
           setLobbyData({
             code: statusData.code,
             host: statusData.host,
@@ -370,7 +349,6 @@ export default function Lobby({
 
     const checkLobbyHealth = async () => {
       try {
-        console.log("🩺 Lobby: Performing health check for lobby", lobbyData.code);
 
         const response = await fetch(`/api/hosting/lobby/${lobbyData.code}/health`, {
           method: "GET",
@@ -383,9 +361,9 @@ export default function Lobby({
 
         if (response.ok) {
           consecutiveFailures = 0;
-          console.log("🩺 Lobby: Health check passed");
+
         } else if (response.status === 404 || response.status === 410) {
-          console.log("🩺 Lobby: Health check indicates lobby has been killed");
+
           setError("Lobby has been closed or no longer exists");
           setLobbyData(null);
           setLobbyState("empty");
@@ -402,7 +380,7 @@ export default function Lobby({
 
       // If too many consecutive failures, assume lobby is dead
       if (consecutiveFailures >= maxFailures) {
-        console.log("🩺 Lobby: Too many health check failures, assuming lobby is dead");
+
         setError("Lobby connection lost - returning to main page");
         setLobbyData(null);
         setLobbyState("empty");
@@ -424,10 +402,9 @@ export default function Lobby({
   }, [lobbyData, lobbyState]);
 
   const createLobby = async () => {
-    console.log("🏗️ Lobby: Creating lobby", { user_id: user?.userId, isAuthenticated });
 
     if (!isAuthenticated || !user) {
-      console.log("🏗️ Lobby: Not authenticated, redirecting to login");
+
       setError("Please log in to create a lobby");
       // Redirect to login
       window.location.href = "/login";
@@ -438,7 +415,7 @@ export default function Lobby({
     setError("");
 
     try {
-      console.log("🏗️ Lobby: Sending create request to backend");
+
       const response = await fetch(`/api/hosting/create`, {
         method: "POST",
         headers: {
@@ -450,23 +427,21 @@ export default function Lobby({
         }),
       });
 
-      console.log("🏗️ Lobby: Create response", { status: response.status });
-
       if (response.status === 200) {
         const data = await response.json();
-        console.log("🏗️ Lobby: Successfully created lobby", data);
+
         setLobbyData(data);
         setLobbyState("hosting");
       } else {
         // Extract error message from backend response
         try {
           const errorData = await response.json();
-          console.log("🏗️ Lobby: Create failed with error", errorData);
+
           setError(
             errorData.detail || errorData.message || "Failed to create lobby. Please try again."
           );
         } catch {
-          console.log("🏗️ Lobby: Create failed with unknown error");
+
           setError("Failed to create lobby. Please try again.");
         }
       }
@@ -481,20 +456,15 @@ export default function Lobby({
   };
 
   const joinLobby = async () => {
-    console.log("🚪 Lobby: Joining lobby", {
-      joinCode: joinCode.trim(),
-      user_id: user?.userId,
-      isAuthenticated,
-    });
 
     if (!joinCode.trim()) {
-      console.log("🚪 Lobby: No join code provided");
+
       setError("Please enter a lobby code");
       return;
     }
 
     if (!isAuthenticated || !user) {
-      console.log("🚪 Lobby: Not authenticated, redirecting to login");
+
       setError("Please log in to join a lobby");
       // Redirect to login
       window.location.href = "/login";
@@ -505,7 +475,7 @@ export default function Lobby({
     setError("");
 
     try {
-      console.log("🚪 Lobby: Sending join request to backend");
+
       const response = await fetch(`/api/hosting/join`, {
         method: "POST",
         headers: {
@@ -518,25 +488,23 @@ export default function Lobby({
         }),
       });
 
-      console.log("🚪 Lobby: Join response", { status: response.status });
-
       if (response.status === 200) {
         const data = await response.json();
-        console.log("🚪 Lobby: Successfully joined lobby", data);
+
         setLobbyData(data);
         setLobbyState("joined");
       } else {
         // Extract error message from backend response
         try {
           const errorData = await response.json();
-          console.log("🚪 Lobby: Join failed with error", errorData);
+
           setError(
             errorData.detail ||
               errorData.message ||
               "Failed to join lobby. Please check the code and try again."
           );
         } catch {
-          console.log("🚪 Lobby: Join failed with unknown error");
+
           setError("Failed to join lobby. Please check the code and try again.");
         }
       }
@@ -551,14 +519,8 @@ export default function Lobby({
   };
 
   const closeLobby = async () => {
-    console.log("🔒 Lobby: Closing lobby", {
-      lobby_code: lobbyData?.code,
-      user_id: user?.userId,
-    });
 
     if (!lobbyData) return;
-
-    console.log("🔒 Lobby: Current lobbyData:", lobbyData);
 
     if (!user?.userId) {
       console.error("🔒 Lobby: Cannot close lobby - user ID not available");
@@ -575,7 +537,6 @@ export default function Lobby({
         user_id: user.userId,
         code: lobbyData.code,
       };
-      console.log("🔒 Lobby: Sending close request", requestBody);
 
       // Add timeout to detect killed lobbies
       const controller = new AbortController();
@@ -594,7 +555,6 @@ export default function Lobby({
       });
 
       clearTimeout(timeoutId);
-      console.log("🔒 Lobby: Close response", { status: response.status });
 
       if (!response.ok) {
         try {
@@ -604,9 +564,7 @@ export default function Lobby({
 
           // If lobby has been killed/deleted on server, free the user and return to main page
           if (response.status === 404 || response.status === 410) {
-            console.log(
-              "🔒 Lobby: Lobby appears to have been killed, freeing user and returning to main page"
-            );
+
             setError("Lobby has been closed or no longer exists");
             // Fall through to clear lobby data and return user to main page
           } else {
@@ -619,7 +577,7 @@ export default function Lobby({
 
           // For server errors that might indicate lobby was killed, free the user
           if (response.status >= 500) {
-            console.log("🔒 Lobby: Server error suggests lobby may have been killed, freeing user");
+
             setError("Server error - returning to lobby main page");
             // Fall through to clear lobby data
           } else {
@@ -628,18 +586,18 @@ export default function Lobby({
           }
         }
       } else {
-        console.log("🔒 Lobby: Successfully closed lobby");
+
       }
     } catch (err) {
       console.error("🔒 Lobby: Network error closing lobby", err);
 
       // Check if this was a timeout (AbortError)
       if (err instanceof Error && err.name === "AbortError") {
-        console.log("🔒 Lobby: Close request timed out, lobby may have been killed, freeing user");
+
         setError("Close request timed out - returning to lobby main page");
       } else {
         // Other network errors might indicate the server/lobby is down
-        console.log("🔒 Lobby: Network error suggests lobby may be unreachable, freeing user");
+
         setError("Network error - returning to lobby main page");
       }
       // Fall through to clear lobby data
@@ -651,14 +609,9 @@ export default function Lobby({
   };
 
   const leaveLobby = async () => {
-    console.log("🚪🔙 Lobby: Leaving lobby", {
-      lobby_code: lobbyData?.code,
-      user_id: user?.userId,
-      isAuthenticated,
-    });
 
     if (!isAuthenticated || !user || !lobbyData) {
-      console.log("🚪🔙 Lobby: Cannot leave - missing authentication or lobby data");
+
       setError("Cannot leave lobby - not authenticated or no lobby data");
       return;
     }
@@ -667,7 +620,7 @@ export default function Lobby({
     setError("");
 
     try {
-      console.log("🚪🔙 Lobby: Sending leave request to backend");
+
       const response = await fetch("/api/hosting/leave", {
         method: "POST",
         headers: {
@@ -680,14 +633,13 @@ export default function Lobby({
       });
 
       const data = await response.json();
-      console.log("🚪🔙 Lobby: Leave response", { status: response.status, data });
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to leave lobby");
       }
 
       if (data.success) {
-        console.log("🚪🔙 Lobby: Successfully left lobby");
+
         // Successfully left lobby - clear local state
         setLobbyData(null);
         setLobbyState("empty");
@@ -704,7 +656,7 @@ export default function Lobby({
 
       // For certain errors, still clear local state
       if (errorMessage?.includes("not found") || errorMessage?.includes("not in lobby")) {
-        console.log("🚪🔙 Lobby: Clearing local state due to lobby not found");
+
         setLobbyData(null);
         setLobbyState("empty");
         setJoinCode("");

@@ -237,7 +237,6 @@ export async function GET(req: Request) {
     if (!databaseResponse.ok) {
       const error = await databaseResponse.json();
 
-      console.log("/api/notion/tasks:", error);
       if (error.code === "unauthorized") {
         return NextResponse.json(
           {
@@ -260,7 +259,6 @@ export async function GET(req: Request) {
 
     // Get primary data source ID for the database
     const dataSourceId = await getPrimaryDataSourceId(userId, databaseId);
-    console.log(`/api/notion/tasks GET: Using data source ID: ${dataSourceId}`);
 
     // Query data source pages
     const queryBody: NotionQueryBody = {
@@ -276,7 +274,6 @@ export async function GET(req: Request) {
     if (!pagesResponse.ok) {
       const error = await pagesResponse.json();
 
-      console.log("/api/notion/tasks:", error);
       if (error.code === "unauthorized") {
         return NextResponse.json(
           {
@@ -298,7 +295,7 @@ export async function GET(req: Request) {
     const pagesData = await pagesResponse.json();
 
     // Check if this looks like a task database
-    // console.log("/api/notion/tasks received pages from database: ", pagesData);
+
     const isTaskDatabase = isTaskPage({ properties: {} }, database);
 
     if (isTaskDatabase) {
@@ -462,7 +459,6 @@ export async function POST(request: Request) {
 
     // Get primary data source ID for the database
     const dataSourceId = await getPrimaryDataSourceId(userId, database_id);
-    console.log(`/api/notion/tasks POST: Using data source ID: ${dataSourceId}`);
 
     // Query data source pages
     const pagesResponse = await queryDataSource(userId, dataSourceId, queryBody);

@@ -77,7 +77,6 @@ export function useAuth() {
             hasNotionTokens: false, // Will be updated when Notion is connected
           });
 
-          console.log(`User authenticated: ${user.email} with session: ${newSessionId}`);
         } catch (error) {
           console.error("Error storing user session:", error);
           setSessionData(null);
