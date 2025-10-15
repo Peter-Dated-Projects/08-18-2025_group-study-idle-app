@@ -46,7 +46,7 @@ export function CachedProfilePicture({
   // Get cached picture from Redux
   const cachedPicture = useAppSelector((state) => selectProfilePicture(state, userId));
   const isLoading = useAppSelector((state) => selectIsLoading(state, userId));
-  
+
   // Use session auth instead of Redux auth
   const { isAuthenticated } = useSessionAuth();
 
@@ -57,7 +57,7 @@ export function CachedProfilePicture({
     console.log(`[CachedProfilePicture] - isAuthenticated:`, isAuthenticated);
     console.log(`[CachedProfilePicture] - cachedPicture:`, cachedPicture);
     console.log(`[CachedProfilePicture] - isLoading:`, isLoading);
-    
+
     // If no cached picture and not currently loading, fetch from backend
     if (!cachedPicture && !isLoading && isAuthenticated) {
       console.log(`[CachedProfilePicture] ✅ Fetching profile picture for user ${userId}`);

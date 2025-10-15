@@ -136,7 +136,7 @@ export function useReduxUI() {
  */
 export function useAutoFetchProfilePicture() {
   const dispatch = useAppDispatch();
-  
+
   // Use session auth - this is the actual authentication state
   const { isAuthenticated, user } = useSessionAuth();
   const userId = user?.userId;
@@ -146,7 +146,7 @@ export function useAutoFetchProfilePicture() {
     console.log("[useAutoFetchProfilePicture] - isAuthenticated (session):", isAuthenticated);
     console.log("[useAutoFetchProfilePicture] - userId:", userId);
     console.log("[useAutoFetchProfilePicture] - user:", user);
-    
+
     // Only fetch if user is authenticated and we have a userId
     if (isAuthenticated && userId) {
       console.log(

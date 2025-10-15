@@ -45,7 +45,9 @@ export const fetchProfilePicture = createAsyncThunk(
     { userId, forceRefresh = false }: { userId: string; forceRefresh?: boolean },
     { rejectWithValue }
   ) => {
-    console.log(`[fetchProfilePicture] 🚀 CALLED for user: ${userId}, forceRefresh: ${forceRefresh}`);
+    console.log(
+      `[fetchProfilePicture] 🚀 CALLED for user: ${userId}, forceRefresh: ${forceRefresh}`
+    );
     const startTime = performance.now();
 
     try {
