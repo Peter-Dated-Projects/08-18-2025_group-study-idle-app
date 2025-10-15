@@ -14,13 +14,15 @@ import {
   clearGlobalStructureClickHandler,
 } from "@/utils/globalStructureHandler";
 import { useSessionAuth } from "@/hooks/useSessionAuth";
-import { useReduxAuth } from "@/store/integrationHooks";
+import { useReduxAuth, useAutoFetchProfilePicture } from "@/store/integrationHooks";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useVisualWorldSync } from "@/hooks/useVisualWorldSync";
 import { ReduxTest } from "@/components/ReduxTest";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/store";
-import { initializePlotsFromConfig } from "@/store/slices/worldSlice";
+import { initializePlotsFromConfig, fetchStructureInventory } from "@/store/slices/worldSlice";
+import { clearLevelConfigCache } from "@/engine/DefaultWorld";
+import { localDataManager } from "@/utils/localDataManager";
 
 import { FONTCOLOR, BORDERFILL, BORDERLINE, PANELFILL } from "@/components/constants";
 import { useState, useEffect, useCallback } from "react";
@@ -64,6 +66,9 @@ function GardenPageContent() {
   const { addNotification } = useGlobalNotification();
   const { isAuthenticated, isLoading, user, error } = useSessionAuth();
   const dispatch = useDispatch<AppDispatch>();
+
+  // Auto-fetch user's profile picture when authenticated
+  useAutoFetchProfilePicture();
 
   // Check subscription status for premium features
   const { isPaid: hasSubscription, isLoading: subscriptionLoading } = useSubscription(); // Enable visual world synchronization between Redux and PIXI
@@ -211,7 +216,29 @@ function GardenPageContent() {
   useEffect(() => {
     if (isAuthenticated && user?.userId && !isLoading) {
       console.log("🏗️ Initializing plots for user:", user.userId);
-      dispatch(initializePlotsFromConfig(user.userId));
+
+      // Clear all cached data to ensure we get fresh data from PostgreSQL database
+      console.log("🔄 Clearing cached data to ensure fresh database fetch");
+      clearLevelConfigCache();
+      localDataManager.invalidateLevelConfig(user.userId);
+      localDataManager.invalidateInventory(user.userId);
+
+      // Initialize plots and inventory from fresh database data
+      // Dispatch both calls to ensure they complete before UI calculates inventory
+      const initializeData = async () => {
+        try {
+          console.log("📊 Starting parallel data fetch...");
+          await Promise.all([
+            dispatch(initializePlotsFromConfig(user.userId)),
+            dispatch(fetchStructureInventory(user.userId)),
+          ]);
+          console.log("✅ Both plots and inventory data loaded");
+        } catch (error) {
+          console.error("❌ Error loading initial data:", error);
+        }
+      };
+
+      initializeData();
     }
   }, [isAuthenticated, user?.userId, isLoading, dispatch]);
 

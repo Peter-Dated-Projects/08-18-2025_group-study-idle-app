@@ -138,6 +138,8 @@ export const initializePlotsFromConfig = createAsyncThunk(
   "world/initializePlotsFromConfig",
   async (userId: string, { rejectWithValue }) => {
     try {
+      // Fetch level config directly from API - bypasses all caching to ensure 
+      // we always get ground truth from PostgreSQL database
       const response = await fetch(`/api/level-config/${userId}`, {
         credentials: "include",
       });
@@ -255,6 +257,8 @@ export const fetchStructureInventory = createAsyncThunk(
   "world/fetchStructureInventory",
   async (userId: string, { rejectWithValue }) => {
     try {
+      // Fetch inventory directly from API - bypasses all caching to ensure
+      // we always get ground truth from PostgreSQL database
       const response = await fetch(`/api/inventory/${userId}`);
       if (!response.ok) {
         return rejectWithValue(`Failed to fetch inventory: ${response.status}`);

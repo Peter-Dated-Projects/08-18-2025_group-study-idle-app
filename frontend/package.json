@@ -20,6 +20,7 @@
     "framer-motion": "^12.23.12",
     "google-auth-library": "^10.2.1",
     "google-one-tap": "^1.0.6",
+    "idb": "^8.0.3",
     "next": "15.4.7",
     "pixi-filters": "^6.1.4",
     "pixi.js": "^8.13.2",

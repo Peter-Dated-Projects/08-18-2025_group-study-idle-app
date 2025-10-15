@@ -6,11 +6,12 @@ export * from "./FormComponents";
 export * from "./LoadingComponents";
 export * from "./ProfileComponents";
 export * from "./apiUtils";
-export * from "./imageApi";
 export * from "./engineUtils";
+export * from "./imageApi";
 
 // Component exports
 export { default as BaseModal } from "./BaseModal";
+export { CachedProfilePicture } from "./CachedProfilePicture";
 
 // Convenience re-exports
 export { useMessage, useLoading, useCopyToClipboard } from "./hooks";
@@ -19,5 +20,12 @@ export { MessageDisplay, LoadingSpinner, LoadingOverlay } from "./LoadingCompone
 export { ProfilePicture, UserDisplayName, UserCard } from "./ProfileComponents";
 export { commonStyles, hoverEffects } from "./styles";
 export { apiGet, apiPost, apiPut, apiDelete, handleAPICall } from "./apiUtils";
-export { getImageUrl, uploadImage, deleteImage } from "./imageApi";
 export { MathUtils, CollisionUtils, VectorUtils, AnimationUtils, FileUtils } from "./engineUtils";
+export {
+  uploadProfilePicture,
+  removeUserProfilePicture,
+  updateUserProfilePicture,
+  getUserImageInfo,
+  getImageUrl,
+  getImageUrlByUserId,
+} from "./imageApi";

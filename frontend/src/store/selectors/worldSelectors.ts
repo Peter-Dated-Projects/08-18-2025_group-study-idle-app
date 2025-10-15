@@ -31,6 +31,18 @@ export const selectIsWorldSaving = (state: RootState) => (state.world as WorldSt
 export const selectStructureInventory = (state: RootState) =>
   (state.world as WorldState).structureInventory;
 
+// Debug selector to check the current state
+export const selectWorldDebugInfo = (state: RootState) => {
+  const worldState = state.world as WorldState;
+  return {
+    isLoading: worldState.isLoading,
+    plotsCount: worldState.currentPlots.length,
+    inventoryCount: worldState.structureInventory.length,
+    plots: worldState.currentPlots.map(p => ({ index: p.index, structure: p.currentStructureId })),
+    inventory: worldState.structureInventory.map(i => ({ name: i.structure_name, count: i.count }))
+  };
+};
+
 // Computed selectors
 export const selectPlotByIndex = (index: number) => (state: RootState) =>
   (state.world as WorldState).currentPlots.find((plot) => plot.index === index);
@@ -51,12 +63,26 @@ export const selectHasPendingUpdates = (state: RootState) =>
 // Computed selector for available (unused) structures
 export const selectAvailableStructureCounts = (state: RootState): AvailableStructureItem[] => {
   const worldState = state.world as WorldState;
-  const { structureInventory, currentPlots } = worldState;
+  const { structureInventory, currentPlots, isLoading } = worldState;
 
   // Handle case where data hasn't loaded yet
-  if (!structureInventory || !currentPlots) {
+  // We expect exactly 7 plots after initialization and at least some inventory data
+  // (even if inventory is empty, the array should exist)
+  if (isLoading || currentPlots.length !== 7 || structureInventory === undefined) {
+    console.log("🚫 selectAvailableStructureCounts: Data not ready", {
+      isLoading,
+      plotsLength: currentPlots.length,
+      hasInventory: structureInventory !== undefined,
+      inventoryLength: structureInventory?.length || 0
+    });
     return [];
   }
+
+  console.log("✅ selectAvailableStructureCounts: Calculating with data", {
+    inventoryLength: structureInventory.length,
+    plotsLength: currentPlots.length,
+    plots: currentPlots.map(p => ({ index: p.index, structure: p.currentStructureId }))
+  });
 
   // Count how many of each structure type are currently placed in level config
   const placedCounts: Record<string, number> = {};
@@ -69,7 +95,7 @@ export const selectAvailableStructureCounts = (state: RootState): AvailableStruc
   });
 
   // Calculate available counts by subtracting placed from inventory
-  return structureInventory.map((inventoryItem): AvailableStructureItem => {
+  const result = structureInventory.map((inventoryItem): AvailableStructureItem => {
     // Try to find the structure config by matching either ID or name
     // This handles both cases: inventory storing IDs vs display names
     const structureConfig = getAllStructureConfigs().find(
@@ -80,6 +106,7 @@ export const selectAvailableStructureCounts = (state: RootState): AvailableStruc
     
     if (!structureConfig) {
       // If we can't find the structure config, return the inventory item as-is
+      console.log(`⚠️ No structure config found for: ${inventoryItem.structure_name}`);
       return {
         structure_name: inventoryItem.structure_name,
         count: inventoryItem.count,
@@ -92,6 +119,8 @@ export const selectAvailableStructureCounts = (state: RootState): AvailableStruc
     const placedCount = placedCounts[structureConfig.id] || 0;
     const availableCount = Math.max(0, inventoryItem.count - placedCount);
 
+    console.log(`📊 ${inventoryItem.structure_name}: total=${inventoryItem.count}, placed=${placedCount}, available=${availableCount}`);
+
     return {
       structure_name: inventoryItem.structure_name,
       count: inventoryItem.count, // Total owned
@@ -99,6 +128,9 @@ export const selectAvailableStructureCounts = (state: RootState): AvailableStruc
       placed_count: placedCount, // Currently placed
     };
   });
+
+  console.log("🎯 selectAvailableStructureCounts final result:", result);
+  return result;
 };
 
 // Helper function to get available count for a specific structure name

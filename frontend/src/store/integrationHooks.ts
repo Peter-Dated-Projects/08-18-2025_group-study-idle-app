@@ -2,6 +2,8 @@
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { validateAuth } from "@/store/slices/authSlice";
+import { fetchProfilePicture } from "@/store/slices/profilePicturesSlice";
+import { useSessionAuth } from "@/hooks/useSessionAuth";
 
 /**
  * Enhanced authentication hook that integrates with Redux
@@ -124,4 +126,39 @@ export function useReduxUI() {
     setActiveTab: (section: string, tab: string) =>
       dispatch({ type: "ui/setActiveTab", payload: { section, tab } }),
   };
+}
+
+/**
+ * Auto-fetch profile picture hook
+ * Automatically fetches the user's profile picture when authenticated
+ * Forces a fresh fetch from backend on every page load/refresh
+ * Should be called once at app initialization (e.g., in a root component)
+ */
+export function useAutoFetchProfilePicture() {
+  const dispatch = useAppDispatch();
+  
+  // Use session auth - this is the actual authentication state
+  const { isAuthenticated, user } = useSessionAuth();
+  const userId = user?.userId;
+
+  useEffect(() => {
+    console.log("[useAutoFetchProfilePicture] Hook triggered");
+    console.log("[useAutoFetchProfilePicture] - isAuthenticated (session):", isAuthenticated);
+    console.log("[useAutoFetchProfilePicture] - userId:", userId);
+    console.log("[useAutoFetchProfilePicture] - user:", user);
+    
+    // Only fetch if user is authenticated and we have a userId
+    if (isAuthenticated && userId) {
+      console.log(
+        "[useAutoFetchProfilePicture] ✅ Force fetching fresh profile picture for user:",
+        userId
+      );
+      // Force refresh to always get the latest profile picture from backend
+      dispatch(fetchProfilePicture({ userId, forceRefresh: true }));
+    } else {
+      console.log("[useAutoFetchProfilePicture] ❌ NOT fetching because:");
+      if (!isAuthenticated) console.log("  - Not authenticated (session)");
+      if (!userId) console.log("  - No userId");
+    }
+  }, [dispatch, isAuthenticated, userId, user]);
 }

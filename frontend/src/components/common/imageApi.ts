@@ -123,11 +123,20 @@ export async function getUserImageInfo(userId: string): Promise<ImageInfoRespons
 
 /**
  * Upload a profile picture, automatically resize it to 128x128, and get the URL
+ * If userId is provided, the old profile picture will be deleted before uploading the new one
  * @param file - The image file to upload
+ * @param userId - Optional user ID to enable deletion of old profile picture
  * @returns Promise with upload response including image_id and URL
  */
-export async function uploadProfilePicture(file: File): Promise<UploadProfilePictureResponse> {
-  const url = createBackendURL("/images/upload/profile");
+export async function uploadProfilePicture(
+  file: File,
+  userId?: string
+): Promise<UploadProfilePictureResponse> {
+  // Build URL with optional user_id query parameter
+  let url = createBackendURL("/images/upload/profile");
+  if (userId) {
+    url += `?user_id=${encodeURIComponent(userId)}`;
+  }
 
   const formData = new FormData();
   formData.append("file", file);
@@ -168,11 +177,13 @@ export async function uploadProfilePicture(file: File): Promise<UploadProfilePic
 }
 
 /**
- * Remove a user's profile picture and set them back to default
+ * Remove a user's profile picture from the database and MinIO storage
  * @param userId - The user ID to remove profile picture for
- * @returns Promise with removal confirmation and default image info
+ * @returns Promise with removal confirmation
  */
-export async function removeUserProfilePicture(userId: string): Promise<ImageInfoResponse> {
+export async function removeUserProfilePicture(
+  userId: string
+): Promise<{ success: boolean; message: string; user_id: string }> {
   const url = createBackendURL(`/images/user/${encodeURIComponent(userId)}/profile`);
 
   const response = await fetch(url, {

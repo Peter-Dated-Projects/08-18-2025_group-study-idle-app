@@ -243,11 +243,12 @@ class UserService:
     
     def update_user_picture_url(self, user_id: str, picture_url: Optional[str]) -> bool:
         """
-        Update user's picture URL in ArangoDB.
+        Update user's picture image_id in ArangoDB.
         
         Args:
             user_id: The user ID to update
-            picture_url: The new picture URL (image_id from minIO) or None for default
+            picture_url: The image_id (NOT a full URL) or None for default
+                        Should be just the image_id like "abc-123-def", not a presigned URL
             
         Returns:
             bool: True if updated successfully, False otherwise

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import {
   BaseModal,
   useCopyToClipboard,
-  ProfilePicture,
+  CachedProfilePicture,
   UserDisplayName,
   FormGroup,
   InfoDisplay,
@@ -63,11 +63,8 @@ export default function UserProfile({ isVisible, onClose, user }: UserProfilePro
               onClick={handleProfilePictureClick}
               title="Click to edit profile picture"
             >
-              <ProfilePicture
-                size="100px"
-                userId={user.id || user.userId}
-                imageId={(user as any).user_picture_url}
-              />
+              {/* Profile picture with caching */}
+              <CachedProfilePicture size="100px" userId={user.id || user.userId || ""} />
 
               {/* Premium/Free Banner - positioned diagonally above profile picture */}
               <div

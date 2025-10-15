@@ -165,7 +165,7 @@ export class Structure extends PhysicsEntity {
     }
 
     // add a white border if not already present
-    if (this.sprite! && !this.hoverBorder) {
+    if (this.sprite!) {
       this.sprite.filters = [new OutlineFilter(4, 0xffffff) as any];
     }
   }
@@ -178,7 +178,7 @@ export class Structure extends PhysicsEntity {
       this.mouseCallbacks.onLeave(this);
     }
 
-    if (this.sprite! && this.hoverBorder) {
+    if (this.sprite!) {
       this.sprite.filters = null;
     }
   }

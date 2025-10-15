@@ -13,12 +13,17 @@ import uuid
 from datetime import timedelta
 from PIL import Image, ImageOps
 
+try:
+    from .image_url_cache_service import image_url_cache_service
+except ImportError:
+    from image_url_cache_service import image_url_cache_service
+
 logger = logging.getLogger(__name__)
 
 class MinIOImageService:
     def __init__(self):
         """Initialize MinIO client with environment variables."""
-        self.bucket_name = os.getenv("MINIO_BUCKET_NAME", "profile-images")
+        self.bucket_name = os.getenv("MINIO_BUCKET_NAME", "study-garden-bucket")
         
         # MinIO client configuration
         self.client = Minio(
@@ -196,25 +201,30 @@ class MinIOImageService:
     
     def get_image_url(self, image_id: Optional[str]) -> str:
         """
-        Get a presigned URL for an image.
+        Get a presigned URL for an image with Redis caching.
         
         Args:
-            image_id: The image ID to retrieve, or None for default
+            image_id: The image ID to retrieve
             
         Returns:
-            str: Presigned URL for the image or default image URL
-        """
-        try:
-            # Return default image URL if image_id is None or "default"
-            if image_id is None or image_id == "default_pfp.png":
-                image_id = "default_pfp.png"
+            str: Presigned URL for the image
             
-            # Check if object exists
-            try:
-                self.client.stat_object(self.bucket_name, image_id)
-            except S3Error:
-                logger.warning(f"Image {image_id} not found, returning default")
-                image_id = "default_pfp.png"
+        Raises:
+            ValueError: If image_id is None or empty
+            S3Error: If image doesn't exist or other MinIO errors occur
+        """
+        if image_id is None or image_id == "":
+            raise ValueError("Image ID cannot be None or empty")
+        
+        try:
+            # Check Redis cache first
+            cached_url = image_url_cache_service.get_cached_url(image_id)
+            if cached_url:
+                logger.debug(f"Returning cached URL for image: {image_id}")
+                return cached_url
+            
+            # Cache miss - check if object exists
+            self.client.stat_object(self.bucket_name, image_id)
             
             # Generate presigned URL valid for 1 hour
             url = self.client.presigned_get_object(
@@ -223,25 +233,19 @@ class MinIOImageService:
                 expires=timedelta(hours=1)  # 1 hour using timedelta
             )
             
-            logger.info(f"Generated URL for image: {image_id}")
+            # Cache the generated URL (50 minutes TTL for 10-minute buffer)
+            image_url_cache_service.cache_url(image_id, url)
+            
+            logger.info(f"Generated and cached URL for image: {image_id}")
             return url
             
         except S3Error as e:
             logger.error(f"Error getting image URL for {image_id}: {e}")
-            # Return default image URL as fallback
-            try:
-                return self.client.presigned_get_object(
-                    bucket_name=self.bucket_name,
-                    object_name="default_pfp.png",
-                    expires=timedelta(hours=1)  # 1 hour using timedelta
-                )
-            except S3Error:
-                logger.error("Even default image is not available")
-                raise
+            raise
     
     def delete_image(self, image_id: str) -> bool:
         """
-        Delete an image by its ID.
+        Delete an image by its ID and invalidate its cache.
         
         Args:
             image_id: The image ID to delete
@@ -250,18 +254,16 @@ class MinIOImageService:
             bool: True if deleted successfully, False otherwise
         """
         try:
-            # Don't allow deletion of default profile picture
-            if image_id == "default_pfp.png":
-                logger.warning("Cannot delete default profile picture")
-                return False
-            
             # Delete object from MinIO
             self.client.remove_object(
                 bucket_name=self.bucket_name,
                 object_name=image_id
             )
             
-            logger.info(f"Successfully deleted image: {image_id}")
+            # Invalidate the cached URL
+            image_url_cache_service.invalidate_url(image_id)
+            
+            logger.info(f"Successfully deleted image and invalidated cache: {image_id}")
             return True
             
         except S3Error as e:

@@ -7,7 +7,6 @@ export interface UserSession {
   userName: string | null;
   sessionId: string;
   hasNotionTokens: boolean;
-  userPictureUrl?: string | null; // Add profile picture URL
 }
 
 export interface AuthState {
@@ -74,7 +73,6 @@ export const validateAuth = createAsyncThunk(
         userName: data.userName,
         sessionId: data.sessionId,
         hasNotionTokens: data.hasNotionTokens,
-        userPictureUrl: data.userPictureUrl,
       };
     } catch (error) {
       return rejectWithValue("Network error");
@@ -92,37 +90,6 @@ export const logout = createAsyncThunk("auth/logout", async (_, { rejectWithValu
   }
 });
 
-// Async thunk to fetch user profile picture URL
-export const fetchUserProfilePicture = createAsyncThunk(
-  "auth/fetchUserProfilePicture",
-  async (userId: string, { rejectWithValue }) => {
-    try {
-      const response = await fetch(`/api/users/info`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ user_ids: [userId] }),
-      });
-
-      if (!response.ok) {
-        return rejectWithValue("Failed to fetch user profile");
-      }
-
-      const data = await response.json();
-
-      if (data.success && data.users && data.users[userId]) {
-        return data.users[userId].user_picture_url || null;
-      }
-
-      return null;
-    } catch (error) {
-      return rejectWithValue("Network error while fetching profile picture");
-    }
-  }
-);
-
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -133,11 +100,6 @@ const authSlice = createSlice({
     updateUser: (state, action: PayloadAction<Partial<UserSession>>) => {
       if (state.user) {
         state.user = { ...state.user, ...action.payload };
-      }
-    },
-    updateProfilePicture: (state, action: PayloadAction<string | null>) => {
-      if (state.user) {
-        state.user.userPictureUrl = action.payload;
       }
     },
   },
@@ -167,15 +129,9 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.lastValidated = null;
         state.error = null;
-      })
-      // Fetch profile picture
-      .addCase(fetchUserProfilePicture.fulfilled, (state, action) => {
-        if (state.user) {
-          state.user.userPictureUrl = action.payload;
-        }
       });
   },
 });
 
-export const { clearError, updateUser, updateProfilePicture } = authSlice.actions;
+export const { clearError, updateUser } = authSlice.actions;
 export default authSlice.reducer;

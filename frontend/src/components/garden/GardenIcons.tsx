@@ -11,7 +11,6 @@ import { useSessionAuth } from "@/hooks/useSessionAuth";
 import { Structure } from "@/scripts/structures/Structure";
 import StructuresModal from "./ui/StructuresModal";
 import { openStructuresModal, selectPlot } from "../../store/slices/worldSlice";
-import { fetchUserProfilePicture } from "../../store/slices/authSlice";
 import {
   clearGlobalStructureClickHandler,
   setGlobalStructureClickHandler,
@@ -102,13 +101,6 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
     }
   }, [onShopModalOpen]);
 
-  // Load profile picture from API if not already in Redux state
-  useEffect(() => {
-    if (user && user.userId && !reduxUser?.userPictureUrl) {
-      dispatch(fetchUserProfilePicture(user.userId));
-    }
-  }, [user, reduxUser?.userPictureUrl, dispatch]);
-
   // Early return AFTER all hooks have been called
   if (!user) return null;
 
@@ -118,7 +110,6 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
     email: user.userEmail,
     given_name: user.userName?.split(" ")[0] || undefined,
     family_name: user.userName?.split(" ").slice(1).join(" ") || undefined,
-    user_picture_url: reduxUser?.userPictureUrl || null,
   };
 
   return (

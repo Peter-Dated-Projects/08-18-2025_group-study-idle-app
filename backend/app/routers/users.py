@@ -48,7 +48,7 @@ class SingleUserResponse(BaseModel):
 
 class UpdateProfilePictureRequest(BaseModel):
     user_id: str
-    image_id: str
+    picture_url: str  # Full MinIO URL, not just image_id
 
 class UpdateProfilePictureResponse(BaseModel):
     success: bool
@@ -139,11 +139,11 @@ async def update_user_profile_picture(
     user_service: UserService = Depends(get_user_service)
 ):
     """
-    Update a user's profile picture URL in ArangoDB.
+    Update a user's profile picture URL in ArangoDB with the full MinIO URL.
     """
     try:
-        # Update the user's profile picture URL
-        success = user_service.update_user_picture_url(request.user_id, request.image_id)
+        # Update the user's profile picture URL (stores full URL now, not image_id)
+        success = user_service.update_user_picture_url(request.user_id, request.picture_url)
         
         if success:
             # Get updated user info

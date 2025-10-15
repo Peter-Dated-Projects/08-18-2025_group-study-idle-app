@@ -4,8 +4,9 @@ Image management router for handling profile picture uploads, retrieval, and del
 
 import logging
 from typing import Optional
-from fastapi import APIRouter, HTTPException, UploadFile, File, Query, Depends
+from fastapi import APIRouter, HTTPException, UploadFile, File, Query, Depends, Response
 from fastapi.responses import JSONResponse
+import hashlib
 
 try:
     from ..services.minio_image_service import minio_service
@@ -20,6 +21,25 @@ except ImportError:
 router = APIRouter(prefix="/images", tags=["images"])
 logger = logging.getLogger(__name__)
 
+
+def add_cache_headers(response: Response, max_age: int = 2700):
+    """
+    Add HTTP cache headers to the response.
+    
+    Args:
+        response: FastAPI Response object
+        max_age: Cache max-age in seconds (default 45 minutes = 2700 seconds)
+    """
+    response.headers["Cache-Control"] = f"public, max-age={max_age}, s-maxage={max_age}"
+    response.headers["Vary"] = "Accept-Encoding"
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Max-Age"] = "86400"
+
+
+def generate_etag(data: str) -> str:
+    """Generate an ETag for the response."""
+    return f'"{hashlib.md5(data.encode()).hexdigest()}"'
+
 @router.get("/health")
 async def image_service_health():
     """Health check for image service."""
@@ -28,96 +48,163 @@ async def image_service_health():
 @router.get("/user/{user_id}/info")
 async def get_user_image_info(
     user_id: str,
+    response: Response,
     user_service: UserService = Depends(get_user_service)
 ):
     """
     Get comprehensive user image information including whether they have a custom profile picture.
     Returns both the URL and metadata about the image.
+    The URL is already a full MinIO presigned URL stored in the database.
     """
     try:
         # Get user info from user service (includes user_picture_url from ArangoDB)
         user_info = user_service.get_user_info(user_id)
         
         if not user_info:
-            logger.warning(f"User {user_id} not found in user service")
-            image_id = None
-            has_custom_picture = False
+            logger.error(f"User {user_id} not found in user service")
+            raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+        
+        # Get the user's picture URL (should be image_id)
+        stored_value = user_info.get('user_picture_url')
+        
+        if not stored_value:
+            logger.error(f"User {user_id} has no profile picture set in database")
+            raise HTTPException(status_code=404, detail=f"User {user_id} has no profile picture")
+        
+        logger.debug(f"User {user_id} has stored value: {stored_value}")
+        
+        # Check if stored_value is a full URL (backwards compatibility) or image_id
+        if 'http://' in stored_value or 'https://' in stored_value:
+            # Old format: full URL stored - extract image_id and generate fresh URL
+            image_id = stored_value.split('/')[-1].split('?')[0]
+            logger.info(f"Converting old URL format to image_id: {image_id}")
         else:
-            # Get the user's picture URL (could be None)
-            image_id = user_info.get('user_picture_url')
-            has_custom_picture = image_id is not None
-            logger.debug(f"User {user_id} has picture URL: {image_id}")
+            # New format: image_id stored - use it directly
+            image_id = stored_value
         
-        # Get presigned URL from minIO (handles None -> default)
-        url = minio_service.get_image_url(image_id)
+        # Generate fresh presigned URL from image_id
+        try:
+            picture_url = minio_service.get_image_url(image_id)
+        except Exception as e:
+            logger.error(f"Failed to get image URL for {image_id}: {e}")
+            raise HTTPException(status_code=404, detail=f"Profile picture not found in storage")
         
-        return {
+        # Add cache headers (45 minutes)
+        add_cache_headers(response, max_age=2700)
+        
+        result = {
             "success": True,
             "user_id": user_id,
-            "image_id": image_id if image_id else "default_pfp.png",
-            "url": url,
-            "has_custom_picture": has_custom_picture,
-            "is_default": not has_custom_picture
+            "image_id": image_id,
+            "url": picture_url,
+            "has_custom_picture": True,
+            "is_default": False
         }
         
+        # Add ETag
+        response.headers["ETag"] = generate_etag(picture_url)
+        
+        return result
+        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting image info for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve user profile picture info")
 
 @router.get("/user/{user_id}")
-async def get_image_url_by_user_id(
+async def get_user_image_url(
     user_id: str,
+    response: Response,
     user_service: UserService = Depends(get_user_service)
 ):
     """
-    Get a presigned URL for a user's profile picture by fetching their user_picture_url from the user service.
-    If user has no picture URL set, returns the default profile picture URL.
+    Get the profile picture URL for a user by fetching their user_picture_url from the database.
+    Generates fresh presigned URLs from stored image_id.
     """
     try:
         # Get user info from user service (includes user_picture_url from ArangoDB)
         user_info = user_service.get_user_info(user_id)
         
         if not user_info:
-            logger.warning(f"User {user_id} not found in user service, returning default image")
-            image_id = None  # Will return default
+            logger.error(f"User {user_id} not found in user service")
+            raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+        
+        # Get the stored value (should be image_id)
+        stored_value = user_info.get('user_picture_url')
+        
+        if not stored_value:
+            logger.error(f"User {user_id} has no profile picture set in database")
+            raise HTTPException(status_code=404, detail=f"User {user_id} has no profile picture")
+        
+        logger.debug(f"User {user_id} has stored value: {stored_value}")
+        
+        # Check if stored_value is a full URL (backwards compatibility) or image_id
+        if 'http://' in stored_value or 'https://' in stored_value:
+            # Old format: full URL stored - extract image_id and generate fresh URL
+            image_id = stored_value.split('/')[-1].split('?')[0]
+            logger.info(f"Converting old URL format to image_id: {image_id}")
         else:
-            # Get the user's picture URL (could be None)
-            image_id = user_info.get('user_picture_url')
-            logger.debug(f"User {user_id} has picture URL: {image_id}")
+            # New format: image_id stored - use it directly
+            image_id = stored_value
         
-        # Get presigned URL from minIO (handles None -> default)
-        url = minio_service.get_image_url(image_id)
+        # Generate fresh presigned URL from image_id
+        try:
+            picture_url = minio_service.get_image_url(image_id)
+        except Exception as e:
+            logger.error(f"Failed to get image URL for {image_id}: {e}")
+            raise HTTPException(status_code=404, detail=f"Profile picture not found in storage")
         
-        return {
+        # Add cache headers (45 minutes)
+        add_cache_headers(response, max_age=2700)
+        
+        result = {
             "success": True,
             "user_id": user_id,
-            "image_id": image_id if image_id else "default_pfp.png",
-            "url": url
+            "image_id": image_id,
+            "url": picture_url
         }
         
+        logger.info(f"Successfully retrieved image URL for user {user_id}: {image_id}")
+        return result
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error getting image URL for user {user_id}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve user profile picture URL")
+        logger.error(f"Error fetching image for user {user_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error fetching image: {str(e)}")
 
 @router.get("/{image_id}")
-async def get_image_url(image_id: str = None):
+async def get_image_url(image_id: str = None, response: Response = None):
     """
     Get a presigned URL for an image by its ID.
-    If image_id is None or "default", returns the default profile picture URL.
     """
     try:
-        # Handle None case (when URL path is literally "None" or similar)
-        if image_id and image_id.lower() in ["none", "null"]:
-            image_id = None
-            
-        url = minio_service.get_image_url(image_id)
+        # Validate image_id
+        if not image_id or image_id.lower() in ["none", "null"]:
+            raise HTTPException(status_code=400, detail="Valid image_id is required")
+        
+        try:
+            url = minio_service.get_image_url(image_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            logger.error(f"Failed to get image URL for {image_id}: {e}")
+            raise HTTPException(status_code=404, detail="Image not found in storage")
+        
+        # Add cache headers (45 minutes)
+        if response:
+            add_cache_headers(response, max_age=2700)
+            response.headers["ETag"] = generate_etag(url)
         
         return {
             "success": True,
-            "image_id": image_id if image_id else "default_pfp.png",
+            "image_id": image_id,
             "url": url
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting image URL: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve image URL")
@@ -125,11 +212,13 @@ async def get_image_url(image_id: str = None):
 @router.post("/upload/profile")
 async def upload_profile_picture(
     file: UploadFile = File(...),
+    user_id: str = None,  # Optional user_id to enable old image deletion
     user_service: UserService = Depends(get_user_service)
 ):
     """
     Upload a new profile picture, resize it to 128x128, and update user's profile picture URL.
-    This endpoint combines upload with user profile update.
+    If user_id is provided and user has an existing profile picture, the old image will be deleted.
+    This endpoint combines upload with user profile update and cleanup.
     """
     try:
         # Validate file type
@@ -144,17 +233,43 @@ async def upload_profile_picture(
                 detail=f"Unsupported image type. Supported: {', '.join(supported_types)}"
             )
         
-        # Store image (automatically resizes to 128x128)
+        # If user_id is provided, check for existing profile picture and delete it
+        old_image_id = None
+        if user_id:
+            user_info = user_service.get_user_info(user_id)
+            if user_info and user_info.get('user_picture_url'):
+                old_picture_url = user_info.get('user_picture_url')
+                # Extract image_id from URL if it's a full URL, otherwise use as-is for backwards compatibility
+                if old_picture_url and ('http://' in old_picture_url or 'https://' in old_picture_url):
+                    old_image_id = old_picture_url.split('/')[-1].split('?')[0]
+                else:
+                    old_image_id = old_picture_url
+                
+                # Don't delete if no image_id
+                if old_image_id:
+                    logger.info(f"Deleting old profile picture for user {user_id}: {old_image_id}")
+                    delete_success = minio_service.delete_image(old_image_id)
+                    if not delete_success:
+                        logger.warning(f"Failed to delete old image {old_image_id}, but continuing with upload")
+        
+        # Store new image (automatically resizes to 128x128)
         image_id = minio_service.store_image(file.file, file.content_type)
         
         # Get the URL for the uploaded image
         image_url = minio_service.get_image_url(image_id)
         
+        # If user_id is provided, update the user's profile picture IMAGE_ID in the database
+        # Store image_id (not URL) so we can generate fresh presigned URLs on demand
+        if user_id:
+            logger.info(f"Updating user {user_id} profile picture image_id to: {image_id}")
+            user_service.update_user_picture_url(user_id, image_id)
+        
         return {
             "success": True,
             "image_id": image_id,
             "url": image_url,
-            "message": "Profile picture uploaded and resized successfully"
+            "message": "Profile picture uploaded and resized successfully",
+            "old_image_deleted": old_image_id is not None
         }
         
     except HTTPException:
@@ -204,38 +319,37 @@ async def remove_user_profile_picture(
     user_service: UserService = Depends(get_user_service)
 ):
     """
-    Remove a user's custom profile picture and set them back to default.
-    Also deletes the image file from minIO if it exists.
+    Remove a user's profile picture from the database and delete the image file from MinIO.
+    This sets the user's user_picture_url to None.
     """
     try:
         # Get current user info to find their current picture
         user_info = user_service.get_user_info(user_id)
         
         if user_info:
-            current_image_id = user_info.get('user_picture_url')
-            if current_image_id:
+            current_picture_url = user_info.get('user_picture_url')
+            if current_picture_url:
+                # Extract image_id from URL if it's a full URL, otherwise use as-is for backwards compatibility
+                if 'http://' in current_picture_url or 'https://' in current_picture_url:
+                    current_image_id = current_picture_url.split('/')[-1].split('?')[0]
+                else:
+                    current_image_id = current_picture_url
+                
                 # Delete the image from minIO
                 delete_success = minio_service.delete_image(current_image_id)
                 if not delete_success:
                     logger.warning(f"Failed to delete image {current_image_id} from minIO")
         
-        # Update user to have no custom profile picture (will use default)
+        # Update user to have no profile picture
         update_success = user_service.update_user_picture_url(user_id, None)
         
         if not update_success:
             raise HTTPException(status_code=500, detail="Failed to update user profile picture")
         
-        # Get default image URL
-        default_url = minio_service.get_image_url(None)
-        
         return {
             "success": True,
-            "message": "Profile picture removed successfully, using default",
-            "user_id": user_id,
-            "image_id": "default_pfp.png",
-            "url": default_url,
-            "has_custom_picture": False,
-            "is_default": True
+            "message": "Profile picture removed successfully",
+            "user_id": user_id
         }
         
     except HTTPException:
@@ -248,7 +362,6 @@ async def remove_user_profile_picture(
 async def delete_image(image_id: str):
     """
     Delete an image by its ID.
-    Cannot delete the default profile picture.
     """
     try:
         if not image_id:
@@ -257,10 +370,7 @@ async def delete_image(image_id: str):
         success = minio_service.delete_image(image_id)
         
         if not success:
-            if image_id == "default_pfp.png":
-                raise HTTPException(status_code=403, detail="Cannot delete default profile picture")
-            else:
-                raise HTTPException(status_code=404, detail="Image not found or could not be deleted")
+            raise HTTPException(status_code=404, detail="Image not found or could not be deleted")
         
         return {
             "success": True,
