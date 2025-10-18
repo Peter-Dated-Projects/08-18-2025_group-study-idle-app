@@ -12,7 +12,6 @@ import {
   resetClickState,
 } from "@/engine/input/MouseHandler";
 import { initializeFPSManager } from "@/engine/input/DynamicFPSManager";
-import { createMouseCursor } from "@/debug/MouseCursor";
 import { RendererHandler } from "@/engine/rendering/RendererHandler";
 import { SpriteRenderer } from "@/engine/rendering/SpriteRenderer";
 import { refreshWorldStructures } from "@/engine/DefaultWorld";
@@ -66,30 +65,25 @@ export default function GardenCanvas({
     async function init() {
       // Ensure we're in client environment before initializing PIXI
       if (!isClient) {
-
         return;
       }
 
       // Prevent multiple initializations from running simultaneously
       if (initializationInProgress) {
-
         return;
       }
 
       initializationInProgress = true;
 
       try {
-
         // Check if component was disposed before we even start
         if (disposed) {
-
           return;
         }
 
         // Re-check element validity (React might have unmounted)
         const currentEl = parentRef.current;
         if (!currentEl) {
-
           return;
         }
 
@@ -107,7 +101,6 @@ export default function GardenCanvas({
         // Double-check element is still valid before initializing
         const elementCheck = parentRef.current;
         if (!elementCheck || disposed) {
-
           app.destroy(true);
           appRef.current = null;
           return;
@@ -124,7 +117,6 @@ export default function GardenCanvas({
         // Don't stop the ticker - we want it running for FPS management
 
         if (disposed) {
-
           if (app && typeof app.destroy === "function") {
             app.destroy(true);
           }
@@ -136,7 +128,6 @@ export default function GardenCanvas({
         // Final check before DOM manipulation
         const finalElementCheck = parentRef.current;
         if (!finalElementCheck || disposed) {
-
           app.destroy(true);
           appRef.current = null;
           return;
@@ -214,20 +205,12 @@ export default function GardenCanvas({
         if (mouseHandler) {
           // Test toggling to ACTIVE mode
           setTimeout(() => {
-
             const newState = toggleMouseHandlerState();
-
           }, 1000);
 
           // Test auto-return to IDLE mode
-          setTimeout(() => {
-
-          }, 3000);
+          setTimeout(() => {}, 3000);
         }
-
-        // Create mouse cursor for basic testing
-
-        createMouseCursor(app);
 
         // Use real user ID from props, fallback to demo user
         const worldUserId = userId || "demo_user_123";
@@ -237,7 +220,6 @@ export default function GardenCanvas({
         // Set up global world refresh handler
         const refreshHandler = async () => {
           if (worldHandlerRef.current && worldUserId) {
-
             await refreshWorldStructures(worldHandlerRef.current, worldUserId);
           }
         };
@@ -365,7 +347,6 @@ export default function GardenCanvas({
             ticker.start(); // Resume the ticker when the tab becomes active
           }
         });
-
       } catch (error) {
         console.error("[GardenCanvas] Error during initialization:", error);
 
@@ -385,7 +366,6 @@ export default function GardenCanvas({
         worldContainerRef.current = null;
 
         // Don't re-throw to prevent cascading errors
-
       } finally {
         initializationInProgress = false;
       }
@@ -396,7 +376,6 @@ export default function GardenCanvas({
     });
 
     return () => {
-
       disposed = true;
       const app = appRef.current;
 
@@ -406,7 +385,6 @@ export default function GardenCanvas({
 
       // Clean up renderer handler
       if (rendererHandlerRef.current) {
-
         const entities = worldHandlerRef.current?.getAllEntities() || [];
         for (const entity of entities) {
           rendererHandlerRef.current.removeRenderer(entity.id);
@@ -438,7 +416,6 @@ export default function GardenCanvas({
       // Safely destroy app (destroys stage, children, and textures)
       if (app && typeof app.destroy === "function") {
         try {
-
           app.destroy(true);
         } catch (error) {
           console.error("[GardenCanvas] Error destroying PIXI app:", error);
@@ -451,7 +428,6 @@ export default function GardenCanvas({
 
       // Clear global world refresh handler
       clearGlobalWorldRefreshHandler();
-
     };
   }, [isMounted]);
 
