@@ -17,7 +17,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
 }) => {
   const router = useRouter();
   return (
-    <section className="relative min-h-screen text-white overflow-hidden select-none w-full">
+    <section className="relative h-[90vh] text-white overflow-hidden select-none w-full">
       {/* Background Image */}
       <div className="absolute inset-0">
         <img
@@ -30,8 +30,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({
       </div>
 
       {/* Hero Content */}
-      <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[80vh]">
+      <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 py-20 h-full">
+        <div className="grid lg:grid-cols-2 gap-12 items-center h-full">
           {/* Left Column - Content */}
           <div className="space-y-8">
             <div className="space-y-4">
