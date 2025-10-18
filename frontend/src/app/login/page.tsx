@@ -257,8 +257,8 @@ export default function LoginPage() {
           <button
             onClick={handleGoogleSignIn}
             disabled={isSigningIn}
-            className={`inline-flex items-center justify-center gap-2 bg-gray-200 text-white px-6 py-3 rounded-lg font-bold transition-opacity border border-gray-300 shadow-[0_0_2px_#000] ${
-              isSigningIn ? "opacity-70 cursor-not-allowed" : "hover:bg-blue-700"
+            className={`inline-flex items-center justify-center gap-2 bg-gray-700 text-white px-6 py-3 rounded-lg font-bold transition-all border border-gray-600 shadow-[0_0_2px_#000] ${
+              isSigningIn ? "opacity-70 cursor-not-allowed" : "hover:bg-gray-800"
             }`}
           >
             {googleSVG}
@@ -348,8 +348,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="flex flex-col items-center justify-center min-h-screen p-5">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Background Image with Blur */}
+      <div className="absolute inset-0">
+        <img
+          src="/assets/splash.png"
+          alt="Background"
+          className="w-full h-full object-cover object-bottom scale-120 blur-sm"
+        />
+        {/* Black overlay for better readability */}
+        <div className="absolute inset-0 bg-black/70"></div>
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-5">
         <div className="bg-white rounded-xl shadow-lg max-w-2xl w-full overflow-hidden">
           <div className="flex items-center justify-center py-7 px-5 pb-5 border-b border-gray-200">
             <img src="/icon.png" alt="Icon" className="w-10 h-10 mr-3" />
