@@ -192,16 +192,11 @@ export default function GardenCanvas({
         const worldContainer = new PIXI.Container();
         worldContainerRef.current = worldContainer;
 
-        // Initialize Dynamic FPS Manager for performance optimization
-
+        // Initialize input handlers
         initializeFPSManager(app);
-
-        // Initialize MouseHandler for mouse-to-world coordinate conversion with visual indicator
-
         initializeMouseHandler(app, worldContainer, renderSprite);
 
         // Test the new reactive MouseHandler system
-
         if (mouseHandler) {
           // Test toggling to ACTIVE mode
           setTimeout(() => {

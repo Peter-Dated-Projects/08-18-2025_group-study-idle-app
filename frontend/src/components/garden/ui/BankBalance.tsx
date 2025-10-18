@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import { useSessionAuth } from "../../../hooks/useSessionAuth";
 import { useWebSocket } from "../../../hooks/useWebSocket";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
@@ -28,15 +28,17 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
     (state: RootState) => state.wallet
   );
 
-  // Fetch user's bank balance
-  const fetchBalance = async () => {
-    if (!user?.userId) {
-      dispatch(updateBalance(0));
-      dispatch(setLoading(false));
+  // Track if we're currently fetching to prevent concurrent requests
+  const isFetchingRef = useRef(false);
+
+  // Fetch user's bank balance - memoized to prevent unnecessary re-creation
+  const fetchBalance = useCallback(async () => {
+    if (!user?.userId || isFetchingRef.current) {
       return;
     }
 
     try {
+      isFetchingRef.current = true;
       dispatch(setLoading(true));
       dispatch(setError(null));
 
@@ -67,27 +69,17 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
       dispatch(updateBalance(0));
     } finally {
       dispatch(setLoading(false));
+      isFetchingRef.current = false;
     }
-  };
+  }, [user?.userId, dispatch]);
 
+  // Initial fetch on mount or when user changes
   useEffect(() => {
     // Only fetch balance if user is authenticated
     if (user?.userId) {
       fetchBalance();
     }
-  }, [user?.userId]);
-
-  // Refresh balance every 30 seconds to catch updates from pomo sessions
-  useEffect(() => {
-    // Only set up interval if user is authenticated
-    if (!user?.userId) return;
-
-    const interval = setInterval(() => {
-      fetchBalance();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [user?.userId]);
+  }, [user?.userId, fetchBalance]);
 
   // Listen for real-time pomo bank updates via websocket
   useEffect(() => {
