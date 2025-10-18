@@ -10,19 +10,23 @@ interface HeroSectionProps {
   onButtonClick?: () => void;
 }
 
-const HeroSection: React.FC<HeroSectionProps> = ({ hasUserCookie, buttonPressRedirect = '/login', onButtonClick }) => {
+const HeroSection: React.FC<HeroSectionProps> = ({
+  hasUserCookie,
+  buttonPressRedirect = "/login",
+  onButtonClick,
+}) => {
   const router = useRouter();
   return (
     <section className="relative min-h-screen text-white overflow-hidden select-none w-full">
-      {/* Background Video/GIF */}
+      {/* Background Image */}
       <div className="absolute inset-0">
         <img
-          src={getGifByCategory("hero")}
+          src="/assets/hero-back.png"
           alt="Study Quest Background"
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover object-center"
         />
-        {/* 20% Black Overlay */}
-        <div className="absolute inset-0 bg-black bg-opacity-20"></div>
+        {/* Black Overlay for better text readability */}
+        <div className="absolute inset-0 bg-black/90"></div>
       </div>
 
       {/* Hero Content */}
@@ -39,9 +43,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ hasUserCookie, buttonPressRed
                 </span>
               </h1>
               <p className="text-xl sm:text-2xl text-amber-100 leading-relaxed max-w-lg">
-                Transform your learning journey into an epic quest. Build your
-                virtual world, level up your skills, and watch your dedication grow into
-                something amazing.
+                Transform your learning journey into an epic quest. Build your virtual world, level
+                up your skills, and watch your dedication grow into something amazing.
               </p>
             </div>
 
@@ -70,9 +73,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ hasUserCookie, buttonPressRed
           </div>
 
           {/* Right Column - Empty Space */}
-          <div className="hidden lg:block">
-            {/* Intentionally empty for isolated look */}
-          </div>
+          <div className="hidden lg:block">{/* Intentionally empty for isolated look */}</div>
         </div>
 
         {/* Scroll Indicator */}
@@ -90,7 +91,6 @@ const HeroSection: React.FC<HeroSectionProps> = ({ hasUserCookie, buttonPressRed
           </div>
         </div>
       </div>
-
     </section>
   );
 };

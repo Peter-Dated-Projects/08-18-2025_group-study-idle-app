@@ -124,8 +124,20 @@ const LandingPage: React.FC = () => {
         </section>
 
         {/* Final Call to Action Section */}
-        <section className="h-[400px] bg-black bg-opacity-20 flex items-center justify-center">
-          <div className="text-center">
+        <section className="relative h-[400px] flex items-center justify-center overflow-hidden">
+          {/* Background Image */}
+          <div className="absolute inset-0">
+            <img
+              src="/assets/hero-back.png"
+              alt="Study Quest Background"
+              className="w-full h-full object-cover object-center"
+            />
+            {/* Black Overlay */}
+            <div className="absolute inset-0 bg-black/90"></div>
+          </div>
+
+          {/* Content */}
+          <div className="relative z-10 text-center">
             <h2 className="text-4xl sm:text-5xl font-bold text-white mb-8">
               Ready to Transform Your Study Journey?
             </h2>
