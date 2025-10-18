@@ -329,7 +329,7 @@ function GardenPageContent() {
             {/* Draggable divider - only show when not minimized */}
             {!isMinimized && (
               <div
-                className="h-2.5 cursor-ns-resize relative flex items-center justify-center"
+                className="h-3 cursor-ns-resize relative flex items-center justify-center"
                 style={{
                   backgroundColor: isDragging ? FONTCOLOR : BORDERLINE,
                   borderTop: `2px solid ${BORDERFILL}`,

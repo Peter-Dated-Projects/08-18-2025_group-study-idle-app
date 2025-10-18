@@ -72,8 +72,7 @@ export class MouseHandler {
   private canvasElement: HTMLCanvasElement;
   private state: MouseHandlerState;
 
-  // Visual indicator properties
-  private mouseIndicator: PIXI.Graphics | null = null;
+  // World container for coordinate conversions
   private worldContainer: PIXI.Container | null = null;
 
   // Render sprite reference for accurate world offset calculation
@@ -124,7 +123,6 @@ export class MouseHandler {
     };
 
     this.setupEventListeners();
-    this.createMouseIndicator();
 
     // Initialize FPS to idle mode
     this.updateFPSBasedOnState();
@@ -148,11 +146,6 @@ export class MouseHandler {
     this.state.currentMode = MouseState.ACTIVE;
     this.state.showVisualIndicator = true;
 
-    // Show indicator if mouse is inside canvas
-    if (this.mouseIndicator && this.state.isMouseInsideCanvas) {
-      this.mouseIndicator.visible = true;
-    }
-
     // Update FPS to active mode
     this.updateFPSBasedOnState();
 
@@ -172,11 +165,6 @@ export class MouseHandler {
   private returnToIdle(): void {
     this.state.currentMode = MouseState.IDLE;
     this.state.showVisualIndicator = false;
-
-    // Hide indicator
-    if (this.mouseIndicator) {
-      this.mouseIndicator.visible = false;
-    }
 
     // Update FPS to idle mode
     this.updateFPSBasedOnState();
@@ -315,28 +303,6 @@ export class MouseHandler {
   }
 
   /**
-   * Create the visual mouse indicator (red circle)
-   */
-  private createMouseIndicator(): void {
-    this.mouseIndicator = new PIXI.Graphics();
-
-    // PIXI v8 syntax for drawing a circle
-    this.mouseIndicator
-      .circle(0, 0, 5) // 5px radius circle at origin
-      .fill({ color: 0xff0000, alpha: 0.8 }); // Red color with slight transparency
-
-    this.mouseIndicator.visible = false; // Initially hidden
-    this.mouseIndicator.zIndex = 10000; // Ensure it's always on top
-
-    // Add to the world container if available, otherwise add to stage
-    const container = this.worldContainer || this.pixiApp.stage;
-    container.addChild(this.mouseIndicator);
-
-    // Force render after adding
-    this.pixiApp.renderer.render(container);
-  }
-
-  /**
    * Handle mouse entering the canvas
    */
   private handleMouseEnter(event: MouseEvent): void {
@@ -346,12 +312,6 @@ export class MouseHandler {
       // Calculate world coordinates
       const worldCoords = this.mouseToWorldCoords(event.clientX, event.clientY);
       this.state.currentWorldPosition = worldCoords;
-
-      // Show and position visual indicator if enabled
-      if (this.mouseIndicator && this.state.showVisualIndicator) {
-        this.mouseIndicator.visible = true;
-        this.updateMouseIndicatorPosition(worldCoords);
-      }
 
       // Update FPS based on new state
       this.updateFPSBasedOnState();
@@ -369,11 +329,6 @@ export class MouseHandler {
 
       // Update FPS based on current state (mouse no longer in canvas)
       this.updateFPSBasedOnState();
-
-      // Hide visual indicator when mouse leaves canvas
-      if (this.mouseIndicator) {
-        this.mouseIndicator.visible = false;
-      }
     } catch (error) {
       console.error("Error handling mouse leave:", error);
     }
@@ -388,11 +343,6 @@ export class MouseHandler {
         const worldCoords = this.mouseToWorldCoords(event.clientX, event.clientY);
         this.state.currentWorldPosition = worldCoords;
         this.state.lastMouseMoveTime = Date.now();
-
-        // Always update visual indicator if it's enabled
-        if (this.state.showVisualIndicator) {
-          this.updateMouseIndicatorPosition(worldCoords);
-        }
       }
     } catch (error) {
       console.error("Error handling mouse move:", error);
@@ -426,15 +376,6 @@ export class MouseHandler {
         this.state.isRightButtonClicked = true;
       }
       this.state.isRightButtonDown = false;
-    }
-  }
-
-  /**
-   * Update the position of the mouse indicator
-   */
-  private updateMouseIndicatorPosition(worldCoords: Vec2): void {
-    if (this.mouseIndicator && this.state.showVisualIndicator) {
-      this.mouseIndicator.position.set(worldCoords.x, worldCoords.y);
     }
   }
 
@@ -510,26 +451,6 @@ export class MouseHandler {
 
       const result = new Vec2(worldX, worldY);
       return result;
-    }
-  }
-
-  /**
-   * Enable the visual indicator
-   */
-  public enableVisualIndicator(): void {
-    this.state.showVisualIndicator = true;
-    if (this.mouseIndicator && this.state.isMouseInsideCanvas) {
-      this.mouseIndicator.visible = true;
-    }
-  }
-
-  /**
-   * Disable the visual indicator
-   */
-  public disableVisualIndicator(): void {
-    this.state.showVisualIndicator = false;
-    if (this.mouseIndicator) {
-      this.mouseIndicator.visible = false;
     }
   }
 
@@ -693,16 +614,6 @@ export class MouseHandler {
       if (this.idleTimer) {
         clearTimeout(this.idleTimer);
         this.idleTimer = null;
-      }
-
-      // Clean up visual indicator
-      if (this.mouseIndicator) {
-        const container = this.worldContainer || this.pixiApp.stage;
-        if (container) {
-          container.removeChild(this.mouseIndicator);
-        }
-        this.mouseIndicator.destroy();
-        this.mouseIndicator = null;
       }
 
       // Reset state

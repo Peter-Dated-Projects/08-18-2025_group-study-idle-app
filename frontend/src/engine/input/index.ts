@@ -7,8 +7,6 @@ export {
   initializeMouseHandler,
   mouseToWorldCoords,
   getMouseHandlerState,
-  setMouseInactivityThreshold,
-  getMouseInactivityThreshold,
   getWorldOffset,
 } from "./MouseHandler";
 
@@ -26,18 +24,6 @@ import { mouseHandler } from "./MouseHandler";
 import { fpsManager } from "./DynamicFPSManager";
 
 // Convenience functions for global mouse handler
-export const enableMouseVisualIndicator = () => {
-  if (mouseHandler) {
-    mouseHandler.enableVisualIndicator();
-  }
-};
-
-export const disableMouseVisualIndicator = () => {
-  if (mouseHandler) {
-    mouseHandler.disableVisualIndicator();
-  }
-};
-
 export const getCurrentMouseWorldPosition = () => {
   if (mouseHandler) {
     return mouseHandler.getCurrentWorldPosition();
