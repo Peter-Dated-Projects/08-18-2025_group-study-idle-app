@@ -3,7 +3,7 @@ import { BACKEND_URL } from "@/config/api";
 
 const backendURL = BACKEND_URL;
 
-export async function GET(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ userId: string }> }) {
   try {
     const { userId } = await params;
 

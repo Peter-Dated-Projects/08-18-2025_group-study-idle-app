@@ -3,7 +3,7 @@ import { BACKEND_URL } from "@/config/api";
 
 const backendURL = BACKEND_URL;
 
-export async function GET(request: NextRequest, { params }: { params: { groupId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ groupId: string }> }) {
   try {
     const { searchParams } = new URL(request.url);
     const period = searchParams.get("period") || "daily";

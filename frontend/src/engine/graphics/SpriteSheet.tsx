@@ -1,4 +1,4 @@
-import { Tile } from "./Tilemap";
+import { Tile } from "../resources/Tilemap";
 import * as PIXI from "pixi.js";
 
 interface SpriteSheet {
@@ -21,7 +21,6 @@ async function loadSpriteSheet(
 
   // Check if already cached
   if (spriteSheetCache.has(cacheKey)) {
-
     return spriteSheetCache.get(cacheKey)!;
   }
 
@@ -98,7 +97,6 @@ async function preloadSpriteSheets(
  */
 function clearSpriteSheetCache() {
   spriteSheetCache.clear();
-
 }
 
 /**

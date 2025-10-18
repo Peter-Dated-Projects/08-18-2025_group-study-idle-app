@@ -3,9 +3,9 @@ import { BACKEND_URL } from "@/config/api";
 
 const backendURL = BACKEND_URL;
 
-export async function GET(request: NextRequest, { params }: { params: { groupId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ groupId: string }> }) {
   try {
-    const { groupId } = params;
+    const { groupId } = await params;
 
     const response = await fetch(`${backendURL}/api/groups/details/${groupId}`, {
       method: "GET",

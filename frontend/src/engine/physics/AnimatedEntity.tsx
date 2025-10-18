@@ -74,7 +74,7 @@ export class AnimatedEntity extends Entity {
     super.setPosition(position);
 
     if (this.animatedObject) {
-      this.animatedObject.rigidbody.setPosition(position.x, position.y);
+      this.animatedObject.rigidbody.setPosition(position);
     }
   }
 

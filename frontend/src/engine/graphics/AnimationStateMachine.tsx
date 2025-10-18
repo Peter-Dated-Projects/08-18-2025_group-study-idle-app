@@ -1,5 +1,5 @@
 import * as PIXI from "pixi.js";
-import { AnimatedTile } from "./Tilemap";
+import { AnimatedTile } from "../resources/Tilemap";
 
 // Interface for animation frame data
 interface AnimationFrameData {
@@ -165,7 +165,6 @@ export class CharacterAnimation {
       }
     } else {
       // Reset frame to 0 for new state
-
     }
 
     // CRITICAL: Immediately update sprite display after state transition
@@ -270,7 +269,6 @@ export class CharacterAnimation {
         nextFrameIndex === 0 &&
         prevFrameIndex === animationTextures.length - 1
       ) {
-
         // Call state-specific animation loop callback
         this.currentState.onAnimationLoop();
 
@@ -490,7 +488,6 @@ export class CharacterAnimationBuilder {
     if (fromState) {
       // We need to get the actual state instance to add the transition
       // This is a limitation of the current design - let's note it for future improvement
-
     }
     return this;
   }

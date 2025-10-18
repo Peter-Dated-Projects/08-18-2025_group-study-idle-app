@@ -3,7 +3,7 @@ import { BACKEND_URL } from "@/config/api";
 
 const backendURL = BACKEND_URL;
 
-export async function GET(request: NextRequest, { params }: { params: { lobbyCode: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ lobbyCode: string }> }) {
   try {
     const { lobbyCode } = await params;
     const { searchParams } = new URL(request.url);
