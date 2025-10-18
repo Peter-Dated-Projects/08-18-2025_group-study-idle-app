@@ -257,20 +257,6 @@ export default function EditProfileModal({
             </div>
           )}
         </FormGroup>
-
-        {/* Action Buttons */}
-        <div
-          style={{
-            marginTop: "30px",
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
-          <Button onClick={onClose} variant="primary" style={{ minWidth: "120px" }}>
-            <FaTimes />
-            Close
-          </Button>
-        </div>
       </div>
     </BaseModal>
   );
