@@ -144,7 +144,6 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
         {/* Global Leaderboard */}
         <GardenIcon
           onClick={() => {
-
             setShowGlobalLeaderboard(true);
           }}
           title="Global Leaderboard"
@@ -154,7 +153,6 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
         {/* Group Leaderboard */}
         <GardenIcon
           onClick={() => {
-
             setShowGroupLeaderboard(true);
           }}
           title="Group Leaderboard"
@@ -208,6 +206,7 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
         <GroupLeaderboardModal
           isVisible={showGroupLeaderboard}
           onClose={() => setShowGroupLeaderboard(false)}
+          onOpenGroupsModal={() => setShowGroups(true)}
         />
       )}
 

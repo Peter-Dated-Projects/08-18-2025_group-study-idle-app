@@ -43,11 +43,16 @@ interface Group {
 interface GroupLeaderboardModalProps {
   isVisible: boolean;
   onClose: () => void;
+  onOpenGroupsModal?: () => void;
 }
 
 type LeaderboardPeriod = "daily" | "weekly" | "monthly" | "yearly";
 
-export default function GroupLeaderboardModal({ isVisible, onClose }: GroupLeaderboardModalProps) {
+export default function GroupLeaderboardModal({
+  isVisible,
+  onClose,
+  onOpenGroupsModal,
+}: GroupLeaderboardModalProps) {
   const { user, isLoading: authLoading } = useSessionAuth();
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string>("");
@@ -223,9 +228,43 @@ export default function GroupLeaderboardModal({ isVisible, onClose }: GroupLeade
               border: `1px solid ${BORDERLINE}`,
               borderRadius: "6px",
               fontSize: "14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+              alignItems: "center",
             }}
           >
-            You haven&apos;t joined any groups yet. Join a group to view group leaderboards!
+            <div>
+              You haven&apos;t joined any groups yet. Join a group to view group leaderboards!
+            </div>
+            {onOpenGroupsModal && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenGroupsModal();
+                }}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: ACCENT_COLOR,
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: "bold",
+                  fontFamily: BodyFont,
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = SUCCESS_COLOR;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = ACCENT_COLOR;
+                }}
+              >
+                Go to Groups
+              </button>
+            )}
           </div>
         ) : (
           <div>
