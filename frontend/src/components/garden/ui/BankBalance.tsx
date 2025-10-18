@@ -71,15 +71,19 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
   };
 
   useEffect(() => {
-    fetchBalance();
+    // Only fetch balance if user is authenticated
+    if (user?.userId) {
+      fetchBalance();
+    }
   }, [user?.userId]);
 
   // Refresh balance every 30 seconds to catch updates from pomo sessions
   useEffect(() => {
+    // Only set up interval if user is authenticated
+    if (!user?.userId) return;
+
     const interval = setInterval(() => {
-      if (user?.userId) {
-        fetchBalance();
-      }
+      fetchBalance();
     }, 30000);
 
     return () => clearInterval(interval);
