@@ -10,16 +10,16 @@ import { getRandomGif } from "../data/mockData";
 
 const LandingPage: React.FC = () => {
   const [hasUserCookie, setHasUserCookie] = React.useState<boolean | null>(null);
-  const [buttonPressRedirect, setButtonPressRedirect] = React.useState<string>('/login');
+  const [buttonPressRedirect, setButtonPressRedirect] = React.useState<string>("/login");
 
   // Handle button click based on authentication status
   const handleButtonClick = () => {
     if (hasUserCookie) {
       // User is logged in, redirect to garden
-      window.location.href = '/garden';
+      window.location.href = "/garden";
     } else {
       // User is not logged in, scroll to pricing section
-      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+      document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
     }
   };
 
@@ -27,15 +27,15 @@ const LandingPage: React.FC = () => {
   React.useEffect(() => {
     const checkUserCookie = async () => {
       try {
-        const response = await fetch('/api/auth/check-cookie');
+        const response = await fetch("/api/auth/check-cookie");
         const data = await response.json();
         setHasUserCookie(data.hasUserCookie);
         // Set redirect based on authentication status
-        setButtonPressRedirect(data.hasUserCookie ? '/garden' : '/login');
+        setButtonPressRedirect(data.hasUserCookie ? "/garden" : "/login");
       } catch (error) {
-        console.error('Error checking user cookie:', error);
+        console.error("Error checking user cookie:", error);
         setHasUserCookie(false);
-        setButtonPressRedirect('/login');
+        setButtonPressRedirect("/login");
       }
     };
 
@@ -44,7 +44,7 @@ const LandingPage: React.FC = () => {
 
   // Override custom cursor styles for landing page
   React.useEffect(() => {
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
       .landing-page,
       .landing-page * {
@@ -79,7 +79,7 @@ const LandingPage: React.FC = () => {
       }
     `;
     document.head.appendChild(style);
-    
+
     return () => {
       document.head.removeChild(style);
     };
@@ -89,76 +89,71 @@ const LandingPage: React.FC = () => {
     <div className="min-h-screen landing-page relative overflow-x-hidden">
       {/* Background GIF */}
       <div className="fixed inset-0 z-0">
-        <img
-          src={getRandomGif()}
-          alt="Background"
-          className="w-full h-full object-cover"
-        />
+        <img src={getRandomGif()} alt="Background" className="w-full h-full object-cover" />
         {/* Overlay for readability */}
         <div className="absolute inset-0 bg-white bg-opacity-90"></div>
       </div>
-      
+
       {/* Content wrapper */}
       <div className="relative z-10">
-      {/* Navigation */}
-      <Navigation />
+        {/* Navigation */}
+        <Navigation />
 
-      {/* Hero Section */}
-      <section id="hero">
-        <HeroSection 
-          hasUserCookie={hasUserCookie} 
-          buttonPressRedirect={buttonPressRedirect} 
-          onButtonClick={handleButtonClick}
-        />
-      </section>
+        {/* Hero Section */}
+        <section id="hero">
+          <HeroSection
+            hasUserCookie={hasUserCookie}
+            buttonPressRedirect={buttonPressRedirect}
+            onButtonClick={handleButtonClick}
+          />
+        </section>
 
-      {/* How It Works Section */}
-      <section id="how-it-works">
-        <HowItWorksSection onButtonClick={handleButtonClick} />
-      </section>
+        {/* How It Works Section */}
+        <section id="how-it-works">
+          <HowItWorksSection onButtonClick={handleButtonClick} />
+        </section>
 
-      {/* Garden Demo Section */}
-      <section id="demo">
-        <GardenDemoSection />
-      </section>
+        {/* Garden Demo Section */}
+        <section id="demo">
+          <GardenDemoSection />
+        </section>
 
-      {/* Pricing Section */}
-      <section id="pricing">
-        <PricingSection />
-      </section>
+        {/* Pricing Section */}
+        <section id="pricing">
+          <PricingSection />
+        </section>
 
-      {/* Final Call to Action Section */}
-      <section className="h-[400px] bg-black bg-opacity-20 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-8">
-            Ready to Transform Your Study Journey?
-          </h2>
-          <button
-            onClick={handleButtonClick}
-            className="bg-white text-green-600 hover:text-green-700 px-12 py-4 rounded-full text-xl font-bold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-          >
-            Start Studying Now!
-          </button>
-        </div>
-      </section>
-
-      {/* Basic Footer */}
-      <footer className="bg-gradient-to-r from-green-600 to-emerald-600 text-white py-8 select-none">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Final Call to Action Section */}
+        <section className="h-[400px] bg-black bg-opacity-20 flex items-center justify-center">
           <div className="text-center">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-green-600 font-bold">
-                📚
-              </div>
-              <span className="text-xl font-bold">Study Quest</span>
-            </div>
-                <p className="text-white text-sm opacity-90">
-                  Transform your learning journey into an epic adventure.
-                </p>
+            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-8">
+              Ready to Transform Your Study Journey?
+            </h2>
+            <button
+              onClick={handleButtonClick}
+              className="bg-white text-green-600 hover:text-green-700 px-12 py-4 rounded-full text-xl font-bold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+            >
+              Start Studying Now!
+            </button>
           </div>
-        </div>
-      </footer>
+        </section>
 
+        {/* Basic Footer */}
+        <footer className="bg-gradient-to-r from-green-600 to-emerald-600 text-white py-8 select-none">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <div className="flex items-center justify-center space-x-2 mb-4">
+                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-green-600 font-bold">
+                  📚
+                </div>
+                <span className="text-xl font-bold">Study Quest</span>
+              </div>
+              <p className="text-white text-sm opacity-90">
+                Transform your learning journey into an epic adventure.
+              </p>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );

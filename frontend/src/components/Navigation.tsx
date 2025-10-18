@@ -6,31 +6,30 @@ import { useRouter } from "next/navigation";
 const Navigation: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hasUserCookies, setHasUserCookies] = useState(false);
-  const [buttonPressRedirect, setButtonPressRedirect] = useState<string>('/login');
+  const [buttonPressRedirect, setButtonPressRedirect] = useState<string>("/login");
   const router = useRouter();
 
   // Check for user authentication via server-side API
   useEffect(() => {
     const checkUserAuth = async () => {
       try {
-
-        const response = await fetch('/api/auth/check-cookie');
+        const response = await fetch("/api/auth/check-cookie");
         const data = await response.json();
 
         setHasUserCookies(data.hasCookie);
         // Set redirect based on authentication status
-        setButtonPressRedirect(data.hasCookie ? '/garden' : '/login');
+        setButtonPressRedirect(data.hasCookie ? "/garden" : "/login");
       } catch (error) {
-        console.error('🔐 Error checking authentication:', error);
+        console.error("🔐 Error checking authentication:", error);
         setHasUserCookies(false);
-        setButtonPressRedirect('/login');
+        setButtonPressRedirect("/login");
       }
     };
 
     checkUserAuth();
   }, []);
 
-    const navItems: never[] = [];
+  const navItems: never[] = [];
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-b border-gray-200/30 shadow-sm">
@@ -50,26 +49,28 @@ const Navigation: React.FC = () => {
               <>
                 <button
                   onClick={() => router.push(buttonPressRedirect)}
-                  className="text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200"
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-2 rounded-full font-semibold transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
                 >
                   Start Growing
                 </button>
+              </>
+            ) : (
+              <>
                 <button
                   onClick={() => router.push("/login")}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-2 rounded-full font-semibold transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
+                  className="text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200"
                 >
                   Login
                 </button>
+                <button
+                  onClick={() => {
+                    document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-2 rounded-full font-semibold transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
+                >
+                  Get Started
+                </button>
               </>
-            ) : (
-              <button
-                onClick={() => {
-                  document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-2 rounded-full font-semibold transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
-              >
-                Get Started
-              </button>
             )}
           </div>
 
@@ -110,26 +111,28 @@ const Navigation: React.FC = () => {
                   <>
                     <button
                       onClick={() => router.push(buttonPressRedirect)}
-                      className="block w-full text-left px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md font-medium transition-colors duration-200"
+                      className="block w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-3 py-2 rounded-md font-semibold transition-all duration-300"
                     >
                       Start Growing
                     </button>
+                  </>
+                ) : (
+                  <>
                     <button
                       onClick={() => router.push("/login")}
-                      className="block w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-3 py-2 rounded-md font-semibold transition-all duration-300"
+                      className="block w-full text-left px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md font-medium transition-colors duration-200"
                     >
                       Login
                     </button>
+                    <button
+                      onClick={() => {
+                        document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="block w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-3 py-2 rounded-md font-semibold transition-all duration-300"
+                    >
+                      Get Started
+                    </button>
                   </>
-                ) : (
-                  <button
-                    onClick={() => {
-                      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    className="block w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-3 py-2 rounded-md font-semibold transition-all duration-300"
-                  >
-                    Get Started
-                  </button>
                 )}
               </div>
             </div>

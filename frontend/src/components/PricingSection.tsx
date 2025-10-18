@@ -26,7 +26,7 @@ const PricingSection: React.FC = () => {
       buttonText: "Start Free",
       buttonStyle: "border-2 border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50",
       popular: false,
-      type: "free"
+      type: "free",
     },
     {
       name: "Premium",
@@ -40,11 +40,12 @@ const PricingSection: React.FC = () => {
         "Study Group Chat",
         "Study Group Music Dashboard",
       ],
-      buttonText: "Go Premium",
-      buttonStyle: "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white",
+      buttonText: "Not Available Yet",
+      buttonStyle: "bg-gray-300 text-gray-500 cursor-not-allowed",
       popular: true,
-      type: "premium"
-    }
+      type: "premium",
+      disabled: true,
+    },
   ];
 
   return (
@@ -56,8 +57,8 @@ const PricingSection: React.FC = () => {
             Choose Your Quest Level
           </h2>
           <p className="text-xl text-gray-700 max-w-3xl mx-auto">
-            Start your journey for free, or unlock premium features to supercharge your study experience.
-            Every subscription helps support the independent developer!
+            Start your journey for free, or unlock premium features to supercharge your study
+            experience. Every subscription helps support the independent developer!
           </p>
         </div>
 
@@ -71,44 +72,51 @@ const PricingSection: React.FC = () => {
                   plan.popular ? "border-green-500 transform scale-105" : "border-gray-200"
                 }`}
               >
-              {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2 rounded-full text-sm font-semibold">
-                    Most Popular
-                  </span>
+                {plan.popular && (
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <span className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2 rounded-full text-sm font-semibold">
+                      Most Popular
+                    </span>
+                  </div>
+                )}
+
+                <div className="text-center mb-8">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
+                  <div className="mb-4">
+                    <span className="text-5xl font-bold text-gray-900">{plan.price}</span>
+                    <span className="text-gray-600 ml-2">/{plan.period}</span>
+                  </div>
+                  <p className="text-gray-600">{plan.description}</p>
                 </div>
-              )}
 
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                <div className="mb-4">
-                  <span className="text-5xl font-bold text-gray-900">{plan.price}</span>
-                  <span className="text-gray-600 ml-2">/{plan.period}</span>
+                <ul className="space-y-4 mb-8 flex-grow">
+                  {plan.features.map((feature, featureIndex) => (
+                    <li key={featureIndex} className="flex items-center space-x-3">
+                      <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                      <span className="text-gray-700">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-auto">
+                  <button
+                    onClick={() => !plan.disabled && handlePlanClick(plan.type)}
+                    disabled={plan.disabled}
+                    className={`w-full py-4 px-6 rounded-full font-semibold transition-all duration-300 ${
+                      plan.disabled ? "" : "transform hover:scale-105"
+                    } ${plan.buttonStyle}`}
+                  >
+                    {plan.buttonText}
+                  </button>
                 </div>
-                <p className="text-gray-600">{plan.description}</p>
-              </div>
-
-              <ul className="space-y-4 mb-8 flex-grow">
-                {plan.features.map((feature, featureIndex) => (
-                  <li key={featureIndex} className="flex items-center space-x-3">
-                    <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <span className="text-gray-700">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="mt-auto">
-                <button
-                  onClick={() => handlePlanClick(plan.type)}
-                  className={`w-full py-4 px-6 rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${plan.buttonStyle}`}
-                >
-                  {plan.buttonText}
-                </button>
-              </div>
               </div>
             ))}
           </div>
@@ -121,9 +129,10 @@ const PricingSection: React.FC = () => {
               💚 Support an Independent Developer
             </h3>
             <p className="text-gray-700 mb-6 leading-relaxed">
-              Study Quest is built by a passionate independent developer who believes in making learning 
-              engaging and accessible. Your premium subscription directly supports the development and 
-              helps continue improving the platform, adding new features, and keeping the lights on!
+              Study Quest is built by a passionate independent developer who believes in making
+              learning engaging and accessible. Your premium subscription directly supports the
+              development and helps continue improving the platform, adding new features, and
+              keeping the lights on!
             </p>
             <div className="grid md:grid-cols-3 gap-6 text-sm">
               <div className="flex items-center justify-center space-x-2">
