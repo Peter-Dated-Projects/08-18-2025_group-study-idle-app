@@ -80,7 +80,6 @@ function GardenPageContent() {
   const [isClicking, setIsClicking] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [pixiApp, setPixiApp] = useState<PIXI.Application | undefined>(undefined); // PIXI.js Application state
-  const [showTestButton, setShowTestButton] = useState(true);
 
   // Shop modal opener function
   const [shopOpenerRef, setShopOpenerRef] = useState<(() => void) | null>(null);
@@ -267,11 +266,6 @@ function GardenPageContent() {
     }
   }, [isAuthenticated, user, isLoading, startTutorial]);
 
-  // Handler for manual tutorial trigger (test button)
-  const handleStartTutorial = () => {
-    startTutorial(phase2And3TestTutorial);
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen text-3xl text-gray-800">
@@ -304,37 +298,6 @@ function GardenPageContent() {
       onMouseUp={() => setIsClicking(false)}
       onMouseLeave={() => setIsClicking(false)}
     >
-      {/* Tutorial Test Button - DEV ONLY */}
-      {showTestButton && (
-        <button
-          onClick={handleStartTutorial}
-          style={{
-            position: "absolute",
-            top: "20px",
-            right: "20px",
-            zIndex: 9999,
-            padding: "10px 20px",
-            backgroundColor: PANELFILL,
-            border: `3px solid ${BORDERLINE}`,
-            borderRadius: "8px",
-            color: FONTCOLOR,
-            fontWeight: "bold",
-            cursor: "pointer",
-            fontSize: "14px",
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.2)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = BORDERFILL;
-            e.currentTarget.style.transform = "scale(1.05)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = PANELFILL;
-            e.currentTarget.style.transform = "scale(1)";
-          }}
-        >
-          🎓 Test Tutorial
-        </button>
-      )}
       {/* <ReduxTest /> */}
       <div className="w-full h-full" style={{ border: `8px solid ${BORDERFILL}` }}>
         <div
