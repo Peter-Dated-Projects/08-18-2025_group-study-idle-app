@@ -92,7 +92,6 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
     const cleanup = onPomoBankEvent((event) => {
       // Only update if this event is for the current user
       if (event.user_id === user.userId) {
-
         dispatch(updateBalance(event.new_balance));
         dispatch(setError(null)); // Clear any previous errors since we got a successful update
       }
@@ -124,23 +123,18 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
       }}
     >
       {/* Coin Icon */}
-      <i
-        className="fi fi-sr-coins text-xl flex items-center"
-        style={{ color: ACCENT_COLOR }}
-      />
+      <i className="fi fi-sr-coins text-xl flex items-center" style={{ color: ACCENT_COLOR }} />
 
       {/* Balance Display */}
       <div className="flex-1 min-w-0">
         {isLoading ? (
           <span style={{ color: SECONDARY_TEXT }}>...</span>
         ) : error ? (
-          <span className="text-xs" style={{ color: "#ff6b6b" }}>Error</span>
+          <span className="text-xs" style={{ color: "#ff6b6b" }}>
+            Error
+          </span>
         ) : (
-          <span
-            className="font-bold"
-            style={{ color: FONTCOLOR }}
-            title={`${balance} pomo coins`}
-          >
+          <span className="font-bold" style={{ color: FONTCOLOR }} title={`${balance} pomo coins`}>
             {formatBalance(balance || 0)}
           </span>
         )}

@@ -228,7 +228,11 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
         {/* Group Count Display */}
         <div
           className="p-3 rounded-md text-sm"
-          style={{ backgroundColor: BORDERFILL, border: `1px solid ${BORDERLINE}`, color: FONTCOLOR }}
+          style={{
+            backgroundColor: BORDERFILL,
+            border: `1px solid ${BORDERLINE}`,
+            color: FONTCOLOR,
+          }}
         >
           <strong>Groups: {groups.length}/5</strong> (Maximum 5 groups per user)
         </div>
@@ -348,11 +352,7 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
         <div>
           <h3 className="m-0 mb-4 text-base" style={{ color: FONTCOLOR }}>
             Your Groups ({groups.length})
-            {groupsLoading && (
-              <span className="text-xs text-[#999] ml-2.5">
-                Refreshing...
-              </span>
-            )}
+            {groupsLoading && <span className="text-xs text-[#999] ml-2.5">Refreshing...</span>}
           </h3>
 
           {groupsLoading && groups.length === 0 ? (
@@ -386,10 +386,7 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
                   style={{ backgroundColor: BORDERFILL, border: `1px solid ${BORDERLINE}` }}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <h4
-                      className="m-0 text-sm font-bold"
-                      style={{ color: FONTCOLOR }}
-                    >
+                    <h4 className="m-0 text-sm font-bold" style={{ color: FONTCOLOR }}>
                       {group.group_name}
                     </h4>
                     {group.creator_id === user.userId && (
@@ -416,7 +413,9 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
                             <div key={memberId} className="mb-0.5">
                               • {getDisplayName(memberId)}
                               {memberId === user?.userId && (
-                                <span className="ml-1.5" style={{ color: "#4CAF50" }}>(You)</span>
+                                <span className="ml-1.5" style={{ color: "#4CAF50" }}>
+                                  (You)
+                                </span>
                               )}
                             </div>
                           ))}
