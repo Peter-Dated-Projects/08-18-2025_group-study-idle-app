@@ -3,7 +3,6 @@ import {
   BaseModal,
   CachedProfilePicture,
   FormGroup,
-  TextInput,
   InfoDisplay,
   Button,
   MessageDisplay,
@@ -11,9 +10,10 @@ import {
   uploadProfilePicture,
   removeUserProfilePicture,
   updateUserProfilePicture,
+  useCopyToClipboard,
 } from "../../common";
-import { FaUser, FaSave, FaTimes, FaUpload, FaTrash } from "react-icons/fa";
-import { FONTCOLOR, SUCCESS_COLOR, ERROR_COLOR } from "../../constants";
+import { FaUser, FaUpload, FaTrash, FaTimes } from "react-icons/fa";
+import { SUCCESS_COLOR, ERROR_COLOR } from "../../constants";
 import { useAppDispatch } from "@/store/hooks";
 import { fetchProfilePicture } from "@/store/slices/profilePicturesSlice";
 
@@ -37,11 +37,9 @@ export default function EditProfileModal({
 }: EditProfileModalProps) {
   const dispatch = useAppDispatch();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { copyMessage, copyToClipboard } = useCopyToClipboard();
 
   // State management
-  const [editableName, setEditableName] = useState(
-    user.given_name && user.family_name ? `${user.given_name} ${user.family_name}` : ""
-  );
   const [message, setMessage] = useState<Message | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
@@ -49,12 +47,6 @@ export default function EditProfileModal({
   const showMessage = (text: string, type: "success" | "error") => {
     setMessage({ text, type });
     setTimeout(() => setMessage(null), 5000);
-  };
-
-  const handleSave = () => {
-    // Profile picture changes are saved immediately when uploaded/removed
-    // Just close the modal
-    onClose();
   };
 
   const handleUploadClick = () => {
@@ -228,26 +220,42 @@ export default function EditProfileModal({
 
         {/* User Information */}
         <FormGroup>
-          {/* Name - Editable */}
-          <div>
-            <label
-              style={{ display: "block", marginBottom: "5px", color: FONTCOLOR, fontSize: "14px" }}
-            >
-              Name
-            </label>
-            <TextInput
-              value={editableName}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditableName(e.target.value)}
-              placeholder="Enter your name"
-              style={{ width: "100%" }}
-            />
-          </div>
+          {/* Name - Non-editable */}
+          <InfoDisplay
+            label="Name"
+            value={
+              user.given_name && user.family_name
+                ? `${user.given_name} ${user.family_name}`
+                : "Not specified"
+            }
+          />
 
           {/* Email - Non-editable */}
           <InfoDisplay label="Email" value={user.email || "Not specified"} />
 
           {/* User ID - Non-editable */}
-          <InfoDisplay label="User ID" value={userId || "Not specified"} copyable={true} />
+          <InfoDisplay
+            label="User ID"
+            value={userId || "Not specified"}
+            copyable={true}
+            onCopy={() => copyToClipboard(userId || "")}
+            truncateLength={24}
+            nonSelectable={true}
+          />
+
+          {/* Copy Message */}
+          {copyMessage && (
+            <div
+              style={{
+                textAlign: "center",
+                fontSize: "14px",
+                color: "#5cb370",
+                fontWeight: "bold",
+              }}
+            >
+              {copyMessage}
+            </div>
+          )}
         </FormGroup>
 
         {/* Action Buttons */}
@@ -255,26 +263,12 @@ export default function EditProfileModal({
           style={{
             marginTop: "30px",
             display: "flex",
-            gap: "15px",
             justifyContent: "center",
-            flexWrap: "wrap",
           }}
         >
-          <Button
-            onClick={handleSave}
-            variant="primary"
-            style={{ minWidth: "120px", backgroundColor: SUCCESS_COLOR }}
-          >
-            <FaSave />
-            Done
-          </Button>
-          <Button
-            onClick={onClose}
-            variant="secondary"
-            style={{ minWidth: "120px", backgroundColor: ERROR_COLOR }}
-          >
+          <Button onClick={onClose} variant="primary" style={{ minWidth: "120px" }}>
             <FaTimes />
-            Cancel
+            Close
           </Button>
         </div>
       </div>

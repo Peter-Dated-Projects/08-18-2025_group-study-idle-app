@@ -75,9 +75,23 @@ interface InfoDisplayProps {
   value: string;
   copyable?: boolean;
   onCopy?: () => void;
+  truncateLength?: number; // Number of characters to show before truncation
+  nonSelectable?: boolean; // Disable text selection
 }
 
-export function InfoDisplay({ label, value, copyable = false, onCopy }: InfoDisplayProps) {
+export function InfoDisplay({
+  label,
+  value,
+  copyable = false,
+  onCopy,
+  truncateLength,
+  nonSelectable = false,
+}: InfoDisplayProps) {
+  const displayValue =
+    truncateLength && value.length > truncateLength
+      ? value.substring(0, truncateLength) + "..."
+      : value;
+
   return (
     <div>
       <label style={commonStyles.label}>{label}:</label>
@@ -85,11 +99,14 @@ export function InfoDisplay({ label, value, copyable = false, onCopy }: InfoDisp
         style={{
           ...commonStyles.infoDisplay,
           cursor: copyable ? "pointer" : "default",
+          userSelect: nonSelectable ? "none" : "auto",
+          WebkitUserSelect: nonSelectable ? "none" : "auto",
+          MozUserSelect: nonSelectable ? "none" : "auto",
         }}
         onClick={copyable ? onCopy : undefined}
         title={copyable ? "Click to copy" : undefined}
       >
-        {value}
+        {displayValue}
       </div>
     </div>
   );

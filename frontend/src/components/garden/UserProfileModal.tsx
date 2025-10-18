@@ -8,7 +8,6 @@ import {
   InfoDisplay,
   MessageDisplay,
   User,
-  Button,
 } from "../common";
 import { FaUser, FaEdit } from "react-icons/fa";
 import { BORDERFILL, BORDERLINE } from "../constants";
@@ -32,10 +31,6 @@ export default function UserProfile({ isVisible, onClose, user }: UserProfilePro
     useReduxSubscriptionReadOnly();
 
   if (!isVisible) return null;
-
-  const handleEditProfileClick = () => {
-    setShowEditProfile(true);
-  };
 
   const handleProfilePictureClick = () => {
     setShowEditProfile(true);
@@ -147,6 +142,8 @@ export default function UserProfile({ isVisible, onClose, user }: UserProfilePro
               value={user.id || user.userId || ""}
               copyable={true}
               onCopy={() => copyToClipboard(user.id || user.userId || "")}
+              truncateLength={24}
+              nonSelectable={true}
             />
 
             {/* Copy Message */}
@@ -163,26 +160,6 @@ export default function UserProfile({ isVisible, onClose, user }: UserProfilePro
               </div>
             )}
           </FormGroup>
-
-          {/* Edit Profile Button */}
-          <div style={{ marginTop: "20px", display: "flex", justifyContent: "center" }}>
-            <Button
-              onClick={handleEditProfileClick}
-              variant="secondary"
-              style={{
-                width: "100%",
-                maxWidth: "200px",
-                padding: "8px 16px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-              }}
-            >
-              <FaEdit />
-              Edit Profile
-            </Button>
-          </div>
         </div>
       </BaseModal>
 
