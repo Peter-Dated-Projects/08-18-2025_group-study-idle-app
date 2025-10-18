@@ -209,7 +209,6 @@ function GardenPageContent() {
   // Initialize plots when user is authenticated
   useEffect(() => {
     if (isAuthenticated && user?.userId && !isLoading) {
-
       // Clear all cached data to ensure we get fresh data from PostgreSQL database
 
       clearLevelConfigCache();
@@ -220,12 +219,10 @@ function GardenPageContent() {
       // Dispatch both calls to ensure they complete before UI calculates inventory
       const initializeData = async () => {
         try {
-
           await Promise.all([
             dispatch(initializePlotsFromConfig(user.userId)),
             dispatch(fetchStructureInventory(user.userId)),
           ]);
-
         } catch (error) {
           console.error("❌ Error loading initial data:", error);
         }
@@ -249,37 +246,17 @@ function GardenPageContent() {
     }
   }, [isLoading, isAuthenticated, user, error, router, addNotification]);
 
-  // Show loading while checking auth
   if (isLoading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100vh",
-          fontSize: "2rem",
-          color: "#333",
-        }}
-      >
+      <div className="flex items-center justify-center h-screen text-3xl text-gray-800">
         Loading garden...
       </div>
     );
   }
 
-  // Don't render the garden if not properly authenticated
   if (!isAuthenticated || !user || !user.hasNotionTokens) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100vh",
-          fontSize: "2rem",
-          color: "#333",
-        }}
-      >
+      <div className="flex items-center justify-center h-screen text-3xl text-gray-800">
         Redirecting to login...
       </div>
     );
@@ -316,7 +293,6 @@ function GardenPageContent() {
           >
             <GardenCanvas
               onAppCreated={(app) => {
-
                 setPixiApp(app);
               }}
               userId={user?.userId} // Pass the real user ID to the canvas
@@ -340,13 +316,11 @@ function GardenPageContent() {
             style={{ border: `5px solid ${BORDERLINE}`, backgroundColor: BORDERFILL }}
           >
             <div
+              className="p-2.5 flex flex-col"
               style={{
                 height: isMinimized ? "calc(100% - 40px)" : `${panelSplit}%`,
                 minHeight: 100,
-                padding: "10px",
                 backgroundColor: PANELFILL,
-                display: "flex",
-                flexDirection: "column",
               }}
             >
               <GardenTasks />
@@ -355,14 +329,9 @@ function GardenPageContent() {
             {/* Draggable divider - only show when not minimized */}
             {!isMinimized && (
               <div
+                className="h-2.5 cursor-ns-resize relative flex items-center justify-center"
                 style={{
-                  height: "10px",
                   backgroundColor: isDragging ? FONTCOLOR : BORDERLINE,
-                  cursor: "ns-resize",
-                  position: "relative",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
                   borderTop: `2px solid ${BORDERFILL}`,
                   borderBottom: `2px solid ${BORDERFILL}`,
                   transition: isDragging ? "none" : "background-color 0.2s ease",
@@ -380,14 +349,10 @@ function GardenPageContent() {
                   }
                 }}
               >
-                {/* Drag handle indicator */}
                 <div
+                  className="w-7 h-1 rounded opacity-80"
                   style={{
-                    width: "30px",
-                    height: "3px",
                     backgroundColor: BORDERFILL,
-                    borderRadius: "2px",
-                    opacity: 0.8,
                     boxShadow: isDragging ? `0 0 5px ${BORDERFILL}` : "none",
                   }}
                 />
@@ -396,12 +361,10 @@ function GardenPageContent() {
 
             {!isMinimized ? (
               <div
+                className="flex flex-col overflow-hidden"
                 style={{
                   height: `${100 - panelSplit}%`,
                   backgroundColor: PANELFILL,
-                  display: "flex",
-                  flexDirection: "column",
-                  overflow: "hidden",
                 }}
               >
                 <MinimizableToolsPanel
@@ -417,8 +380,8 @@ function GardenPageContent() {
               </div>
             ) : (
               <div
+                className="h-10"
                 style={{
-                  height: "40px",
                   backgroundColor: PANELFILL,
                   borderTop: `5px solid ${BORDERLINE}`,
                 }}

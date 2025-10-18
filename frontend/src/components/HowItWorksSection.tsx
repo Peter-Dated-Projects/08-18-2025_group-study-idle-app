@@ -12,8 +12,7 @@ const HowItWorksSection: React.FC<HowItWorksSectionProps> = ({ onButtonClick }) 
     {
       step: 1,
       title: "Begin Your Quest",
-      description:
-        "Start studying with our focus timer and watch your virtual world come to life.",
+      description: "Start studying with our focus timer and watch your virtual world come to life.",
       icon: "🎮",
       gif: getGifByCategory("study"),
       color: "from-green-500 to-emerald-600",
@@ -72,9 +71,7 @@ const HowItWorksSection: React.FC<HowItWorksSectionProps> = ({ onButtonClick }) 
               {/* Content */}
               <div className="flex-1 w-full space-y-6">
                 <div className="flex items-center space-x-4">
-                  <div
-                    className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg"
-                  >
+                  <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg">
                     {step.step}
                   </div>
                 </div>
@@ -159,7 +156,7 @@ const HowItWorksSection: React.FC<HowItWorksSectionProps> = ({ onButtonClick }) 
               <div className="flex-1 w-full">
                 <div className="relative w-full">
                   {/* Main card */}
-                <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200 w-full">
+                  <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200 w-full">
                     <div className="aspect-video bg-gray-100">
                       <img
                         src={step.gif}
@@ -177,7 +174,6 @@ const HowItWorksSection: React.FC<HowItWorksSectionProps> = ({ onButtonClick }) 
                       </p>
                     </div>
                   </div>
-
                 </div>
               </div>
             </div>
@@ -186,7 +182,7 @@ const HowItWorksSection: React.FC<HowItWorksSectionProps> = ({ onButtonClick }) 
 
         {/* Call to action */}
         <div className="text-center mt-16">
-          <button 
+          <button
             onClick={onButtonClick}
             className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
           >

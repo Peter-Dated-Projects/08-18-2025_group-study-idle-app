@@ -37,23 +37,10 @@ interface LoadingOverlayProps {
 
 export function LoadingOverlay({ isLoading, children }: LoadingOverlayProps) {
   return (
-    <div style={{ position: "relative" }}>
+    <div className="relative">
       {children}
       {isLoading && (
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.1)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-        >
+        <div className="absolute inset-0 bg-black/10 flex items-center justify-center z-[1000]">
           <LoadingSpinner size="30px" />
         </div>
       )}
