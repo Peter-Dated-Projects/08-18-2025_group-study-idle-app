@@ -70,47 +70,32 @@ export default function BaseModal({
   return (
     <div style={overlayStyle} onClick={onClose}>
       <div
+        className={`rounded-lg flex flex-col overflow-hidden ${className}`}
         style={{
           backgroundColor: PANELFILL,
           border: `3px solid ${BORDERLINE}`,
-          borderRadius: "8px",
           width: modalWidth,
           maxHeight: modalMaxHeight,
           height: constrainToCanvas ? "80%" : "auto",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
         }}
-        className={className}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         {showHeader && (
           <div
+            className="px-5 py-4 flex items-center justify-between"
             style={{
               backgroundColor: BORDERFILL,
               borderBottom: `2px solid ${BORDERLINE}`,
-              padding: "15px 20px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div className="flex items-center gap-2.5">
               {icon && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    fontSize: "18px",
-                    color: FONTCOLOR,
-                  }}
-                >
+                <div className="flex items-center text-lg" style={{ color: FONTCOLOR }}>
                   {icon}
                 </div>
               )}
               {title && (
-                <h2 style={{ color: FONTCOLOR, margin: 0, fontSize: "18px", fontWeight: "bold" }}>
+                <h2 className="m-0 text-lg font-bold" style={{ color: FONTCOLOR }}>
                   {title}
                 </h2>
               )}
@@ -119,14 +104,9 @@ export default function BaseModal({
             {showCloseButton && (
               <button
                 onClick={onClose}
+                className="bg-none border-none text-xl cursor-pointer p-1 rounded"
                 style={{
-                  background: "none",
-                  border: "none",
                   color: FONTCOLOR,
-                  fontSize: "20px",
-                  cursor: "pointer",
-                  padding: "5px",
-                  borderRadius: "4px",
                   backgroundColor: BORDERLINE,
                 }}
               >
@@ -136,22 +116,13 @@ export default function BaseModal({
           </div>
         )}
 
-        {/* Content */}
-        <div
-          style={{
-            flex: 1,
-            overflow: "auto",
-          }}
-        >
-          {children}
-        </div>
+        <div className="flex-1 overflow-auto">{children}</div>
 
-        {/* Footer */}
         {footerContent && (
           <div
+            className="px-5 py-4"
             style={{
               borderTop: `2px solid ${BORDERLINE}`,
-              padding: "15px 20px",
               backgroundColor: BORDERFILL,
             }}
           >

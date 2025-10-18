@@ -60,29 +60,14 @@ export default function GardenSettings() {
   // ---------------------------------------------------------------------- //
   // Settings Icon
   const settingsIcon = (
-    <div
-      style={{
-        position: "absolute",
-        bottom: "15px",
-        right: "15px",
-        zIndex: 100,
-      }}
-    >
+    <div className="absolute bottom-[15px] right-[15px] z-[100]">
       <button
         onClick={() => setSettingsActive(true)}
+        className="w-[50px] h-[50px] rounded-lg flex items-center justify-center cursor-pointer text-xl transition-all"
         style={{
-          width: "50px",
-          height: "50px",
           backgroundColor: BORDERFILL,
           border: `3px solid ${BORDERLINE}`,
-          borderRadius: "8px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          fontSize: "20px",
           color: FONTCOLOR,
-          transition: "all 0.2s ease",
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.backgroundColor = HOVER_COLOR;

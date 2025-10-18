@@ -196,7 +196,7 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
         constrainToCanvas={true}
         zIndex={2000}
       >
-        <div style={{ padding: "20px", textAlign: "center", color: FONTCOLOR }}>
+        <div className="p-5 text-center" style={{ color: FONTCOLOR }}>
           Please log in to access groups.
         </div>
       </BaseModal>
@@ -217,42 +217,24 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
       {/* Message Display */}
       {message && (
         <div
-          style={{
-            padding: "8px 12px",
-            backgroundColor: messageType === "success" ? "#4CAF50" : "#f44336",
-            color: "white",
-            fontSize: "12px",
-            textAlign: "center",
-          }}
+          className="py-2 px-3 text-white text-xs text-center"
+          style={{ backgroundColor: messageType === "success" ? "#4CAF50" : "#f44336" }}
         >
           {message}
         </div>
       )}
 
-      <div
-        style={{
-          padding: "20px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "15px",
-        }}
-      >
+      <div className="p-5 flex flex-col gap-4">
         {/* Group Count Display */}
         <div
-          style={{
-            padding: "12px",
-            backgroundColor: BORDERFILL,
-            border: `1px solid ${BORDERLINE}`,
-            borderRadius: "6px",
-            color: FONTCOLOR,
-            fontSize: "14px",
-          }}
+          className="p-3 rounded-md text-sm"
+          style={{ backgroundColor: BORDERFILL, border: `1px solid ${BORDERLINE}`, color: FONTCOLOR }}
         >
           <strong>Groups: {groups.length}/5</strong> (Maximum 5 groups per user)
         </div>
 
         {/* Action Buttons */}
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div className="flex gap-2.5">
           <button
             onClick={() => {
               if (showCreateForm) {
@@ -263,16 +245,10 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
               }
             }}
             disabled={loading || groups.length >= 5}
+            className="flex-1 p-2.5 text-white border-none rounded text-xs font-bold"
             style={{
-              flex: 1,
-              padding: "10px",
               backgroundColor: groups.length >= 5 ? "#666" : "#4CAF50",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
               cursor: groups.length >= 5 ? "not-allowed" : "pointer",
-              fontSize: "12px",
-              fontWeight: "bold",
             }}
           >
             {showCreateForm ? "Cancel" : "Create Group"}
@@ -288,16 +264,10 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
               }
             }}
             disabled={loading || groups.length >= 5}
+            className="flex-1 p-2.5 text-white border-none rounded text-xs font-bold"
             style={{
-              flex: 1,
-              padding: "10px",
               backgroundColor: groups.length >= 5 ? "#666" : "#2196F3",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
               cursor: groups.length >= 5 ? "not-allowed" : "pointer",
-              fontSize: "12px",
-              fontWeight: "bold",
             }}
           >
             {showJoinForm ? "Cancel" : "Join Group"}
@@ -307,14 +277,10 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
         {/* Create Group Form */}
         {showCreateForm && (
           <div
-            style={{
-              padding: "15px",
-              backgroundColor: BORDERFILL,
-              border: `1px solid ${BORDERLINE}`,
-              borderRadius: "6px",
-            }}
+            className="p-4 rounded-md"
+            style={{ backgroundColor: BORDERFILL, border: `1px solid ${BORDERLINE}` }}
           >
-            <h3 style={{ margin: "0 0 10px 0", color: FONTCOLOR, fontSize: "14px" }}>
+            <h3 className="m-0 mb-2.5 text-sm" style={{ color: FONTCOLOR }}>
               Create New Group
             </h3>
             <input
@@ -322,29 +288,20 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}
               placeholder="Enter group name"
+              className="w-full p-2 rounded text-xs mb-2.5"
               style={{
-                width: "100%",
-                padding: "8px",
                 border: `1px solid ${BORDERLINE}`,
-                borderRadius: "4px",
                 backgroundColor: PANELFILL,
                 color: FONTCOLOR,
-                fontSize: "12px",
-                marginBottom: "10px",
               }}
             />
             <button
               onClick={createGroup}
               disabled={loading || !newGroupName.trim()}
+              className="py-2 px-4 text-white border-none rounded text-xs font-bold"
               style={{
-                padding: "8px 16px",
                 backgroundColor: "#4CAF50",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
                 cursor: loading ? "not-allowed" : "pointer",
-                fontSize: "12px",
-                fontWeight: "bold",
               }}
             >
               {loading ? "Creating..." : "Create"}
@@ -355,14 +312,10 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
         {/* Join Group Form */}
         {showJoinForm && (
           <div
-            style={{
-              padding: "15px",
-              backgroundColor: BORDERFILL,
-              border: `1px solid ${BORDERLINE}`,
-              borderRadius: "6px",
-            }}
+            className="p-4 rounded-md"
+            style={{ backgroundColor: BORDERFILL, border: `1px solid ${BORDERLINE}` }}
           >
-            <h3 style={{ margin: "0 0 10px 0", color: FONTCOLOR, fontSize: "14px" }}>
+            <h3 className="m-0 mb-2.5 text-sm" style={{ color: FONTCOLOR }}>
               Join Existing Group
             </h3>
             <input
@@ -370,29 +323,20 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
               value={joinGroupId}
               onChange={(e) => setJoinGroupId(e.target.value)}
               placeholder="Enter 16-character group ID"
+              className="w-full p-2 rounded text-xs mb-2.5"
               style={{
-                width: "100%",
-                padding: "8px",
                 border: `1px solid ${BORDERLINE}`,
-                borderRadius: "4px",
                 backgroundColor: PANELFILL,
                 color: FONTCOLOR,
-                fontSize: "12px",
-                marginBottom: "10px",
               }}
             />
             <button
               onClick={joinGroup}
               disabled={loading || !joinGroupId.trim()}
+              className="py-2 px-4 text-white border-none rounded text-xs font-bold"
               style={{
-                padding: "8px 16px",
                 backgroundColor: "#2196F3",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
                 cursor: loading ? "not-allowed" : "pointer",
-                fontSize: "12px",
-                fontWeight: "bold",
               }}
             >
               {loading ? "Joining..." : "Join"}
@@ -402,10 +346,10 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
 
         {/* Groups List */}
         <div>
-          <h3 style={{ margin: "0 0 15px 0", color: FONTCOLOR, fontSize: "16px" }}>
+          <h3 className="m-0 mb-4 text-base" style={{ color: FONTCOLOR }}>
             Your Groups ({groups.length})
             {groupsLoading && (
-              <span style={{ fontSize: "12px", color: "#999", marginLeft: "10px" }}>
+              <span className="text-xs text-[#999] ml-2.5">
                 Refreshing...
               </span>
             )}
@@ -413,98 +357,71 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
 
           {groupsLoading && groups.length === 0 ? (
             <div
+              className="p-5 text-center rounded-md text-xs"
               style={{
-                padding: "20px",
-                textAlign: "center",
                 color: FONTCOLOR,
                 backgroundColor: BORDERFILL,
                 border: `1px solid ${BORDERLINE}`,
-                borderRadius: "6px",
-                fontSize: "12px",
               }}
             >
               Loading your groups...
             </div>
           ) : groups.length === 0 ? (
             <div
+              className="p-5 text-center rounded-md text-xs"
               style={{
-                padding: "20px",
-                textAlign: "center",
                 color: FONTCOLOR,
                 backgroundColor: BORDERFILL,
                 border: `1px solid ${BORDERLINE}`,
-                borderRadius: "6px",
-                fontSize: "12px",
               }}
             >
               You haven&apos;t joined any groups yet. Create or join a group to get started!
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div className="flex flex-col gap-2.5">
               {groups.map((group) => (
                 <div
                   key={group.group_id}
-                  style={{
-                    padding: "12px",
-                    backgroundColor: BORDERFILL,
-                    border: `1px solid ${BORDERLINE}`,
-                    borderRadius: "6px",
-                  }}
+                  className="p-3 rounded-md"
+                  style={{ backgroundColor: BORDERFILL, border: `1px solid ${BORDERLINE}` }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      marginBottom: "8px",
-                    }}
-                  >
+                  <div className="flex items-center justify-between mb-2">
                     <h4
-                      style={{
-                        margin: 0,
-                        color: FONTCOLOR,
-                        fontSize: "14px",
-                        fontWeight: "bold",
-                      }}
+                      className="m-0 text-sm font-bold"
+                      style={{ color: FONTCOLOR }}
                     >
                       {group.group_name}
                     </h4>
                     {group.creator_id === user.userId && (
                       <span
-                        style={{
-                          fontSize: "10px",
-                          backgroundColor: "#4CAF50",
-                          color: "white",
-                          padding: "2px 6px",
-                          borderRadius: "3px",
-                          fontWeight: "bold",
-                        }}
+                        className="text-[10px] text-white py-0.5 px-1.5 rounded-sm font-bold"
+                        style={{ backgroundColor: "#4CAF50" }}
                       >
                         Leader
                       </span>
                     )}
                   </div>
 
-                  <div style={{ fontSize: "11px", color: FONTCOLOR, marginBottom: "8px" }}>
+                  <div className="text-[11px] mb-2" style={{ color: FONTCOLOR }}>
                     <div key={`${group.group_id}-id`}>
                       <strong>Group ID:</strong> {group.group_id}
                     </div>
                     <div key={`${group.group_id}-members`}>
                       <strong>Members ({group.member_ids.length}):</strong>
                       {usersLoading ? (
-                        <span style={{ marginLeft: "5px", opacity: 0.7 }}>Loading names...</span>
+                        <span className="ml-1.5 opacity-70">Loading names...</span>
                       ) : (
-                        <div style={{ marginTop: "4px", marginLeft: "10px" }}>
+                        <div className="mt-1 ml-2.5">
                           {group.member_ids.slice(0, 5).map((memberId, index) => (
-                            <div key={memberId} style={{ marginBottom: "2px" }}>
+                            <div key={memberId} className="mb-0.5">
                               • {getDisplayName(memberId)}
                               {memberId === user?.userId && (
-                                <span style={{ color: "#4CAF50", marginLeft: "5px" }}>(You)</span>
+                                <span className="ml-1.5" style={{ color: "#4CAF50" }}>(You)</span>
                               )}
                             </div>
                           ))}
                           {group.member_ids.length > 5 && (
-                            <div style={{ marginTop: "2px", fontStyle: "italic", opacity: 0.7 }}>
+                            <div className="mt-0.5 italic opacity-70">
                               ... and {group.member_ids.length - 5} more
                             </div>
                           )}
@@ -516,19 +433,14 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", gap: "8px" }}>
+                  <div className="flex gap-2">
                     <button
                       onClick={() => navigator.clipboard.writeText(group.group_id)}
+                      className="flex-1 py-1.5 px-2 rounded cursor-pointer text-[11px] font-bold"
                       style={{
-                        flex: 1,
-                        padding: "6px 8px",
                         border: `1px solid ${BORDERLINE}`,
-                        borderRadius: "4px",
                         backgroundColor: PANELFILL,
                         color: FONTCOLOR,
-                        cursor: "pointer",
-                        fontSize: "11px",
-                        fontWeight: "bold",
                       }}
                     >
                       Copy ID
@@ -537,16 +449,11 @@ export default function GroupsModal({ isVisible, onClose }: GroupsModalProps) {
                     <button
                       onClick={() => leaveGroup(group.group_id)}
                       disabled={loading}
+                      className="flex-1 py-1.5 px-2 rounded text-white text-[11px] font-bold"
                       style={{
-                        flex: 1,
-                        padding: "6px 8px",
                         border: `1px solid #f44336`,
-                        borderRadius: "4px",
                         backgroundColor: "#f44336",
-                        color: "white",
                         cursor: loading ? "not-allowed" : "pointer",
-                        fontSize: "11px",
-                        fontWeight: "bold",
                       }}
                     >
                       Leave

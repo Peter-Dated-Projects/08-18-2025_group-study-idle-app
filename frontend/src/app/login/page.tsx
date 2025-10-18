@@ -121,7 +121,6 @@ export default function LoginPage() {
       if (!data.success || !data.hasValidTokens) {
         setIsNotionConnected(false);
         if (!justAuth) {
-
           setError("Failed to confirm Notion auth. Please try reconnecting.");
           return;
         }
@@ -227,7 +226,6 @@ export default function LoginPage() {
     }
   };
 
-  // Show loading screen while checking authentication
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-gray-700 text-3xl tracking-wide">
@@ -238,7 +236,6 @@ export default function LoginPage() {
 
   let stepContent;
   if (!isGoogleSignedIn) {
-    // Step 1: Google Authentication
     stepContent = (
       <div className="text-center p-5">
         <h2 className="mb-5 text-2xl text-gray-700">Step 1: Sign in with Google</h2>
@@ -285,7 +282,6 @@ export default function LoginPage() {
       </div>
     );
   } else if (!isNotionConnected) {
-    // Step 2: Notion Authentication
     stepContent = (
       <div className="text-center p-10 pb-15">
         <h2 className="mb-5 text-2xl text-gray-700">Step 2: Connect to Notion</h2>
@@ -313,7 +309,6 @@ export default function LoginPage() {
       </div>
     );
   } else {
-    // Step 3: Database Selection
     stepContent = (
       <div className="text-center p-5">
         <h2 className="mb-5 text-2xl text-gray-700">Step 3: Sync Sessions Database with Notion</h2>

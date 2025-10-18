@@ -13,26 +13,15 @@ export default function RightPanel() {
   if (isMinimized) {
     return (
       <div
-        className={`w-3/10 flex flex-col h-full`}
-        style={{
-          border: `5px solid ${BORDERLINE}`,
-          backgroundColor: BORDERFILL,
-          minWidth: "60px",
-          maxWidth: "60px",
-        }}
+        className="w-3/10 flex flex-col h-full min-w-[60px] max-w-[60px]"
+        style={{ border: `5px solid ${BORDERLINE}`, backgroundColor: BORDERFILL }}
       >
         <div
+          className="flex items-center justify-center h-full cursor-pointer transition-all relative"
           style={{
             writingMode: "vertical-rl",
             textOrientation: "mixed",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100%",
             backgroundColor: PANELFILL,
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-            position: "relative",
           }}
           onClick={toggleMinimized}
           onMouseEnter={(e) => {
@@ -42,32 +31,12 @@ export default function RightPanel() {
             e.currentTarget.style.backgroundColor = PANELFILL;
           }}
         >
-          <span
-            style={{
-              color: FONTCOLOR,
-              fontSize: "14px",
-              fontWeight: "bold",
-              userSelect: "none",
-            }}
-          >
+          <span className="text-sm font-bold select-none" style={{ color: FONTCOLOR }}>
             Tasks & Tools
           </span>
           <button
-            style={{
-              position: "absolute",
-              top: "10px",
-              right: "10px",
-              background: "none",
-              border: "none",
-              color: FONTCOLOR,
-              fontSize: "16px",
-              cursor: "pointer",
-              padding: "2px 4px",
-              borderRadius: "2px",
-              backgroundColor: BORDERFILL,
-              transition: "all 0.2s ease",
-              transform: "rotate(90deg)",
-            }}
+            className="absolute top-2.5 right-2.5 bg-none border-none text-base cursor-pointer p-0.5 px-1 rounded-sm transition-all rotate-90"
+            style={{ color: FONTCOLOR, backgroundColor: BORDERFILL }}
             onClick={(e) => {
               e.stopPropagation();
               toggleMinimized();
@@ -88,43 +57,24 @@ export default function RightPanel() {
 
   return (
     <div
-      className={`w-3/10 flex flex-col h-full gap-[10px]`}
+      className="w-3/10 flex flex-col h-full gap-[10px]"
       style={{ border: `5px solid ${BORDERLINE}`, backgroundColor: BORDERFILL }}
     >
       {/* Header with minimize button */}
       <div
+        className="flex items-center justify-between py-1.5 px-2.5 min-h-[30px]"
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "5px 10px",
           backgroundColor: BORDERFILL,
           borderBottom: `2px solid ${BORDERLINE}`,
-          minHeight: "30px",
         }}
       >
-        <span
-          style={{
-            color: FONTCOLOR,
-            fontSize: "13px",
-            fontWeight: "bold",
-          }}
-        >
+        <span className="text-[13px] font-bold" style={{ color: FONTCOLOR }}>
           Tasks & Tools
         </span>
         <button
           onClick={toggleMinimized}
-          style={{
-            background: "none",
-            border: "none",
-            color: FONTCOLOR,
-            fontSize: "14px",
-            cursor: "pointer",
-            padding: "2px 6px",
-            borderRadius: "2px",
-            backgroundColor: PANELFILL,
-            transition: "all 0.2s ease",
-          }}
+          className="bg-none border-none text-sm cursor-pointer py-0.5 px-1.5 rounded-sm transition-all"
+          style={{ color: FONTCOLOR, backgroundColor: PANELFILL }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = BORDERLINE;
           }}
@@ -138,11 +88,9 @@ export default function RightPanel() {
 
       {/* Tasks Section */}
       <div
-        className="flex-1"
+        className="flex-1 min-h-[100px] p-2.5"
         style={{
           flexBasis: "60%",
-          minHeight: 100,
-          padding: "10px",
           backgroundColor: PANELFILL,
           borderBottom: `5px solid ${BORDERLINE}`,
         }}
@@ -152,11 +100,9 @@ export default function RightPanel() {
 
       {/* Tools Section */}
       <div
-        className="flex-1"
+        className="flex-1 min-h-[100px] p-2.5"
         style={{
           flexBasis: "30%",
-          minHeight: 100,
-          padding: "10px",
           backgroundColor: PANELFILL,
           borderTop: `5px solid ${BORDERLINE}`,
         }}

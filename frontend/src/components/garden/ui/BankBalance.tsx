@@ -114,47 +114,31 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
 
   return (
     <div
-      className={className}
+      className={`${className} ml-0.5 flex items-center gap-2 py-2 px-3 rounded-lg text-sm w-[150px] box-border`}
       style={{
-        marginLeft: "2px",
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        padding: "8px 12px",
         backgroundColor: PANELFILL,
         border: `1px solid ${BORDERLINE}`,
-        borderRadius: "8px",
-        fontSize: "0.9rem",
         fontFamily: BodyFont,
         color: FONTCOLOR,
-        width: "150px", // Fixed width to match avatar
-        boxSizing: "border-box",
         ...style,
       }}
     >
       {/* Coin Icon */}
       <i
-        className="fi fi-sr-coins"
-        style={{
-          fontSize: "1.2rem",
-          color: ACCENT_COLOR,
-          display: "flex",
-          alignItems: "center",
-        }}
+        className="fi fi-sr-coins text-xl flex items-center"
+        style={{ color: ACCENT_COLOR }}
       />
 
       {/* Balance Display */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="flex-1 min-w-0">
         {isLoading ? (
           <span style={{ color: SECONDARY_TEXT }}>...</span>
         ) : error ? (
-          <span style={{ color: "#ff6b6b", fontSize: "0.8rem" }}>Error</span>
+          <span className="text-xs" style={{ color: "#ff6b6b" }}>Error</span>
         ) : (
           <span
-            style={{
-              fontWeight: "bold",
-              color: FONTCOLOR,
-            }}
+            className="font-bold"
+            style={{ color: FONTCOLOR }}
             title={`${balance} pomo coins`}
           >
             {formatBalance(balance || 0)}

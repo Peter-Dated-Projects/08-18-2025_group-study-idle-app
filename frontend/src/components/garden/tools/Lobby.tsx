@@ -136,9 +136,7 @@ export default function Lobby({
   }, []);
 
   // Log WebSocket connection status changes (for debugging only)
-  useEffect(() => {
-
-  }, [isConnected, connectionCount, user?.userId]);
+  useEffect(() => {}, [isConnected, connectionCount, user?.userId]);
 
   // Helper functions to manage localStorage persistence
   const saveLobbyData = (state: LobbyState, data: LobbyData | null) => {
@@ -167,18 +165,14 @@ export default function Lobby({
   // Fetch user information when lobby users change (non-critical)
   useEffect(() => {
     if (lobbyData?.users && lobbyData.users.length > 0) {
-
       fetchUsersInfo(lobbyData.users)
         .then((response) => {
           if (response.success) {
-
             setUsersInfo(response.users);
           } else {
-
           }
         })
         .catch((error) => {
-
           // Don't show error to user - we have fallbacks
         });
     }
@@ -189,17 +183,14 @@ export default function Lobby({
     if (!lobbyData || !user?.userId) return;
 
     const cleanup = onLobbyEvent((event) => {
-
       // Only process events for our current lobby
       if (event.lobby_code !== lobbyData.code) {
-
         return;
       }
 
       switch (event.action) {
         case "join":
           if (event.user_id !== user.userId) {
-
             // Another user joined
             setLobbyData((prevData) => {
               if (!prevData) return prevData;
@@ -209,13 +200,11 @@ export default function Lobby({
               };
             });
           } else {
-
           }
           break;
 
         case "leave":
           if (event.user_id !== user.userId) {
-
             // Another user left
             setLobbyData((prevData) => {
               if (!prevData) return prevData;
@@ -225,19 +214,15 @@ export default function Lobby({
               };
             });
           } else {
-
           }
           break;
 
         case "disband":
-
           // Lobby was disbanded by host
           if (event.user_id !== user.userId) {
             // Show notification that lobby was disbanded
             setError("Lobby was disbanded by the host");
-
           } else {
-
           }
           setLobbyData(null);
           setLobbyState("empty");
@@ -278,7 +263,6 @@ export default function Lobby({
 
         // Check if lobby exists and user is still a member
         if (!statusData.lobby_exists || !statusData.is_member) {
-
           setError("The lobby you were in is no longer available");
           setLobbyData(null);
           setLobbyState("empty");
@@ -288,7 +272,6 @@ export default function Lobby({
 
         // Update lobby data with current state from server
         if (statusData.success) {
-
           setLobbyData({
             code: statusData.code,
             host: statusData.host,
@@ -349,7 +332,6 @@ export default function Lobby({
 
     const checkLobbyHealth = async () => {
       try {
-
         const response = await fetch(`/api/hosting/lobby/${lobbyData.code}/health`, {
           method: "GET",
           headers: {
@@ -361,9 +343,7 @@ export default function Lobby({
 
         if (response.ok) {
           consecutiveFailures = 0;
-
         } else if (response.status === 404 || response.status === 410) {
-
           setError("Lobby has been closed or no longer exists");
           setLobbyData(null);
           setLobbyState("empty");
@@ -380,7 +360,6 @@ export default function Lobby({
 
       // If too many consecutive failures, assume lobby is dead
       if (consecutiveFailures >= maxFailures) {
-
         setError("Lobby connection lost - returning to main page");
         setLobbyData(null);
         setLobbyState("empty");
@@ -402,9 +381,7 @@ export default function Lobby({
   }, [lobbyData, lobbyState]);
 
   const createLobby = async () => {
-
     if (!isAuthenticated || !user) {
-
       setError("Please log in to create a lobby");
       // Redirect to login
       window.location.href = "/login";
@@ -415,7 +392,6 @@ export default function Lobby({
     setError("");
 
     try {
-
       const response = await fetch(`/api/hosting/create`, {
         method: "POST",
         headers: {
@@ -441,7 +417,6 @@ export default function Lobby({
             errorData.detail || errorData.message || "Failed to create lobby. Please try again."
           );
         } catch {
-
           setError("Failed to create lobby. Please try again.");
         }
       }
@@ -456,15 +431,12 @@ export default function Lobby({
   };
 
   const joinLobby = async () => {
-
     if (!joinCode.trim()) {
-
       setError("Please enter a lobby code");
       return;
     }
 
     if (!isAuthenticated || !user) {
-
       setError("Please log in to join a lobby");
       // Redirect to login
       window.location.href = "/login";
@@ -475,7 +447,6 @@ export default function Lobby({
     setError("");
 
     try {
-
       const response = await fetch(`/api/hosting/join`, {
         method: "POST",
         headers: {
@@ -504,7 +475,6 @@ export default function Lobby({
               "Failed to join lobby. Please check the code and try again."
           );
         } catch {
-
           setError("Failed to join lobby. Please check the code and try again.");
         }
       }
@@ -519,7 +489,6 @@ export default function Lobby({
   };
 
   const closeLobby = async () => {
-
     if (!lobbyData) return;
 
     if (!user?.userId) {
@@ -564,7 +533,6 @@ export default function Lobby({
 
           // If lobby has been killed/deleted on server, free the user and return to main page
           if (response.status === 404 || response.status === 410) {
-
             setError("Lobby has been closed or no longer exists");
             // Fall through to clear lobby data and return user to main page
           } else {
@@ -577,7 +545,6 @@ export default function Lobby({
 
           // For server errors that might indicate lobby was killed, free the user
           if (response.status >= 500) {
-
             setError("Server error - returning to lobby main page");
             // Fall through to clear lobby data
           } else {
@@ -586,14 +553,12 @@ export default function Lobby({
           }
         }
       } else {
-
       }
     } catch (err) {
       console.error("🔒 Lobby: Network error closing lobby", err);
 
       // Check if this was a timeout (AbortError)
       if (err instanceof Error && err.name === "AbortError") {
-
         setError("Close request timed out - returning to lobby main page");
       } else {
         // Other network errors might indicate the server/lobby is down
@@ -609,9 +574,7 @@ export default function Lobby({
   };
 
   const leaveLobby = async () => {
-
     if (!isAuthenticated || !user || !lobbyData) {
-
       setError("Cannot leave lobby - not authenticated or no lobby data");
       return;
     }
@@ -620,7 +583,6 @@ export default function Lobby({
     setError("");
 
     try {
-
       const response = await fetch("/api/hosting/leave", {
         method: "POST",
         headers: {
@@ -639,7 +601,6 @@ export default function Lobby({
       }
 
       if (data.success) {
-
         // Successfully left lobby - clear local state
         setLobbyData(null);
         setLobbyState("empty");
@@ -656,7 +617,6 @@ export default function Lobby({
 
       // For certain errors, still clear local state
       if (errorMessage?.includes("not found") || errorMessage?.includes("not in lobby")) {
-
         setLobbyData(null);
         setLobbyState("empty");
         setJoinCode("");
@@ -730,59 +690,20 @@ export default function Lobby({
   if (!authLoading && !isAuthenticated) {
     return (
       <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          padding: "20px",
-          backgroundColor: PANELFILL,
-        }}
+        className="flex flex-col items-center justify-center h-full p-5"
+        style={{ backgroundColor: PANELFILL }}
       >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-            alignItems: "center",
-            textAlign: "center",
-          }}
-        >
-          <h3
-            style={{
-              fontFamily: HeaderFont,
-              color: FONTCOLOR,
-              fontSize: "1.5rem",
-              marginBottom: "8px",
-            }}
-          >
+        <div className="flex flex-col gap-4 items-center text-center">
+          <h3 className="text-2xl mb-2" style={{ fontFamily: HeaderFont, color: FONTCOLOR }}>
             Authentication Required
           </h3>
-          <p
-            style={{
-              fontFamily: BodyFont,
-              color: SECONDARY_TEXT,
-              fontSize: "0.9rem",
-              marginBottom: "20px",
-            }}
-          >
+          <p className="text-sm mb-5" style={{ fontFamily: BodyFont, color: SECONDARY_TEXT }}>
             Please log in to create or join study lobbies
           </p>
           <button
             onClick={() => (window.location.href = "/login")}
-            style={{
-              backgroundColor: ACCENT_COLOR,
-              color: "white",
-              border: "none",
-              padding: "12px 24px",
-              borderRadius: "8px",
-              fontFamily: BodyFont,
-              fontSize: "1rem",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              minWidth: "200px",
-            }}
+            className="text-white border-none py-3 px-6 rounded-lg text-base cursor-pointer transition-all min-w-[200px]"
+            style={{ backgroundColor: ACCENT_COLOR, fontFamily: BodyFont }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-1px)";
               e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.1)";
@@ -803,42 +724,15 @@ export default function Lobby({
   if (lobbyState === "empty") {
     return (
       <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          padding: "20px",
-          backgroundColor: PANELFILL,
-        }}
+        className="flex flex-col items-center justify-center h-full p-5"
+        style={{ backgroundColor: PANELFILL }}
       >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ textAlign: "center", marginBottom: "20px" }}>
-            <h3
-              style={{
-                fontFamily: HeaderFont,
-                color: FONTCOLOR,
-                fontSize: "1.5rem",
-                marginBottom: "8px",
-              }}
-            >
+        <div className="flex flex-col gap-4 items-center">
+          <div className="text-center mb-5">
+            <h3 className="text-2xl mb-2" style={{ fontFamily: HeaderFont, color: FONTCOLOR }}>
               Study Together
             </h3>
-            <p
-              style={{
-                fontFamily: BodyFont,
-                color: SECONDARY_TEXT,
-                fontSize: "0.9rem",
-              }}
-            >
+            <p className="text-sm" style={{ fontFamily: BodyFont, color: SECONDARY_TEXT }}>
               Create or join a lobby to study with friends
             </p>
           </div>
@@ -846,18 +740,12 @@ export default function Lobby({
           <button
             onClick={createLobby}
             disabled={loading || authLoading}
+            className="text-white border-none py-3 px-6 rounded-lg text-base transition-all min-w-[200px]"
             style={{
               backgroundColor: ACCENT_COLOR,
-              color: "white",
-              border: "none",
-              padding: "12px 24px",
-              borderRadius: "8px",
               fontFamily: BodyFont,
-              fontSize: "1rem",
               cursor: loading || authLoading ? "not-allowed" : "pointer",
               opacity: loading || authLoading ? 0.6 : 1,
-              transition: "all 0.2s ease",
-              minWidth: "200px",
             }}
             onMouseEnter={(e) => {
               if (!loading && !authLoading) {
@@ -878,18 +766,13 @@ export default function Lobby({
           <button
             onClick={() => setLobbyState("join")}
             disabled={loading || authLoading}
+            className="bg-transparent py-3 px-6 rounded-lg text-base transition-all min-w-[200px]"
             style={{
-              backgroundColor: "transparent",
               color: ACCENT_COLOR,
               border: `2px solid ${ACCENT_COLOR}`,
-              padding: "12px 24px",
-              borderRadius: "8px",
               fontFamily: BodyFont,
-              fontSize: "1rem",
               cursor: loading || authLoading ? "not-allowed" : "pointer",
               opacity: loading || authLoading ? 0.6 : 1,
-              transition: "all 0.2s ease",
-              minWidth: "200px",
             }}
             onMouseEnter={(e) => {
               if (!loading) {
@@ -911,13 +794,8 @@ export default function Lobby({
 
           {error && (
             <p
-              style={{
-                color: "#ef4444",
-                fontFamily: BodyFont,
-                fontSize: "0.9rem",
-                textAlign: "center",
-                marginTop: "10px",
-              }}
+              className="text-sm text-center mt-2.5"
+              style={{ color: "#ef4444", fontFamily: BodyFont }}
             >
               {error}
             </p>
@@ -931,41 +809,14 @@ export default function Lobby({
   if (lobbyState === "join") {
     return (
       <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          padding: "20px",
-          backgroundColor: PANELFILL,
-        }}
+        className="flex flex-col items-center justify-center h-full p-5"
+        style={{ backgroundColor: PANELFILL }}
       >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-            alignItems: "center",
-            maxWidth: "300px",
-            width: "100%",
-          }}
-        >
+        <div className="flex flex-col gap-4 items-center max-w-[300px] w-full">
           <button
             onClick={goBackToEmpty}
-            style={{
-              alignSelf: "flex-start",
-              backgroundColor: "transparent",
-              border: "none",
-              color: SECONDARY_TEXT,
-              fontFamily: BodyFont,
-              fontSize: "0.9rem",
-              cursor: "pointer",
-              padding: "4px",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
+            className="self-start bg-transparent border-none text-sm cursor-pointer p-1 flex items-center gap-1"
+            style={{ color: SECONDARY_TEXT, fontFamily: BodyFont }}
             onMouseEnter={(e) => {
               e.currentTarget.style.color = FONTCOLOR;
             }}
@@ -977,24 +828,11 @@ export default function Lobby({
             Back
           </button>
 
-          <div style={{ textAlign: "center", marginBottom: "20px" }}>
-            <h3
-              style={{
-                fontFamily: HeaderFont,
-                color: FONTCOLOR,
-                fontSize: "1.5rem",
-                marginBottom: "8px",
-              }}
-            >
+          <div className="text-center mb-5">
+            <h3 className="text-2xl mb-2" style={{ fontFamily: HeaderFont, color: FONTCOLOR }}>
               Join Lobby
             </h3>
-            <p
-              style={{
-                fontFamily: BodyFont,
-                color: SECONDARY_TEXT,
-                fontSize: "0.9rem",
-              }}
-            >
+            <p className="text-sm" style={{ fontFamily: BodyFont, color: SECONDARY_TEXT }}>
               Enter the lobby code to join your study session
             </p>
           </div>
@@ -1004,17 +842,11 @@ export default function Lobby({
             value={joinCode}
             onChange={(e) => setJoinCode(e.target.value)}
             placeholder="Enter lobby code"
+            className="w-full p-3 rounded-lg text-base bg-white outline-none transition-[border-color]"
             style={{
-              width: "100%",
-              padding: "12px",
               border: `2px solid ${BORDERLINE}`,
-              borderRadius: "8px",
               fontFamily: BodyFont,
-              fontSize: "1rem",
-              backgroundColor: "white",
               color: FONTCOLOR,
-              outline: "none",
-              transition: "border-color 0.2s ease",
             }}
             onFocus={(e) => {
               e.currentTarget.style.borderColor = ACCENT_COLOR;
@@ -1032,18 +864,12 @@ export default function Lobby({
           <button
             onClick={joinLobby}
             disabled={loading || !joinCode.trim()}
+            className="text-white border-none py-3 px-6 rounded-lg text-base transition-all w-full"
             style={{
               backgroundColor: ACCENT_COLOR,
-              color: "white",
-              border: "none",
-              padding: "12px 24px",
-              borderRadius: "8px",
               fontFamily: BodyFont,
-              fontSize: "1rem",
               cursor: loading || !joinCode.trim() ? "not-allowed" : "pointer",
               opacity: loading || !joinCode.trim() ? 0.6 : 1,
-              transition: "all 0.2s ease",
-              width: "100%",
             }}
             onMouseEnter={(e) => {
               if (!loading && joinCode.trim()) {
@@ -1063,13 +889,8 @@ export default function Lobby({
 
           {error && (
             <p
-              style={{
-                color: "#ef4444",
-                fontFamily: BodyFont,
-                fontSize: "0.9rem",
-                textAlign: "center",
-                marginTop: "10px",
-              }}
+              className="text-sm text-center mt-2.5"
+              style={{ color: "#ef4444", fontFamily: BodyFont }}
             >
               {error}
             </p>
@@ -1081,65 +902,35 @@ export default function Lobby({
 
   // Hosting or Joined State
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        backgroundColor: PANELFILL,
-        padding: "20px",
-      }}
-    >
+    <div className="flex flex-col h-full p-5" style={{ backgroundColor: PANELFILL }}>
       {/* Header */}
       <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px",
-          paddingBottom: "16px",
-          borderBottom: `2px solid ${BORDERLINE}`,
-        }}
+        className="flex justify-between items-center mb-5 pb-4"
+        style={{ borderBottom: `2px solid ${BORDERLINE}` }}
       >
         <div>
-          <h3
-            style={{
-              fontFamily: HeaderFont,
-              color: FONTCOLOR,
-              fontSize: "1.5rem",
-              marginBottom: "4px",
-            }}
-          >
+          <h3 className="text-2xl mb-1" style={{ fontFamily: HeaderFont, color: FONTCOLOR }}>
             {lobbyState === "hosting" ? "Hosting Lobby" : "Joined Lobby"}
           </h3>
-          <p
-            style={{
-              fontFamily: BodyFont,
-              color: SECONDARY_TEXT,
-              fontSize: "0.9rem",
-            }}
-          >
-            Code: <span style={{ fontWeight: "bold", color: ACCENT_COLOR }}>{lobbyData?.code}</span>
+          <p className="text-sm" style={{ fontFamily: BodyFont, color: SECONDARY_TEXT }}>
+            Code:{" "}
+            <span className="font-bold" style={{ color: ACCENT_COLOR }}>
+              {lobbyData?.code}
+            </span>
           </p>
           {/* Connection status - show error or reconnecting status */}
           {(connectionError || !isConnected) && (
-            <div style={{ marginTop: "8px" }}>
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}
-              >
+            <div className="mt-2">
+              <div className="flex items-center gap-1.5 mb-1">
                 <div
-                  style={{
-                    width: "6px",
-                    height: "6px",
-                    borderRadius: "50%",
-                    backgroundColor: connectionError ? "#ef4444" : "#f59e0b",
-                  }}
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: connectionError ? "#ef4444" : "#f59e0b" }}
                 />
                 <span
+                  className="text-xs"
                   style={{
                     fontFamily: BodyFont,
                     color: connectionError ? "#ef4444" : "#f59e0b",
-                    fontSize: "0.7rem",
                   }}
                 >
                   {connectionError || "Reconnecting..."}
@@ -1151,17 +942,8 @@ export default function Lobby({
                     clearConnectionError();
                     window.location.reload();
                   }}
-                  style={{
-                    backgroundColor: ACCENT_COLOR,
-                    color: "white",
-                    border: "none",
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                    fontFamily: BodyFont,
-                    fontSize: "0.7rem",
-                    cursor: "pointer",
-                    marginTop: "4px",
-                  }}
+                  className="text-white border-none py-1 px-2 rounded text-xs cursor-pointer mt-1"
+                  style={{ backgroundColor: ACCENT_COLOR, fontFamily: BodyFont }}
                 >
                   Refresh Page
                 </button>
@@ -1173,17 +955,8 @@ export default function Lobby({
         {lobbyState === "hosting" ? (
           <button
             onClick={closeLobby}
-            style={{
-              backgroundColor: "#ef4444",
-              color: "white",
-              border: "none",
-              padding: "8px 16px",
-              borderRadius: "6px",
-              fontFamily: BodyFont,
-              fontSize: "0.9rem",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-            }}
+            className="text-white border-none py-2 px-4 rounded-md text-sm cursor-pointer transition-all"
+            style={{ backgroundColor: "#ef4444", fontFamily: BodyFont }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = "#dc2626";
             }}
@@ -1194,20 +967,16 @@ export default function Lobby({
             Close Lobby
           </button>
         ) : (
-          <div style={{ display: "flex", gap: "8px" }}>
+          <div className="flex gap-2">
             <button
               onClick={refreshLobby}
               disabled={loading || authLoading}
+              className="bg-transparent py-2 px-4 rounded-md text-sm transition-all"
               style={{
-                backgroundColor: "transparent",
                 color: ACCENT_COLOR,
                 border: `1px solid ${ACCENT_COLOR}`,
-                padding: "8px 16px",
-                borderRadius: "6px",
                 fontFamily: BodyFont,
-                fontSize: "0.9rem",
                 cursor: loading || authLoading ? "not-allowed" : "pointer",
-                transition: "all 0.2s ease",
                 opacity: loading || authLoading ? 0.6 : 1,
               }}
               onMouseEnter={(e) => {
@@ -1228,16 +997,12 @@ export default function Lobby({
             <button
               onClick={leaveLobby}
               disabled={loading || authLoading}
+              className="bg-transparent py-2 px-4 rounded-md text-sm transition-all"
               style={{
-                backgroundColor: "transparent",
                 color: SECONDARY_TEXT,
                 border: `1px solid ${BORDERLINE}`,
-                padding: "8px 16px",
-                borderRadius: "6px",
                 fontFamily: BodyFont,
-                fontSize: "0.9rem",
                 cursor: loading || authLoading ? "not-allowed" : "pointer",
-                transition: "all 0.2s ease",
                 opacity: loading || authLoading ? 0.6 : 1,
               }}
               onMouseEnter={(e) => {
@@ -1258,74 +1023,35 @@ export default function Lobby({
       </div>
 
       {/* Online Users */}
-      <div style={{ flex: 1, overflow: "auto" }}>
-        <h4
-          style={{
-            fontFamily: HeaderFont,
-            color: FONTCOLOR,
-            fontSize: "1.1rem",
-            marginBottom: "12px",
-          }}
-        >
+      <div className="flex-1 overflow-auto">
+        <h4 className="text-lg mb-3" style={{ fontFamily: HeaderFont, color: FONTCOLOR }}>
           Online Users ({lobbyData?.users?.length || 0})
         </h4>
 
         {lobbyData?.users && lobbyData.users.length > 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div className="flex flex-col gap-2">
             {lobbyData.users.map((userId) => {
               const displayName = getDisplayNameForUser(userId);
 
               return (
                 <div
                   key={userId}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "12px",
-                    backgroundColor: "white",
-                    borderRadius: "8px",
-                    border: `1px solid ${BORDERLINE}`,
-                  }}
+                  className="flex items-center gap-3 p-3 bg-white rounded-lg"
+                  style={{ border: `1px solid ${BORDERLINE}` }}
                 >
-                  <div
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: "#10b981",
-                    }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <p
-                      style={{
-                        fontFamily: BodyFont,
-                        color: FONTCOLOR,
-                        fontSize: "0.95rem",
-                        margin: 0,
-                      }}
-                    >
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#10b981" }} />
+                  <div className="flex-1">
+                    <p className="text-base m-0" style={{ fontFamily: BodyFont, color: FONTCOLOR }}>
                       {displayName}
                       {lobbyData.host === userId && (
-                        <span
-                          style={{
-                            marginLeft: "8px",
-                            fontSize: "0.8rem",
-                            color: ACCENT_COLOR,
-                            fontWeight: "bold",
-                          }}
-                        >
+                        <span className="ml-2 text-xs font-bold" style={{ color: ACCENT_COLOR }}>
                           (Host)
                         </span>
                       )}
                     </p>
                     <p
-                      style={{
-                        fontFamily: BodyFont,
-                        color: SECONDARY_TEXT,
-                        fontSize: "0.8rem",
-                        margin: 0,
-                      }}
+                      className="text-xs m-0"
+                      style={{ fontFamily: BodyFont, color: SECONDARY_TEXT }}
                     >
                       Online
                     </p>
@@ -1336,21 +1062,10 @@ export default function Lobby({
           </div>
         ) : (
           <div
-            style={{
-              textAlign: "center",
-              padding: "40px 20px",
-              color: SECONDARY_TEXT,
-              fontFamily: BodyFont,
-            }}
+            className="text-center py-10 px-5"
+            style={{ color: SECONDARY_TEXT, fontFamily: BodyFont }}
           >
-            <i
-              className="fi fi-rr-users"
-              style={{
-                fontSize: "3rem",
-                marginBottom: "16px",
-                display: "block",
-              }}
-            />
+            <i className="fi fi-rr-users text-5xl mb-4 block" />
             <p>Waiting for users to join...</p>
           </div>
         )}

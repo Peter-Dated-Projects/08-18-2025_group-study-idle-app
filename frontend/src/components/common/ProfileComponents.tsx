@@ -25,18 +25,12 @@ export function ProfilePicture({
     return <CachedProfilePicture size={size} userId={userId} emoji={emoji} style={style} />;
   }
 
-  // Fallback to simple emoji display when no userId
   return (
     <div
+      className="rounded-full flex items-center justify-center bg-gray-100 border-2 border-gray-300"
       style={{
         width: size,
         height: size,
-        borderRadius: "50%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#f8f8f8",
-        border: "2px solid #ddd",
         fontSize: `${parseInt(size) * 0.5}px`,
         ...style,
       }}
