@@ -170,6 +170,7 @@ export default function GardenIcons({ onShopModalOpen }: GardenIconsProps) {
         </GardenIcon>
 
         <GardenIcon
+          id="user-profile-button"
           onClick={() => setShowUserProfile(true)}
           title="User Profile"
           iconClassName="fas fa-user-circle"

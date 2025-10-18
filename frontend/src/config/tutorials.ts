@@ -48,7 +48,7 @@ export const onboardingTutorial: TutorialConfig = {
       id: 'study-timer',
       title: 'Start Studying! ⏱️',
       description: 'Click here to start a study session. Choose your duration (15, 25, or 45 minutes), study focused, and earn Pomos! Your plants grow based on your study time.',
-      targetSelector: '#study-timer-button',
+      targetSelector: '#pomodoro-timer-section',
       position: 'left',
       highlightTarget: true,
     },
@@ -140,7 +140,7 @@ export const onboardingTutorial: TutorialConfig = {
       id: 'ready',
       title: 'You\'re All Set! 🎉',
       description: 'That\'s it! Start your first study session to begin growing your garden. Remember: consistency is key. Happy studying! 🌱',
-      targetSelector: '#study-timer-button',
+      targetSelector: '#pomodoro-timer-section',
       position: 'left',
       highlightTarget: true,
     },
@@ -224,7 +224,7 @@ export const quickStartTutorial: TutorialConfig = {
       id: 'quick-timer',
       title: 'Start Studying ⏱️',
       description: 'Click here to start a study session and earn Pomos (study points).',
-      targetSelector: '#study-timer-button',
+      targetSelector: '#pomodoro-timer-section',
       position: 'left',
       highlightTarget: true,
     },
@@ -248,7 +248,7 @@ export const quickStartTutorial: TutorialConfig = {
       id: 'quick-ready',
       title: 'Ready to Grow! 🌿',
       description: 'That\'s it! Start studying to grow your garden. You can explore other features later.',
-      targetSelector: '#study-timer-button',
+      targetSelector: '#pomodoro-timer-section',
       position: 'left',
       highlightTarget: true,
     },
@@ -375,6 +375,92 @@ export const phase1TestTutorial: TutorialConfig = {
   onSkip: async () => {
     console.log('⏭️ Phase 1 tutorial skipped');
     localStorage.setItem('phase1-tutorial-completed', 'true');
+  },
+
+  allowSkip: true,
+  initialStep: 0,
+};
+
+/**
+ * Phase 2 & 3 Test Tutorial
+ * Includes steps 1-7: Welcome + Core Concept + Essential Actions + Shop
+ * Tests the tutorial system with all available UI elements
+ * Skips inventory and structures steps (no dedicated buttons yet)
+ */
+export const phase2And3TestTutorial: TutorialConfig = {
+  steps: [
+    // PHASE 1: Welcome & Core Concept (Steps 1-3)
+    {
+      id: 'welcome',
+      title: 'Welcome to Study Garden! 🌱',
+      description: 'Transform your study sessions into a thriving garden! Every time you study, your plants grow. Let\'s take a quick tour to get you started.',
+      targetSelector: '#garden-canvas',
+      position: 'top',
+      highlightTarget: true,
+    },
+    {
+      id: 'garden-overview',
+      title: 'Your Personal Garden 🌿',
+      description: 'This is your study garden! Right now it\'s empty, but as you study and earn Pomos (study points), you\'ll fill it with beautiful plants and decorations.',
+      targetSelector: '#garden-container',
+      position: 'top',
+      highlightTarget: true,
+    },
+    {
+      id: 'garden-canvas-intro',
+      title: 'Your Growing Space 🏡',
+      description: 'This canvas is where all your plants and decorations will live. As you study more, you\'ll unlock plots where you can grow different plants. Each study session helps your garden flourish!',
+      targetSelector: '#garden-canvas',
+      position: 'right',
+      highlightTarget: true,
+    },
+
+    // PHASE 2: Essential Actions (Steps 4-6)
+    {
+      id: 'study-timer',
+      title: 'Start Studying! ⏱️',
+      description: 'Click here to start a study session. Choose your duration (15, 25, or 45 minutes), study focused, and earn Pomos! Your plants grow based on your study time.',
+      targetSelector: '#pomodoro-timer-section',
+      position: 'left',
+      highlightTarget: true,
+    },
+    {
+      id: 'pomos',
+      title: 'Pomos - Your Currency 🍅',
+      description: 'Pomos are earned by studying. Use them to buy plants, decorations, and unlock new features. The longer you study, the more you earn!',
+      targetSelector: '#pomo-counter',
+      position: 'bottom',
+      highlightTarget: true,
+    },
+    {
+      id: 'user-profile',
+      title: 'Your Profile 👤',
+      description: 'View your stats, level, total study time, and customize your profile picture. Track your growth over time!',
+      targetSelector: '#user-profile-button',
+      position: 'bottom',
+      highlightTarget: true,
+    },
+
+    // PHASE 3: Progression System (Step 7 only - shop)
+    {
+      id: 'shop',
+      title: 'The Garden Shop 🛒',
+      description: 'Visit the shop to browse plants, decorations, and special items. Each purchase helps you customize your garden and express your study style! After buying items, you can place them in your garden by clicking on a plot.',
+      targetSelector: '#shop-button',
+      position: 'right',
+      highlightTarget: true,
+    },
+  ],
+
+  onComplete: async () => {
+    console.log('✅ Phase 2 & 3 tutorial completed!');
+    // For testing, we'll just log. In production, this would save to backend.
+    localStorage.setItem('phase2and3-tutorial-completed', 'true');
+  },
+
+  onSkip: async () => {
+    console.log('⏭️ Phase 2 & 3 tutorial skipped');
+    localStorage.setItem('phase2and3-tutorial-completed', 'true');
   },
 
   allowSkip: true,

@@ -118,7 +118,6 @@ export default function PomoBlockTimer() {
       }
 
       const result = await response.json();
-
     } catch (error) {
       console.error("Error updating pomo bank:", error);
     }
@@ -189,9 +188,7 @@ export default function PomoBlockTimer() {
 
         oscillator.start(audioContext.currentTime);
         oscillator.stop(audioContext.currentTime + 0.5);
-      } catch {
-
-      }
+      } catch {}
     }
   };
 
@@ -246,6 +243,7 @@ export default function PomoBlockTimer() {
 
   return (
     <div
+      id="pomodoro-timer-section"
       style={{
         height: "100%",
         width: "100%",
@@ -462,6 +460,7 @@ export default function PomoBlockTimer() {
         >
           {!isRunning ? (
             <button
+              id="study-timer-button"
               onClick={handleStartTimer}
               style={{
                 flex: 1,

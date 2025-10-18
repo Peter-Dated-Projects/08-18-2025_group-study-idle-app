@@ -17,6 +17,7 @@ interface TutorialOverlayProps {
 export default function TutorialOverlay({ config, isActive, onClose }: TutorialOverlayProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(config.initialStep || 0);
   const [isVisible, setIsVisible] = useState(isActive);
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
     setIsVisible(isActive);
@@ -62,23 +63,44 @@ export default function TutorialOverlay({ config, isActive, onClose }: TutorialO
     }
   };
 
-  // Highlight target element with subtle effect - don't change z-index to avoid hiding other elements
+  // Highlight target element and track its position for the blur cutout
   useEffect(() => {
-    if (!isVisible || !currentStep?.highlightTarget) return;
+    if (!isVisible || !currentStep?.highlightTarget) {
+      setTargetRect(null);
+      return;
+    }
 
     const targetElement = document.querySelector(currentStep.targetSelector);
-    if (!targetElement) return;
+    if (!targetElement) {
+      setTargetRect(null);
+      return;
+    }
 
     const htmlElement = targetElement as HTMLElement;
     const originalBoxShadow = htmlElement.style.boxShadow;
 
+    // Update target rect for blur overlay
+    const updateTargetRect = () => {
+      const rect = htmlElement.getBoundingClientRect();
+      setTargetRect(rect);
+    };
+
+    updateTargetRect();
+
     // Subtle highlight without modifying z-index or position
-    htmlElement.style.boxShadow = "0 0 0 3px rgba(212, 148, 74, 0.4)"; // Subtle orange glow
+    htmlElement.style.boxShadow = "0 0 0 3px rgba(212, 148, 74, 0.6)"; // Slightly stronger glow
     htmlElement.style.transition = "box-shadow 0.3s ease";
+
+    // Update rect on resize or scroll
+    window.addEventListener("resize", updateTargetRect);
+    window.addEventListener("scroll", updateTargetRect, true);
 
     return () => {
       // Restore original styles
       htmlElement.style.boxShadow = originalBoxShadow;
+      window.removeEventListener("resize", updateTargetRect);
+      window.removeEventListener("scroll", updateTargetRect, true);
+      setTargetRect(null);
     };
   }, [currentStep, isVisible]);
 
@@ -87,6 +109,84 @@ export default function TutorialOverlay({ config, isActive, onClose }: TutorialO
 
   return (
     <>
+      {/* Selective blur overlay - blurs everything except highlighted element */}
+      {currentStep?.highlightTarget && targetRect && (
+        <>
+          {/* Top section */}
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: `${targetRect.top}px`,
+              backgroundColor: "rgba(0, 0, 0, 0.15)",
+              backdropFilter: "blur(3px)",
+              zIndex: 9999,
+              pointerEvents: "none",
+            }}
+          />
+          {/* Bottom section */}
+          <div
+            style={{
+              position: "fixed",
+              top: `${targetRect.bottom}px`,
+              left: 0,
+              width: "100vw",
+              height: `calc(100vh - ${targetRect.bottom}px)`,
+              backgroundColor: "rgba(0, 0, 0, 0.15)",
+              backdropFilter: "blur(3px)",
+              zIndex: 9999,
+              pointerEvents: "none",
+            }}
+          />
+          {/* Left section */}
+          <div
+            style={{
+              position: "fixed",
+              top: `${targetRect.top}px`,
+              left: 0,
+              width: `${targetRect.left}px`,
+              height: `${targetRect.height}px`,
+              backgroundColor: "rgba(0, 0, 0, 0.15)",
+              backdropFilter: "blur(3px)",
+              zIndex: 9999,
+              pointerEvents: "none",
+            }}
+          />
+          {/* Right section */}
+          <div
+            style={{
+              position: "fixed",
+              top: `${targetRect.top}px`,
+              left: `${targetRect.right}px`,
+              width: `calc(100vw - ${targetRect.right}px)`,
+              height: `${targetRect.height}px`,
+              backgroundColor: "rgba(0, 0, 0, 0.15)",
+              backdropFilter: "blur(3px)",
+              zIndex: 9999,
+              pointerEvents: "none",
+            }}
+          />
+        </>
+      )}
+
+      {/* If no highlight target, blur everything */}
+      {(!currentStep?.highlightTarget || !targetRect) && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0, 0, 0, 0.15)",
+            backdropFilter: "blur(3px)",
+            zIndex: 9999,
+            pointerEvents: "none",
+          }}
+        />
+      )}
       {/* Invisible overlay - no background, no blur, just for click detection */}
       <div
         className="tutorial-overlay"

@@ -24,7 +24,7 @@ import { initializePlotsFromConfig, fetchStructureInventory } from "@/store/slic
 import { clearLevelConfigCache } from "@/engine/DefaultWorld";
 import { localDataManager } from "@/utils/localDataManager";
 import { useTutorial } from "@/components/tutorial/TutorialContext";
-import { phase1TestTutorial } from "@/config/tutorials";
+import { phase2And3TestTutorial } from "@/config/tutorials";
 
 import { FONTCOLOR, BORDERFILL, BORDERLINE, PANELFILL } from "@/components/constants";
 import { useState, useEffect, useCallback } from "react";
@@ -250,17 +250,17 @@ function GardenPageContent() {
     }
   }, [isLoading, isAuthenticated, user, error, router, addNotification]);
 
-  // Check if user should see tutorial and trigger Phase 1
+  // Check if user should see tutorial and trigger Phase 2 & 3
   useEffect(() => {
     if (!isAuthenticated || !user || isLoading) return;
 
     // Check if tutorial was already completed
-    const tutorialCompleted = localStorage.getItem("phase1-tutorial-completed");
+    const tutorialCompleted = localStorage.getItem("phase2and3-tutorial-completed");
 
     if (!tutorialCompleted) {
       // Wait a bit for the garden to load before starting tutorial
       const timer = setTimeout(() => {
-        startTutorial(phase1TestTutorial);
+        startTutorial(phase2And3TestTutorial);
       }, 1500); // 1.5 second delay to let garden render
 
       return () => clearTimeout(timer);
@@ -269,7 +269,7 @@ function GardenPageContent() {
 
   // Handler for manual tutorial trigger (test button)
   const handleStartTutorial = () => {
-    startTutorial(phase1TestTutorial);
+    startTutorial(phase2And3TestTutorial);
   };
 
   if (isLoading) {

@@ -109,6 +109,7 @@ export default function BankBalance({ className, style }: BankBalanceProps) {
 
   return (
     <div
+      id="pomo-counter"
       className={`${className} ml-0.5 flex items-center gap-2 py-2 px-3 rounded-lg text-sm w-[150px] box-border`}
       style={{
         backgroundColor: PANELFILL,

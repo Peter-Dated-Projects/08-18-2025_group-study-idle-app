@@ -329,6 +329,7 @@ export default function GardenMenu({
 
         {/* Shop Icon Button */}
         <button
+          id="shop-button"
           onClick={handleShopClick}
           style={{
             display: "flex",

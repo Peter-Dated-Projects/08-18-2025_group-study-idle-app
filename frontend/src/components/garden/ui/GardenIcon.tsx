@@ -7,6 +7,7 @@ interface GardenIconProps {
   iconClassName: string;
   hoverEffect?: "scale" | "none";
   children?: React.ReactNode;
+  id?: string;
 }
 
 const GardenIcon: React.FC<GardenIconProps> = ({
@@ -15,6 +16,7 @@ const GardenIcon: React.FC<GardenIconProps> = ({
   iconClassName,
   hoverEffect = "none",
   children,
+  id,
 }) => {
   const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.currentTarget.style.backgroundColor = PANELFILL;
@@ -32,6 +34,7 @@ const GardenIcon: React.FC<GardenIconProps> = ({
 
   return (
     <button
+      id={id}
       onClick={onClick}
       style={{
         width: "50px",
