@@ -1,6 +1,8 @@
-import React from 'react';
-import TutorialOverlay from './TutorialOverlay';
-import { useTutorial } from './TutorialContext';
+"use client";
+
+import React from "react";
+import TutorialOverlay from "./TutorialOverlay";
+import { useTutorial } from "./TutorialContext";
 
 /**
  * TutorialManager Component
@@ -13,10 +15,6 @@ export default function TutorialManager() {
   if (!currentTutorial) return null;
 
   return (
-    <TutorialOverlay
-      config={currentTutorial}
-      isActive={isTutorialActive}
-      onClose={stopTutorial}
-    />
+    <TutorialOverlay config={currentTutorial} isActive={isTutorialActive} onClose={stopTutorial} />
   );
 }

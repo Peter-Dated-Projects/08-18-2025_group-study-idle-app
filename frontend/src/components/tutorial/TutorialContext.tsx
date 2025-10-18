@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { TutorialConfig } from './types';
+"use client";
+
+import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { TutorialConfig } from "./types";
 
 interface TutorialContextValue {
   /**
@@ -52,11 +54,7 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
     currentTutorial,
   };
 
-  return (
-    <TutorialContext.Provider value={value}>
-      {children}
-    </TutorialContext.Provider>
-  );
+  return <TutorialContext.Provider value={value}>{children}</TutorialContext.Provider>;
 }
 
 /**
@@ -65,7 +63,7 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
 export function useTutorial() {
   const context = useContext(TutorialContext);
   if (context === undefined) {
-    throw new Error('useTutorial must be used within a TutorialProvider');
+    throw new Error("useTutorial must be used within a TutorialProvider");
   }
   return context;
 }

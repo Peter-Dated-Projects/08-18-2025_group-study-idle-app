@@ -427,8 +427,8 @@ export default function GardenCanvas({
   }, [isMounted]);
 
   return (
-    <div className="w-full h-full relative overflow-hidden">
-      <div ref={parentRef} className="w-full h-full overflow-hidden" />
+    <div id="garden-container" className="w-full h-full relative overflow-hidden">
+      <div id="garden-canvas" ref={parentRef} className="w-full h-full overflow-hidden" />
     </div>
   );
 }

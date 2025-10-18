@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import TutorialStep from './TutorialStep';
-import { TutorialConfig } from './types';
+"use client";
+
+import React, { useState, useEffect } from "react";
+import TutorialStep from "./TutorialStep";
+import { TutorialConfig } from "./types";
 
 interface TutorialOverlayProps {
   config: TutorialConfig;
@@ -12,11 +14,7 @@ interface TutorialOverlayProps {
  * TutorialOverlay Component
  * Main tutorial system that manages the tutorial flow and displays tutorial steps
  */
-export default function TutorialOverlay({
-  config,
-  isActive,
-  onClose,
-}: TutorialOverlayProps) {
+export default function TutorialOverlay({ config, isActive, onClose }: TutorialOverlayProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(config.initialStep || 0);
   const [isVisible, setIsVisible] = useState(isActive);
 
@@ -27,8 +25,7 @@ export default function TutorialOverlay({
     }
   }, [isActive, config.initialStep]);
 
-  if (!isVisible || !config.steps.length) return null;
-
+  // Get current step data (needed for hooks below)
   const currentStep = config.steps[currentStepIndex];
   const isFirst = currentStepIndex === 0;
   const isLast = currentStepIndex === config.steps.length - 1;
@@ -65,52 +62,43 @@ export default function TutorialOverlay({
     }
   };
 
-  // Highlight target element
+  // Highlight target element with subtle effect - don't change z-index to avoid hiding other elements
   useEffect(() => {
-    if (!currentStep.highlightTarget) return;
+    if (!isVisible || !currentStep?.highlightTarget) return;
 
     const targetElement = document.querySelector(currentStep.targetSelector);
     if (!targetElement) return;
 
     const htmlElement = targetElement as HTMLElement;
-    const originalZIndex = htmlElement.style.zIndex;
-    const originalPosition = htmlElement.style.position;
     const originalBoxShadow = htmlElement.style.boxShadow;
 
-    // Highlight the target element
-    htmlElement.style.position = originalPosition === 'static' ? 'relative' : originalPosition;
-    htmlElement.style.zIndex = '10000';
-    htmlElement.style.boxShadow = '0 0 0 4px rgba(212, 148, 74, 0.5), 0 0 20px rgba(212, 148, 74, 0.3)';
-    htmlElement.style.transition = 'box-shadow 0.3s ease';
+    // Subtle highlight without modifying z-index or position
+    htmlElement.style.boxShadow = "0 0 0 3px rgba(212, 148, 74, 0.4)"; // Subtle orange glow
+    htmlElement.style.transition = "box-shadow 0.3s ease";
 
     return () => {
       // Restore original styles
-      htmlElement.style.zIndex = originalZIndex;
-      htmlElement.style.position = originalPosition;
       htmlElement.style.boxShadow = originalBoxShadow;
     };
-  }, [currentStep]);
+  }, [currentStep, isVisible]);
+
+  // Early return AFTER all hooks
+  if (!isVisible || !config.steps.length) return null;
 
   return (
     <>
-      {/* Semi-transparent overlay */}
+      {/* Invisible overlay - no background, no blur, just for click detection */}
       <div
         className="tutorial-overlay"
         style={{
-          position: 'fixed',
+          position: "fixed",
           top: 0,
           left: 0,
-          width: '100vw',
-          height: '100vh',
-          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          width: "100vw",
+          height: "100vh",
+          backgroundColor: "transparent",
           zIndex: 10000,
-          backdropFilter: 'blur(2px)',
-        }}
-        onClick={(e) => {
-          // Only close if clicking on overlay, not on tutorial step
-          if (e.target === e.currentTarget && config.allowSkip) {
-            handleSkip();
-          }
+          pointerEvents: "none", // Let clicks pass through to underlying elements
         }}
       >
         {/* Skip button */}
@@ -119,29 +107,30 @@ export default function TutorialOverlay({
             onClick={handleSkip}
             className="tutorial-skip-button"
             style={{
-              position: 'fixed',
-              top: '20px',
-              right: '20px',
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
-              color: '#333',
-              border: '2px solid #ccc',
-              borderRadius: '8px',
-              padding: '10px 20px',
-              fontSize: '14px',
+              position: "fixed",
+              top: "20px",
+              right: "20px",
+              backgroundColor: "rgba(255, 255, 255, 0.9)",
+              color: "#333",
+              border: "2px solid #ccc",
+              borderRadius: "8px",
+              padding: "10px 20px",
+              fontSize: "14px",
               fontWeight: 600,
-              cursor: 'pointer',
+              cursor: "pointer",
               zIndex: 10002,
-              transition: 'all 0.2s ease',
+              transition: "all 0.2s ease",
+              pointerEvents: "auto", // Re-enable pointer events for the button
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 1)';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+              e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 1)";
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.2)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'none';
+              e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "none";
             }}
           >
             Skip Tutorial ✕

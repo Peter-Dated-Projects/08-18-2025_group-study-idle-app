@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { TutorialStepComponentProps } from './types';
-import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from '../constants';
+"use client";
+
+import React, { useEffect, useState, useRef } from "react";
+import { TutorialStepComponentProps } from "./types";
+import { FONTCOLOR, BORDERLINE, PANELFILL, BORDERFILL } from "../constants";
 
 /**
  * TutorialStep Component
@@ -22,7 +24,7 @@ export default function TutorialStep({
   useEffect(() => {
     const calculatePosition = () => {
       const targetElement = document.querySelector(step.targetSelector);
-      
+
       if (!targetElement || !stepRef.current) {
         // Fallback to center of screen if target not found
         setPosition({
@@ -34,28 +36,28 @@ export default function TutorialStep({
 
       const targetRect = targetElement.getBoundingClientRect();
       const stepRect = stepRef.current.getBoundingClientRect();
-      
+
       let top = 0;
       let left = 0;
-      
+
       const offset = step.offset || { x: 0, y: 0 };
       const gap = 20; // Gap between target and tutorial step
 
       switch (step.position) {
-        case 'top':
+        case "top":
           top = targetRect.top - stepRect.height - gap + offset.y;
-          left = targetRect.left + (targetRect.width / 2) - (stepRect.width / 2) + offset.x;
+          left = targetRect.left + targetRect.width / 2 - stepRect.width / 2 + offset.x;
           break;
-        case 'bottom':
+        case "bottom":
           top = targetRect.bottom + gap + offset.y;
-          left = targetRect.left + (targetRect.width / 2) - (stepRect.width / 2) + offset.x;
+          left = targetRect.left + targetRect.width / 2 - stepRect.width / 2 + offset.x;
           break;
-        case 'left':
-          top = targetRect.top + (targetRect.height / 2) - (stepRect.height / 2) + offset.y;
+        case "left":
+          top = targetRect.top + targetRect.height / 2 - stepRect.height / 2 + offset.y;
           left = targetRect.left - stepRect.width - gap + offset.x;
           break;
-        case 'right':
-          top = targetRect.top + (targetRect.height / 2) - (stepRect.height / 2) + offset.y;
+        case "right":
+          top = targetRect.top + targetRect.height / 2 - stepRect.height / 2 + offset.y;
           left = targetRect.right + gap + offset.x;
           break;
       }
@@ -76,12 +78,12 @@ export default function TutorialStep({
       requestAnimationFrame(calculatePosition);
     };
 
-    window.addEventListener('resize', handleUpdate);
-    window.addEventListener('scroll', handleUpdate, true);
+    window.addEventListener("resize", handleUpdate);
+    window.addEventListener("scroll", handleUpdate, true);
 
     return () => {
-      window.removeEventListener('resize', handleUpdate);
-      window.removeEventListener('scroll', handleUpdate, true);
+      window.removeEventListener("resize", handleUpdate);
+      window.removeEventListener("scroll", handleUpdate, true);
     };
   }, [step]);
 
@@ -89,48 +91,55 @@ export default function TutorialStep({
   const getArrowStyles = () => {
     const arrowSize = 12;
     const baseStyle = {
-      position: 'absolute' as const,
+      position: "absolute" as const,
       width: 0,
       height: 0,
-      border: `${arrowSize}px solid transparent`,
     };
 
     switch (step.position) {
-      case 'top':
+      case "top":
         return {
           ...baseStyle,
           bottom: -arrowSize * 2,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          borderTopColor: BORDERLINE,
-          borderBottomWidth: 0,
+          left: "50%",
+          transform: "translateX(-50%)",
+          borderLeft: `${arrowSize}px solid transparent`,
+          borderRight: `${arrowSize}px solid transparent`,
+          borderTop: `${arrowSize}px solid ${BORDERLINE}`,
+          borderBottom: "none",
         };
-      case 'bottom':
+      case "bottom":
         return {
           ...baseStyle,
           top: -arrowSize * 2,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          borderBottomColor: BORDERLINE,
-          borderTopWidth: 0,
+          left: "50%",
+          transform: "translateX(-50%)",
+          borderLeft: `${arrowSize}px solid transparent`,
+          borderRight: `${arrowSize}px solid transparent`,
+          borderBottom: `${arrowSize}px solid ${BORDERLINE}`,
+          borderTop: "none",
         };
-      case 'left':
+      case "left":
         return {
           ...baseStyle,
           right: -arrowSize * 2,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          borderLeftColor: BORDERLINE,
-          borderRightWidth: 0,
+          top: "50%",
+          transform: "translateY(-50%)",
+          borderTop: `${arrowSize}px solid transparent`,
+          borderBottom: `${arrowSize}px solid transparent`,
+          borderLeft: `${arrowSize}px solid ${BORDERLINE}`,
+          borderRight: "none",
         };
-      case 'right':
+      case "right":
         return {
           ...baseStyle,
           left: -arrowSize * 2,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          borderRightColor: BORDERLINE,
-          borderLeftWidth: 0,
+          top: "50%",
+          transform: "translateY(-50%)",
+          borderTop: `${arrowSize}px solid transparent`,
+          borderBottom: `${arrowSize}px solid transparent`,
+          borderRight: `${arrowSize}px solid ${BORDERLINE}`,
+          borderLeft: "none",
         };
     }
   };
@@ -142,17 +151,17 @@ export default function TutorialStep({
       ref={stepRef}
       className="tutorial-step"
       style={{
-        position: 'fixed',
+        position: "fixed",
         top: `${position.top}px`,
         left: `${position.left}px`,
         backgroundColor: PANELFILL,
         border: `3px solid ${BORDERLINE}`,
-        borderRadius: '12px',
-        width: '350px',
-        maxWidth: '90vw',
+        borderRadius: "12px",
+        width: "350px",
+        maxWidth: "90vw",
         zIndex: 10001,
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-        animation: 'tutorialFadeIn 0.3s ease-out',
+        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+        animation: "tutorialFadeIn 0.3s ease-out",
       }}
     >
       {/* Arrow/Pointer */}
@@ -164,14 +173,11 @@ export default function TutorialStep({
         style={{
           backgroundColor: BORDERFILL,
           borderBottom: `2px solid ${BORDERLINE}`,
-          borderTopLeftRadius: '9px',
-          borderTopRightRadius: '9px',
+          borderTopLeftRadius: "9px",
+          borderTopRightRadius: "9px",
         }}
       >
-        <h3
-          className="m-0 text-base font-bold"
-          style={{ color: FONTCOLOR }}
-        >
+        <h3 className="m-0 text-base font-bold" style={{ color: FONTCOLOR }}>
           {step.title}
         </h3>
         <span
@@ -187,10 +193,7 @@ export default function TutorialStep({
 
       {/* Content */}
       <div className="px-4 py-4">
-        <p
-          className="m-0 text-sm leading-relaxed"
-          style={{ color: FONTCOLOR }}
-        >
+        <p className="m-0 text-sm leading-relaxed" style={{ color: FONTCOLOR }}>
           {step.description}
         </p>
       </div>
@@ -201,8 +204,8 @@ export default function TutorialStep({
         style={{
           borderTop: `2px solid ${BORDERLINE}`,
           backgroundColor: BORDERFILL,
-          borderBottomLeftRadius: '9px',
-          borderBottomRightRadius: '9px',
+          borderBottomLeftRadius: "9px",
+          borderBottomRightRadius: "9px",
         }}
       >
         <button
@@ -210,21 +213,21 @@ export default function TutorialStep({
           disabled={isFirst}
           className="px-4 py-2 rounded font-semibold text-sm transition-all"
           style={{
-            backgroundColor: isFirst ? '#ccc' : BORDERLINE,
-            color: isFirst ? '#888' : PANELFILL,
-            border: 'none',
-            cursor: isFirst ? 'not-allowed' : 'pointer',
+            backgroundColor: isFirst ? "#ccc" : BORDERLINE,
+            color: isFirst ? "#888" : PANELFILL,
+            border: "none",
+            cursor: isFirst ? "not-allowed" : "pointer",
             opacity: isFirst ? 0.5 : 1,
           }}
           onMouseEnter={(e) => {
             if (!isFirst) {
-              e.currentTarget.style.transform = 'translateY(-1px)';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.2)";
             }
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "none";
           }}
         >
           ← Back
@@ -236,19 +239,19 @@ export default function TutorialStep({
           style={{
             backgroundColor: BORDERLINE,
             color: PANELFILL,
-            border: 'none',
-            cursor: 'pointer',
+            border: "none",
+            cursor: "pointer",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-1px)';
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+            e.currentTarget.style.transform = "translateY(-1px)";
+            e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.2)";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "none";
           }}
         >
-          {isLast ? 'Finish ✓' : 'Next →'}
+          {isLast ? "Finish ✓" : "Next →"}
         </button>
       </div>
 

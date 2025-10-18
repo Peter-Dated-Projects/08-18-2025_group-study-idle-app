@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { TutorialProvider } from "@/components/tutorial/TutorialContext";
+import TutorialManager from "@/components/tutorial/TutorialManager";
 
 export const metadata: Metadata = {
   title: "StudyGarden",
@@ -42,7 +44,10 @@ export default function RootLayout({
           flexDirection: "column",
         }}
       >
-        {children}
+        <TutorialProvider>
+          {children}
+          <TutorialManager />
+        </TutorialProvider>
       </body>
     </html>
   );
