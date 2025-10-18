@@ -148,25 +148,27 @@ export const onboardingTutorial: TutorialConfig = {
 
   onComplete: async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      
-      // Save tutorial completion to backend
-      await fetch(`${API_URL}/api/users/me`, {
+      // Save tutorial completion to backend via /api/users/me
+      const response = await fetch('/api/users/me', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          'finished-tutorial': true,
+          fields: {
+            'finished-tutorial': true,
+          }
         }),
       });
 
-      console.log('🎉 Tutorial completed! Welcome to Study Garden!');
+      if (response.ok) {
+        console.log('🎉 Tutorial completed! Welcome to Study Garden!');
+      } else {
+        console.error('Failed to save tutorial completion to backend');
+      }
       
-      // Optional: Show success notification
-      // You can integrate with your notification system here
+      // Also mark as seen locally as a backup
+      localStorage.setItem('tutorial-completed', 'true');
       
     } catch (error) {
       console.error('Failed to save tutorial completion:', error);
@@ -177,22 +179,25 @@ export const onboardingTutorial: TutorialConfig = {
 
   onSkip: async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      
       // Also mark as complete if skipped (user chose not to see it again)
-      await fetch(`${API_URL}/api/users/me`, {
+      const response = await fetch('/api/users/me', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          'finished-tutorial': true,
+          fields: {
+            'finished-tutorial': true,
+          }
         }),
       });
 
-      console.log('Tutorial skipped');
+      if (response.ok) {
+        console.log('Tutorial skipped and marked as complete');
+      } else {
+        console.error('Failed to save tutorial skip to backend');
+      }
+      
       localStorage.setItem('tutorial-completed', 'true');
       
     } catch (error) {
@@ -453,14 +458,63 @@ export const phase2And3TestTutorial: TutorialConfig = {
   ],
 
   onComplete: async () => {
-    console.log('✅ Phase 2 & 3 tutorial completed!');
-    // For testing, we'll just log. In production, this would save to backend.
-    localStorage.setItem('phase2and3-tutorial-completed', 'true');
+    try {
+      // Save tutorial completion to backend via /api/users/me
+      const response = await fetch('/api/users/me', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fields: {
+            'finished-tutorial': true,
+          }
+        }),
+      });
+
+      if (response.ok) {
+        console.log('✅ Phase 2 & 3 tutorial completed!');
+      } else {
+        console.error('Failed to save tutorial completion to backend');
+      }
+      
+      // Also mark as seen locally as a backup
+      localStorage.setItem('phase2and3-tutorial-completed', 'true');
+      
+    } catch (error) {
+      console.error('Failed to save tutorial completion:', error);
+      // Still mark as seen locally
+      localStorage.setItem('phase2and3-tutorial-completed', 'true');
+    }
   },
 
   onSkip: async () => {
-    console.log('⏭️ Phase 2 & 3 tutorial skipped');
-    localStorage.setItem('phase2and3-tutorial-completed', 'true');
+    try {
+      // Also mark as complete if skipped (user chose not to see it again)
+      const response = await fetch('/api/users/me', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fields: {
+            'finished-tutorial': true,
+          }
+        }),
+      });
+
+      if (response.ok) {
+        console.log('⏭️ Phase 2 & 3 tutorial skipped');
+      } else {
+        console.error('Failed to save tutorial skip to backend');
+      }
+      
+      localStorage.setItem('phase2and3-tutorial-completed', 'true');
+      
+    } catch (error) {
+      console.error('Failed to save tutorial skip:', error);
+      localStorage.setItem('phase2and3-tutorial-completed', 'true');
+    }
   },
 
   allowSkip: true,

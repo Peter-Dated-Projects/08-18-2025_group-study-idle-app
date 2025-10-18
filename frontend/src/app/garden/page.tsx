@@ -249,21 +249,58 @@ function GardenPageContent() {
     }
   }, [isLoading, isAuthenticated, user, error, router, addNotification]);
 
-  // Check if user should see tutorial and trigger Phase 2 & 3
+  // Check if user should see tutorial by checking finished-tutorial flag in ArangoDB
   useEffect(() => {
     if (!isAuthenticated || !user || isLoading) return;
 
-    // Check if tutorial was already completed
-    const tutorialCompleted = localStorage.getItem("phase2and3-tutorial-completed");
+    const checkAndStartTutorial = async () => {
+      try {
+        // Fetch user data from backend to check finished-tutorial flag
+        const response = await fetch("/api/users/me");
 
-    if (!tutorialCompleted) {
-      // Wait a bit for the garden to load before starting tutorial
-      const timer = setTimeout(() => {
-        startTutorial(phase2And3TestTutorial);
-      }, 1500); // 1.5 second delay to let garden render
+        if (response.ok) {
+          const data = await response.json();
 
-      return () => clearTimeout(timer);
-    }
+          if (data.success && data.user) {
+            // Check if user has finished the tutorial
+            const hasFinishedTutorial =
+              data.user.finished_tutorial || data.user["finished-tutorial"];
+
+            if (!hasFinishedTutorial) {
+              // User hasn't finished tutorial, force start it
+              console.log("🎓 User has not completed tutorial, starting...");
+
+              // Wait a bit for the garden to load before starting tutorial
+              setTimeout(() => {
+                startTutorial(phase2And3TestTutorial);
+              }, 1500); // 1.5 second delay to let garden render
+            } else {
+              console.log("✅ User has already completed the tutorial");
+            }
+          }
+        } else {
+          console.error("Failed to fetch user data for tutorial check");
+          // Fallback to localStorage check if backend fails
+          const tutorialCompleted = localStorage.getItem("phase2and3-tutorial-completed");
+          if (!tutorialCompleted) {
+            setTimeout(() => {
+              startTutorial(phase2And3TestTutorial);
+            }, 1500);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking tutorial status:", error);
+        // Fallback to localStorage check if there's an error
+        const tutorialCompleted = localStorage.getItem("phase2and3-tutorial-completed");
+        if (!tutorialCompleted) {
+          setTimeout(() => {
+            startTutorial(phase2And3TestTutorial);
+          }, 1500);
+        }
+      }
+    };
+
+    checkAndStartTutorial();
   }, [isAuthenticated, user, isLoading, startTutorial]);
 
   if (isLoading) {

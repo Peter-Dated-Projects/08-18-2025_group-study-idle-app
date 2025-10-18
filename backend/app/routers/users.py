@@ -2,9 +2,10 @@
 User information endpoints with Redis caching.
 Handles retrieving user information with automatic cache management.
 """
+
 import logging
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
 
 from ..services.user_service_arangodb import get_user_service, UserService
@@ -23,6 +24,7 @@ router = APIRouter(
 # Pydantic Models for User endpoints
 # ------------------------------------------------------------------ #
 
+
 class UserInfo(BaseModel):
     user_id: str
     display_name: Optional[str] = None
@@ -33,37 +35,62 @@ class UserInfo(BaseModel):
     provider: Optional[str] = None
     user_picture_url: Optional[str] = None  # From ArangoDB users collection
     is_paid: bool = False  # User's paid status
+    finished_tutorial: bool = Field(
+        False, alias="finished-tutorial"
+    )  # Tutorial completion status
+
+    class Config:
+        populate_by_name = True  # Allow both field name and alias
+
 
 class UsersRequest(BaseModel):
     user_ids: List[str]
+
 
 class UsersInfoResponse(BaseModel):
     success: bool
     users: Dict[str, UserInfo]
     cache_stats: Optional[Dict[str, Any]] = None
 
+
 class SingleUserResponse(BaseModel):
     success: bool
     user: Optional[UserInfo] = None
 
+
 class UpdateProfilePictureRequest(BaseModel):
     user_id: str
     picture_url: str  # Full MinIO URL, not just image_id
+
 
 class UpdateProfilePictureResponse(BaseModel):
     success: bool
     message: str
     user: Optional[UserInfo] = None
 
+
+class UpdateUserFieldsRequest(BaseModel):
+    """Request model for updating user fields (e.g., finished-tutorial)"""
+
+    fields: Dict[str, Any]
+
+
+class UpdateUserFieldsResponse(BaseModel):
+    success: bool
+    message: str
+    user: Optional[UserInfo] = None
+
+
 # ------------------------------------------------------------------ #
 # User Information endpoints
 # ------------------------------------------------------------------ #
+
 
 @router.post("/info", response_model=UsersInfoResponse)
 async def get_users_info(
     request: UsersRequest,
     background_tasks: BackgroundTasks,
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
 ):
     """
     Get user information for multiple users with Redis caching.
@@ -75,45 +102,44 @@ async def get_users_info(
 
         # Remove duplicates while preserving order
         unique_user_ids = list(dict.fromkeys(request.user_ids))
-        
+
         # Get users info (user service handles caching internally)
         users_data = user_service.get_users_info(unique_user_ids)
-        
+
         # Convert to UserInfo models
         users_info = {}
         for user_id, user_data in users_data.items():
             users_info[user_id] = UserInfo(**user_data)
-        
+
         # Calculate cache stats for monitoring (approximate)
         cache_stats = {
             "total_requested": len(unique_user_ids),
             "cache_hits": "handled_internally",
-            "cache_misses": "handled_internally", 
-            "cache_hit_rate": "see_user_service_logs"
+            "cache_misses": "handled_internally",
+            "cache_hit_rate": "see_user_service_logs",
         }
-        
+
         # Schedule cache cleanup in background
         background_tasks.add_task(user_service.cache_service.cleanup_expired_users)
 
         return UsersInfoResponse(
-            success=True,
-            users=users_info,
-            cache_stats=cache_stats
+            success=True, users=users_info, cache_stats=cache_stats
         )
-        
+
     except Exception as e:
         logger.error(f"Error in get_users_info endpoint: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
-        
+
     except Exception as e:
         logger.error(f"Error getting users info: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @router.get("/info/{user_id}", response_model=SingleUserResponse)
 async def get_user_info(
     user_id: str,
     background_tasks: BackgroundTasks,
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
 ):
     """
     Get information for a single user with Redis caching.
@@ -121,51 +147,57 @@ async def get_user_info(
     try:
         # Use the user service (which handles caching internally)
         user_data = user_service.get_user_info(user_id)
-        
+
         if user_data:
             user_info = UserInfo(**user_data)
             return SingleUserResponse(success=True, user=user_info)
         else:
             return SingleUserResponse(success=False, user=None)
-            
+
     except Exception as e:
         logger.error(f"Error getting user info for {user_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @router.post("/update-profile-picture", response_model=UpdateProfilePictureResponse)
 async def update_user_profile_picture(
     request: UpdateProfilePictureRequest,
     background_tasks: BackgroundTasks,
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
 ):
     """
     Update a user's profile picture URL in ArangoDB with the full MinIO URL.
     """
     try:
         # Update the user's profile picture URL (stores full URL now, not image_id)
-        success = user_service.update_user_picture_url(request.user_id, request.picture_url)
-        
+        success = user_service.update_user_picture_url(
+            request.user_id, request.picture_url
+        )
+
         if success:
             # Get updated user info
             updated_user_data = user_service.get_user_info(request.user_id)
             updated_user = UserInfo(**updated_user_data) if updated_user_data else None
-            
+
             return UpdateProfilePictureResponse(
                 success=True,
                 message="Profile picture updated successfully",
-                user=updated_user
+                user=updated_user,
             )
         else:
-            raise HTTPException(status_code=500, detail="Failed to update profile picture URL")
-            
+            raise HTTPException(
+                status_code=500, detail="Failed to update profile picture URL"
+            )
+
     except Exception as e:
         logger.error(f"Error updating profile picture for {request.user_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+
 @router.post("/cache/cleanup")
 async def cleanup_cache(
     background_tasks: BackgroundTasks,
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
 ):
     """
     Manually trigger cache cleanup for expired user data.
@@ -178,10 +210,9 @@ async def cleanup_cache(
         logger.error(f"Error initiating cache cleanup: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+
 @router.get("/cache/stats")
-async def get_cache_stats(
-    user_service: UserService = Depends(get_user_service)
-):
+async def get_cache_stats(user_service: UserService = Depends(get_user_service)):
     """
     Get cache statistics and health information.
     """
@@ -190,4 +221,68 @@ async def get_cache_stats(
         return {"success": True, "stats": stats}
     except Exception as e:
         logger.error(f"Error getting cache stats: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/me", response_model=SingleUserResponse)
+async def get_current_user(
+    user_id: str = None, user_service: UserService = Depends(get_user_service)
+):
+    """
+    Get information for the currently authenticated user.
+    User ID should be extracted from the authentication token/session.
+    For now, we'll require user_id as a query parameter.
+    """
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID is required")
+
+    try:
+        user_data = user_service.get_user_info(user_id)
+
+        if user_data:
+            user_info = UserInfo(**user_data)
+            return SingleUserResponse(success=True, user=user_info)
+        else:
+            return SingleUserResponse(success=False, user=None)
+
+    except Exception as e:
+        logger.error(f"Error getting current user info for {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.patch("/me", response_model=UpdateUserFieldsResponse)
+async def update_current_user(
+    request: UpdateUserFieldsRequest,
+    user_id: str = None,
+    background_tasks: BackgroundTasks = None,
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Update fields for the currently authenticated user.
+    This can be used to update finished-tutorial, preferences, etc.
+    User ID should be extracted from the authentication token/session.
+    For now, we'll require user_id as a query parameter.
+    """
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID is required")
+
+    try:
+        # Update the user's fields
+        success = user_service.update_user_fields(user_id, request.fields)
+
+        if success:
+            # Get updated user info
+            updated_user_data = user_service.get_user_info(user_id)
+            updated_user = UserInfo(**updated_user_data) if updated_user_data else None
+
+            return UpdateUserFieldsResponse(
+                success=True,
+                message="User fields updated successfully",
+                user=updated_user,
+            )
+        else:
+            raise HTTPException(status_code=500, detail="Failed to update user fields")
+
+    except Exception as e:
+        logger.error(f"Error updating fields for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
